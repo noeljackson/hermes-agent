@@ -201,7 +201,9 @@ against those fixtures in `crates/hermes-parity`:
   tables. Session state operations now also cover
   title sanitization, title uniqueness, title lookup, exact/unique/ambiguous
   prefix resolution, session/message counts, delete behavior, transcript-file
-  cleanup, and child-session orphaning instead of cascade deletion. Session DB
+  cleanup, child-session orphaning instead of cascade deletion, and
+  end/reopen semantics where the first end reason wins until an explicit
+  reopen clears it. Session DB
   unavailable error formatting is fixture-backed, including custom prefixes and
   WAL-incompatible filesystem hints for NFS/SMB/FUSE cases.
   Rust-only concurrency coverage verifies multiple SQLite writers can append to

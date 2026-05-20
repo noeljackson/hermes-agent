@@ -266,8 +266,8 @@
           "messages_all": 3,
           "messages_missing": 0,
           "messages_parent": 2,
-          "sessions_all": 7,
-          "sessions_cli": 7,
+          "sessions_all": 8,
+          "sessions_cli": 8,
           "sessions_gateway": 0
         },
         "delete": {
@@ -277,10 +277,20 @@
           "messages_parent": 0,
           "parent_after": null,
           "second": false,
-          "sessions_all": 6,
+          "sessions_all": 7,
           "transcript_files_remaining": []
         },
         "duplicate_title_error": "Title 'My Session Title' is already in use by session alpha-111",
+        "end_reopen": {
+          "after_double_end": {
+            "end_reason": "compression",
+            "ended_at": "<timestamp>"
+          },
+          "after_reopen": {
+            "end_reason": null,
+            "ended_at": null
+          }
+        },
         "missing_title_result": false,
         "resolve_cases": {
           "ambiguous_prefix": null,

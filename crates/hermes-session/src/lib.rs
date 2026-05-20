@@ -477,6 +477,24 @@ impl SqliteSessionStore {
             .map(Option::flatten)
     }
 
+    pub fn end_session(&self, session_id: &str, end_reason: &str) -> SqlResult<()> {
+        self.conn.execute(
+            "UPDATE sessions
+             SET ended_at = '<timestamp>', end_reason = ?1
+             WHERE id = ?2 AND ended_at IS NULL",
+            params![end_reason, session_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn reopen_session(&self, session_id: &str) -> SqlResult<()> {
+        self.conn.execute(
+            "UPDATE sessions SET ended_at = NULL, end_reason = NULL WHERE id = ?1",
+            params![session_id],
+        )?;
+        Ok(())
+    }
+
     pub fn session_count(&self, source: Option<&str>) -> SqlResult<i64> {
         match source {
             Some(source) => self.conn.query_row(

@@ -1384,6 +1384,7 @@ fn session_export_matches_python_fixture() {
         "literal_one",
         "parent-delete",
         "child-delete",
+        "end-state",
     ] {
         state_db
             .create_session_with_parent(
@@ -1485,6 +1486,29 @@ fn session_export_matches_python_fixture() {
     assert_eq!(
         state_db.message_count(Some("missing-session")).unwrap(),
         counts["messages_missing"].as_i64().unwrap()
+    );
+
+    state_db.end_session("end-state", "compression").unwrap();
+    state_db.end_session("end-state", "stale").unwrap();
+    let end_reopen = &state["end_reopen"];
+    let after_double_end = state_db.get_session("end-state").unwrap().unwrap();
+    assert_eq!(
+        after_double_end["ended_at"],
+        end_reopen["after_double_end"]["ended_at"]
+    );
+    assert_eq!(
+        after_double_end["end_reason"],
+        end_reopen["after_double_end"]["end_reason"]
+    );
+    state_db.reopen_session("end-state").unwrap();
+    let after_reopen = state_db.get_session("end-state").unwrap().unwrap();
+    assert_eq!(
+        after_reopen["ended_at"],
+        end_reopen["after_reopen"]["ended_at"]
+    );
+    assert_eq!(
+        after_reopen["end_reason"],
+        end_reopen["after_reopen"]["end_reason"]
     );
 
     let sessions_dir = std::env::temp_dir().join(format!(

@@ -63,6 +63,7 @@ def main() -> int:
             "literal_one",
             "parent-delete",
             "child-delete",
+            "end-state",
         ):
             state_db.create_session(
                 sid,
@@ -138,6 +139,12 @@ def main() -> int:
             "messages_missing": state_db.message_count("missing-session"),
         }
 
+        state_db.end_session("end-state", "compression")
+        state_db.end_session("end-state", "stale")
+        after_double_end = normalize_timestamps(state_db.get_session("end-state"))
+        state_db.reopen_session("end-state")
+        after_reopen = normalize_timestamps(state_db.get_session("end-state"))
+
         sessions_dir = home / "sessions"
         sessions_dir.mkdir()
         for name in (
@@ -158,6 +165,16 @@ def main() -> int:
             "duplicate_title_error": duplicate_title_error,
             "resolve_cases": resolve_cases,
             "counts_before_delete": counts_before_delete,
+            "end_reopen": {
+                "after_double_end": {
+                    "ended_at": after_double_end["ended_at"],
+                    "end_reason": after_double_end["end_reason"],
+                },
+                "after_reopen": {
+                    "ended_at": after_reopen["ended_at"],
+                    "end_reason": after_reopen["end_reason"],
+                },
+            },
             "delete": {
                 "first": delete_result,
                 "second": delete_again_result,
