@@ -857,6 +857,111 @@ pub fn scan_plugin_manifests(
     scan_plugin_manifest_level(root, source, &skip_names, "", 0)
 }
 
+pub fn plugin_load_policy(
+    bundled_root: &Path,
+    user_root: &Path,
+    enabled: &[&str],
+    disabled: &[&str],
+) -> io::Result<Value> {
+    let mut manifests = Vec::new();
+    manifests.extend(scan_plugin_manifests(
+        bundled_root,
+        "bundled",
+        &["memory", "context_engine", "platforms", "model-providers"],
+    )?);
+    manifests.extend(scan_plugin_manifests(
+        &bundled_root.join("platforms"),
+        "bundled",
+        &[],
+    )?);
+    manifests.extend(scan_plugin_manifests(user_root, "user", &[])?);
+
+    let mut winners = BTreeMap::<String, Value>::new();
+    for manifest in manifests {
+        let key = manifest["key"].as_str().unwrap_or("").to_string();
+        winners.insert(key, manifest);
+    }
+
+    let enabled = enabled.iter().copied().collect::<BTreeSet<_>>();
+    let disabled = disabled.iter().copied().collect::<BTreeSet<_>>();
+    let mut plugins = Vec::new();
+    let mut registered_hooks = BTreeSet::new();
+    let mut registered_commands = BTreeSet::new();
+
+    for (key, manifest) in winners {
+        let name = manifest["name"].as_str().unwrap_or("");
+        let kind = manifest["kind"].as_str().unwrap_or("");
+        let source = manifest["source"].as_str().unwrap_or("");
+        let mut enabled_plugin = false;
+        let mut error = Value::Null;
+        let mut hooks_registered = Vec::<String>::new();
+        let mut commands_registered = Vec::<String>::new();
+
+        if disabled.contains(key.as_str()) || disabled.contains(name) {
+            error = json!("disabled via config");
+        } else if kind == "exclusive" {
+            error = json!("exclusive plugin — activate via <category>.provider config");
+        } else {
+            let auto_enabled = kind == "model-provider"
+                || (source == "bundled" && matches!(kind, "backend" | "platform"));
+            let explicitly_enabled = enabled.contains(key.as_str()) || enabled.contains(name);
+            if auto_enabled || explicitly_enabled {
+                enabled_plugin = true;
+            } else {
+                error = json!(format!(
+                    "not enabled in config (run `hermes plugins enable {key}` to activate)"
+                ));
+            }
+        }
+
+        if enabled_plugin {
+            let path = Path::new(manifest["path"].as_str().unwrap_or(""));
+            let init_text = fs::read_to_string(path.join("__init__.py")).unwrap_or_default();
+            hooks_registered = extract_single_quoted_calls(&init_text, "register_hook");
+            commands_registered = extract_single_quoted_calls(&init_text, "register_command");
+            for hook in &hooks_registered {
+                registered_hooks.insert(hook.clone());
+            }
+            for command in &commands_registered {
+                registered_commands.insert(command.clone());
+            }
+        }
+
+        plugins.push(json!({
+            "key": key,
+            "name": name,
+            "kind": kind,
+            "source": source,
+            "enabled": enabled_plugin,
+            "error": error,
+            "hooks_registered": hooks_registered,
+            "commands_registered": commands_registered,
+        }));
+    }
+
+    Ok(json!({
+        "plugins": plugins,
+        "registered_hooks": registered_hooks.into_iter().collect::<Vec<_>>(),
+        "registered_commands": registered_commands.into_iter().collect::<Vec<_>>(),
+    }))
+}
+
+fn extract_single_quoted_calls(source: &str, function: &str) -> Vec<String> {
+    let needle = format!("{function}('");
+    let mut out = Vec::new();
+    let mut rest = source;
+    while let Some(index) = rest.find(&needle) {
+        let after = &rest[index + needle.len()..];
+        let Some(end) = after.find('\'') else {
+            break;
+        };
+        out.push(after[..end].to_string());
+        rest = &after[end + 1..];
+    }
+    out.sort();
+    out
+}
+
 fn scan_plugin_manifest_level(
     path: &Path,
     source: &str,

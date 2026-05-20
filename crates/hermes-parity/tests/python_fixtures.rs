@@ -2224,6 +2224,48 @@ fn plugin_surfaces_match_python_fixture() {
     }
     assert_eq!(Value::Array(actual), controlled["manifests"]);
     let _ = fs::remove_dir_all(root);
+
+    let policy = case(&fixture, "load_policy");
+    let policy_root = std::env::temp_dir().join(format!(
+        "hermes-parity-plugin-policy-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&policy_root);
+    fs::create_dir_all(&policy_root).unwrap();
+    for (relative, contents) in policy["files"].as_object().unwrap() {
+        let path = policy_root.join(relative);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, contents.as_str().unwrap()).unwrap();
+    }
+    let enabled = policy["enabled"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    let disabled = policy["disabled"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    let actual_policy = hermes_cli::plugin_load_policy(
+        &policy_root.join("bundled"),
+        &policy_root.join("home").join("plugins"),
+        &enabled,
+        &disabled,
+    )
+    .unwrap();
+    assert_eq!(actual_policy["plugins"], policy["plugins"]);
+    assert_eq!(
+        actual_policy["registered_hooks"],
+        policy["registered_hooks"]
+    );
+    assert_eq!(
+        actual_policy["registered_commands"],
+        policy["registered_commands"]
+    );
+    let _ = fs::remove_dir_all(policy_root);
 }
 
 #[test]

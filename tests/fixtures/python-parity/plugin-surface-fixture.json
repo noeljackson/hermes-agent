@@ -126,6 +126,106 @@
       "skip_names": [
         "skip-me"
       ]
+    },
+    {
+      "disabled": [
+        "disabled-user"
+      ],
+      "enabled": [
+        "enabled-user"
+      ],
+      "files": {
+        "bundled/bundled-standalone/__init__.py": "def register(ctx): ctx.register_hook('pre_tool_call', lambda **kw: None)\n",
+        "bundled/bundled-standalone/plugin.yaml": "name: bundled-standalone\nkind: standalone\ndescription: Bundled standalone stays opt-in.\n",
+        "bundled/image_gen/auto-backend/__init__.py": "def register(ctx): ctx.register_hook('post_tool_call', lambda **kw: None)\n",
+        "bundled/image_gen/auto-backend/plugin.yaml": "name: auto-backend\nkind: backend\ndescription: Bundled backend auto-loads.\n",
+        "bundled/model-providers/skip-provider/__init__.py": "raise RuntimeError('model provider should not be loaded by PluginManager')\n",
+        "bundled/model-providers/skip-provider/plugin.yaml": "name: skip-provider\nkind: model-provider\ndescription: Model providers are discovered elsewhere.\n",
+        "bundled/platforms/auto-platform/__init__.py": "def register(ctx): ctx.register_hook('post_llm_call', lambda **kw: None)\n",
+        "bundled/platforms/auto-platform/plugin.yaml": "name: auto-platform\nkind: platform\ndescription: Bundled platform auto-loads.\n",
+        "home/plugins/disabled-user/__init__.py": "raise RuntimeError('disabled plugin should not load')\n",
+        "home/plugins/disabled-user/plugin.yaml": "name: disabled-user\nkind: standalone\ndescription: Disabled user plugin.\n",
+        "home/plugins/enabled-user/__init__.py": "def register(ctx): ctx.register_command('enabled-user-cmd', lambda raw: 'ok')\n",
+        "home/plugins/enabled-user/plugin.yaml": "name: enabled-user\nkind: standalone\ndescription: Explicitly enabled user plugin.\n",
+        "home/plugins/user-backend/__init__.py": "raise RuntimeError('user backend should not auto-load')\n",
+        "home/plugins/user-backend/plugin.yaml": "name: user-backend\nkind: backend\ndescription: User backend remains opt-in.\n"
+      },
+      "name": "load_policy",
+      "plugins": [
+        {
+          "commands_registered": [],
+          "enabled": true,
+          "error": null,
+          "hooks_registered": [
+            "post_llm_call"
+          ],
+          "key": "auto-platform",
+          "kind": "platform",
+          "name": "auto-platform",
+          "source": "bundled"
+        },
+        {
+          "commands_registered": [],
+          "enabled": false,
+          "error": "not enabled in config (run `hermes plugins enable bundled-standalone` to activate)",
+          "hooks_registered": [],
+          "key": "bundled-standalone",
+          "kind": "standalone",
+          "name": "bundled-standalone",
+          "source": "bundled"
+        },
+        {
+          "commands_registered": [],
+          "enabled": false,
+          "error": "disabled via config",
+          "hooks_registered": [],
+          "key": "disabled-user",
+          "kind": "standalone",
+          "name": "disabled-user",
+          "source": "user"
+        },
+        {
+          "commands_registered": [
+            "enabled-user-cmd"
+          ],
+          "enabled": true,
+          "error": null,
+          "hooks_registered": [],
+          "key": "enabled-user",
+          "kind": "standalone",
+          "name": "enabled-user",
+          "source": "user"
+        },
+        {
+          "commands_registered": [],
+          "enabled": true,
+          "error": null,
+          "hooks_registered": [
+            "post_tool_call"
+          ],
+          "key": "image_gen/auto-backend",
+          "kind": "backend",
+          "name": "auto-backend",
+          "source": "bundled"
+        },
+        {
+          "commands_registered": [],
+          "enabled": false,
+          "error": "not enabled in config (run `hermes plugins enable user-backend` to activate)",
+          "hooks_registered": [],
+          "key": "user-backend",
+          "kind": "backend",
+          "name": "user-backend",
+          "source": "user"
+        }
+      ],
+      "registered_commands": [
+        "enabled-user-cmd"
+      ],
+      "registered_hooks": [
+        "post_llm_call",
+        "post_tool_call"
+      ]
     }
   ],
   "source": {

@@ -51,6 +51,51 @@ description: Invalid kind falls back.
     "skip-me/plugin.yaml": "name: skip-me\n",
 }
 
+POLICY_FILES = {
+    "bundled/bundled-standalone/plugin.yaml": """
+name: bundled-standalone
+kind: standalone
+description: Bundled standalone stays opt-in.
+""".lstrip(),
+    "bundled/bundled-standalone/__init__.py": "def register(ctx): ctx.register_hook('pre_tool_call', lambda **kw: None)\n",
+    "bundled/image_gen/auto-backend/plugin.yaml": """
+name: auto-backend
+kind: backend
+description: Bundled backend auto-loads.
+""".lstrip(),
+    "bundled/image_gen/auto-backend/__init__.py": "def register(ctx): ctx.register_hook('post_tool_call', lambda **kw: None)\n",
+    "bundled/platforms/auto-platform/plugin.yaml": """
+name: auto-platform
+kind: platform
+description: Bundled platform auto-loads.
+""".lstrip(),
+    "bundled/platforms/auto-platform/__init__.py": "def register(ctx): ctx.register_hook('post_llm_call', lambda **kw: None)\n",
+    "bundled/model-providers/skip-provider/plugin.yaml": """
+name: skip-provider
+kind: model-provider
+description: Model providers are discovered elsewhere.
+""".lstrip(),
+    "bundled/model-providers/skip-provider/__init__.py": "raise RuntimeError('model provider should not be loaded by PluginManager')\n",
+    "home/plugins/enabled-user/plugin.yaml": """
+name: enabled-user
+kind: standalone
+description: Explicitly enabled user plugin.
+""".lstrip(),
+    "home/plugins/enabled-user/__init__.py": "def register(ctx): ctx.register_command('enabled-user-cmd', lambda raw: 'ok')\n",
+    "home/plugins/disabled-user/plugin.yaml": """
+name: disabled-user
+kind: standalone
+description: Disabled user plugin.
+""".lstrip(),
+    "home/plugins/disabled-user/__init__.py": "raise RuntimeError('disabled plugin should not load')\n",
+    "home/plugins/user-backend/plugin.yaml": """
+name: user-backend
+kind: backend
+description: User backend remains opt-in.
+""".lstrip(),
+    "home/plugins/user-backend/__init__.py": "raise RuntimeError('user backend should not auto-load')\n",
+}
+
 
 def write_files(root: Path, files: dict[str, str]) -> None:
     for rel, content in files.items():
@@ -76,6 +121,19 @@ def manifest_dict(manifest, root: Path) -> dict:
     return data
 
 
+def loaded_plugin_dict(key: str, loaded) -> dict:
+    return {
+        "key": key,
+        "name": loaded.manifest.name,
+        "kind": loaded.manifest.kind,
+        "source": loaded.manifest.source,
+        "enabled": loaded.enabled,
+        "error": loaded.error,
+        "hooks_registered": sorted(loaded.hooks_registered),
+        "commands_registered": sorted(loaded.commands_registered),
+    }
+
+
 def main() -> int:
     out = parse_out_arg()
     with isolated_hermes_home() as home:
@@ -91,6 +149,31 @@ def main() -> int:
             skip_names={"skip-me"},
         )
 
+        policy_root = home / "policy-fixture"
+        write_files(policy_root, POLICY_FILES)
+        original_bundled_dir = plugins.get_bundled_plugins_dir
+        original_home = plugins.get_hermes_home
+        original_enabled = plugins._get_enabled_plugins
+        original_disabled = plugins._get_disabled_plugins
+        try:
+            plugins.get_bundled_plugins_dir = lambda: policy_root / "bundled"
+            plugins.get_hermes_home = lambda: policy_root / "home"
+            plugins._get_enabled_plugins = lambda: {"enabled-user"}
+            plugins._get_disabled_plugins = lambda: {"disabled-user"}
+            policy_manager = plugins.PluginManager()
+            policy_manager.discover_and_load(force=True)
+            loaded_plugins = [
+                loaded_plugin_dict(key, loaded)
+                for key, loaded in sorted(policy_manager._plugins.items())
+            ]
+            registered_hooks = sorted(policy_manager._hooks.keys())
+            registered_commands = sorted(policy_manager._plugin_commands.keys())
+        finally:
+            plugins.get_bundled_plugins_dir = original_bundled_dir
+            plugins.get_hermes_home = original_home
+            plugins._get_enabled_plugins = original_enabled
+            plugins._get_disabled_plugins = original_disabled
+
         cases = [
             {
                 "name": "plugin_boundary_constants",
@@ -103,6 +186,15 @@ def main() -> int:
                 "files": CONTROLLED_FILES,
                 "skip_names": ["skip-me"],
                 "manifests": [manifest_dict(manifest, root) for manifest in manifests],
+            },
+            {
+                "name": "load_policy",
+                "files": POLICY_FILES,
+                "enabled": ["enabled-user"],
+                "disabled": ["disabled-user"],
+                "plugins": loaded_plugins,
+                "registered_hooks": registered_hooks,
+                "registered_commands": registered_commands,
             },
         ]
 
