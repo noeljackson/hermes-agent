@@ -232,6 +232,105 @@ def remote_backend_contracts(home: Path):
     }
 
 
+def safety_helper_contracts():
+    from tools.terminal_tool import (
+        _foreground_background_guidance,
+        _resolve_notification_flag_conflict,
+        _rewrite_compound_background,
+        _transform_sudo_command,
+    )
+
+    rewrite_inputs = [
+        "python server.py &",
+        "npm install && npm run dev &",
+        "false || python -m http.server &",
+        "npm install && { npm run dev & }",
+        "printf 'a && b &'",
+        "echo hi &> out.txt",
+    ]
+    guidance_inputs = [
+        "python -m http.server",
+        "python -m http.server --help",
+        "nohup python server.py",
+        "sleep 1 &",
+        "git commit -m 'run nohup now'",
+        "npm run dev",
+    ]
+
+    notification_inputs = [
+        {
+            "background": True,
+            "notify_on_complete": True,
+            "watch_patterns": ["READY"],
+        },
+        {
+            "background": False,
+            "notify_on_complete": True,
+            "watch_patterns": ["READY"],
+        },
+        {
+            "background": True,
+            "notify_on_complete": False,
+            "watch_patterns": ["READY"],
+        },
+    ]
+
+    original_sudo = os.environ.get("SUDO_PASSWORD")
+    original_interactive = os.environ.get("HERMES_INTERACTIVE")
+    try:
+        os.environ.pop("HERMES_INTERACTIVE", None)
+        sudo_cases = []
+        for password, command in [
+            (None, "sudo ls /root"),
+            ("pa ss", "sudo ls /root && echo done"),
+            ("pa ss", "echo sudo"),
+            ("pa ss", "FOO=1 sudo whoami"),
+        ]:
+            if password is None:
+                os.environ.pop("SUDO_PASSWORD", None)
+            else:
+                os.environ["SUDO_PASSWORD"] = password
+            transformed, stdin = _transform_sudo_command(command)
+            sudo_cases.append(
+                {
+                    "command": command,
+                    "password_present": password is not None,
+                    "transformed": transformed,
+                    "sudo_stdin": stdin,
+                }
+            )
+    finally:
+        if original_sudo is None:
+            os.environ.pop("SUDO_PASSWORD", None)
+        else:
+            os.environ["SUDO_PASSWORD"] = original_sudo
+        if original_interactive is None:
+            os.environ.pop("HERMES_INTERACTIVE", None)
+        else:
+            os.environ["HERMES_INTERACTIVE"] = original_interactive
+
+    return {
+        "name": "terminal_safety_helpers",
+        "compound_background": [
+            {"command": command, "rewritten": _rewrite_compound_background(command)}
+            for command in rewrite_inputs
+        ],
+        "foreground_guidance": [
+            {"command": command, "guidance": _foreground_background_guidance(command)}
+            for command in guidance_inputs
+        ],
+        "notification_conflicts": [
+            {
+                **case,
+                "resolved_watch_patterns": _resolve_notification_flag_conflict(**case)[0],
+                "note": _resolve_notification_flag_conflict(**case)[1],
+            }
+            for case in notification_inputs
+        ],
+        "sudo_transform": sudo_cases,
+    }
+
+
 def main() -> int:
     out = parse_out_arg()
     with isolated_hermes_home() as home:
@@ -342,6 +441,7 @@ def main() -> int:
                 "result": error_with_env({"TERMINAL_CONTAINER_CPU": "large"}),
             },
             remote_backend_contracts(home),
+            safety_helper_contracts(),
         ]
 
     write_fixture(out, fixture(SCRIPT, cases))

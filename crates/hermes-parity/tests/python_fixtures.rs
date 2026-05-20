@@ -4177,6 +4177,12 @@ fn terminal_backend_matches_python_fixture() {
         hermes_terminal::base_modal_contracts_fixture(&remote["base_modal"]),
         remote["base_modal"]
     );
+
+    let safety = case(&fixture, "terminal_safety_helpers");
+    assert_eq!(
+        hermes_terminal::terminal_safety_helpers_fixture(safety),
+        *safety
+    );
 }
 
 #[test]

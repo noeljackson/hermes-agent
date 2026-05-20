@@ -330,8 +330,440 @@ pub fn base_modal_contracts_fixture(case: &Value) -> Value {
     })
 }
 
+pub fn terminal_safety_helpers_fixture(case: &Value) -> Value {
+    json!({
+        "name": "terminal_safety_helpers",
+        "compound_background": case["compound_background"].as_array().unwrap().iter().map(|item| {
+            let command = item["command"].as_str().unwrap_or("");
+            json!({"command": command, "rewritten": rewrite_compound_background(command)})
+        }).collect::<Vec<_>>(),
+        "foreground_guidance": case["foreground_guidance"].as_array().unwrap().iter().map(|item| {
+            let command = item["command"].as_str().unwrap_or("");
+            json!({"command": command, "guidance": foreground_background_guidance(command)})
+        }).collect::<Vec<_>>(),
+        "notification_conflicts": case["notification_conflicts"].as_array().unwrap().iter().map(|item| {
+            let background = item["background"].as_bool().unwrap_or(false);
+            let notify_on_complete = item["notify_on_complete"].as_bool().unwrap_or(false);
+            let watch_patterns = item["watch_patterns"].clone();
+            let (resolved_watch_patterns, note) =
+                resolve_notification_flag_conflict(background, notify_on_complete, &watch_patterns);
+            json!({
+                "background": background,
+                "notify_on_complete": notify_on_complete,
+                "watch_patterns": watch_patterns,
+                "resolved_watch_patterns": resolved_watch_patterns,
+                "note": note,
+            })
+        }).collect::<Vec<_>>(),
+        "sudo_transform": case["sudo_transform"].as_array().unwrap().iter().map(|item| {
+            let command = item["command"].as_str().unwrap_or("");
+            let password = item["password_present"].as_bool().unwrap_or(false).then_some("pa ss");
+            let (transformed, sudo_stdin) = transform_sudo_command(command, password);
+            json!({
+                "command": command,
+                "password_present": item["password_present"],
+                "transformed": transformed,
+                "sudo_stdin": sudo_stdin,
+            })
+        }).collect::<Vec<_>>(),
+    })
+}
+
 fn cwd_marker(session_id: &str) -> String {
     format!("__HERMES_CWD_{session_id}__")
+}
+
+fn rewrite_compound_background(command: &str) -> String {
+    let bytes = command.as_bytes();
+    let mut i = 0;
+    let mut paren_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut last_chain_op_end: Option<usize> = None;
+    let mut rewrites = Vec::<(usize, usize)>::new();
+
+    while i < bytes.len() {
+        let ch = bytes[i] as char;
+        if ch == '\n' && paren_depth == 0 && brace_depth == 0 {
+            last_chain_op_end = None;
+            i += 1;
+            continue;
+        }
+        if ch.is_ascii_whitespace() {
+            i += 1;
+            continue;
+        }
+        if ch == '#' {
+            if let Some(offset) = command[i..].find('\n') {
+                i += offset;
+            } else {
+                break;
+            }
+            continue;
+        }
+        if ch == '\\' && i + 1 < bytes.len() {
+            i += 2;
+            continue;
+        }
+        if ch == '\'' || ch == '"' {
+            i = read_shell_token_end(command, i).max(i + 1);
+            continue;
+        }
+        if ch == '(' {
+            paren_depth += 1;
+            i += 1;
+            continue;
+        }
+        if ch == ')' {
+            paren_depth = paren_depth.saturating_sub(1);
+            i += 1;
+            continue;
+        }
+        if ch == '{'
+            && i + 1 < bytes.len()
+            && ((bytes[i + 1] as char).is_ascii_whitespace() || bytes[i + 1] == b'\n')
+        {
+            brace_depth += 1;
+            i += 1;
+            continue;
+        }
+        if ch == '}' && brace_depth > 0 {
+            brace_depth -= 1;
+            last_chain_op_end = None;
+            i += 1;
+            continue;
+        }
+        if paren_depth > 0 || brace_depth > 0 {
+            i += 1;
+            continue;
+        }
+        if command[i..].starts_with("&&") || command[i..].starts_with("||") {
+            last_chain_op_end = Some(i + 2);
+            i += 2;
+            continue;
+        }
+        if ch == ';' || ch == '|' {
+            last_chain_op_end = None;
+            i += 1;
+            continue;
+        }
+        if ch == '&' {
+            if i + 1 < bytes.len() && bytes[i + 1] == b'>' {
+                i += 2;
+                continue;
+            }
+            let mut j = i;
+            while j > 0 && (bytes[j - 1] as char).is_ascii_whitespace() {
+                j -= 1;
+            }
+            if j > 0 && matches!(bytes[j - 1], b'<' | b'>') {
+                i += 1;
+                continue;
+            }
+            if let Some(chain_end) = last_chain_op_end {
+                rewrites.push((chain_end, i));
+            }
+            last_chain_op_end = None;
+            i += 1;
+            continue;
+        }
+        i = read_shell_token_end(command, i).max(i + 1);
+    }
+
+    if rewrites.is_empty() {
+        return command.to_string();
+    }
+
+    let mut result = command.to_string();
+    for (chain_end, amp_pos) in rewrites.into_iter().rev() {
+        let mut insert_pos = chain_end;
+        while insert_pos < amp_pos && result.as_bytes()[insert_pos].is_ascii_whitespace() {
+            insert_pos += 1;
+        }
+        let prefix = &result[..insert_pos];
+        let middle = &result[insert_pos..amp_pos];
+        let suffix = &result[amp_pos + 1..];
+        result = format!("{prefix}{{ {middle}& }}{suffix}");
+    }
+    result
+}
+
+fn foreground_background_guidance(command: &str) -> Option<String> {
+    if looks_like_help_or_version_command(command) {
+        return None;
+    }
+    let unquoted = strip_quotes(command).to_ascii_lowercase();
+    if contains_shell_level_background_wrapper(&unquoted) {
+        return Some(
+            "Foreground command uses shell-level background wrappers (nohup/disown/setsid). Use terminal(background=true) so Hermes can track the process, then run readiness checks and tests in separate commands."
+                .to_string(),
+        );
+    }
+    if contains_inline_background_amp(&unquoted) || contains_trailing_background_amp(&unquoted) {
+        return Some(
+            "Foreground command uses '&' backgrounding. Use terminal(background=true) for long-lived processes, then run health checks and tests in follow-up terminal calls."
+                .to_string(),
+        );
+    }
+    if looks_long_lived(&unquoted) {
+        return Some(
+            "This foreground command appears to start a long-lived server/watch process. Run it with background=true, verify readiness (health endpoint/log signal), then execute tests in a separate command."
+                .to_string(),
+        );
+    }
+    None
+}
+
+fn resolve_notification_flag_conflict(
+    background: bool,
+    notify_on_complete: bool,
+    watch_patterns: &Value,
+) -> (Value, String) {
+    if background
+        && notify_on_complete
+        && watch_patterns
+            .as_array()
+            .is_some_and(|patterns| !patterns.is_empty())
+    {
+        return (
+            Value::Null,
+            "watch_patterns ignored because notify_on_complete=True; these two flags produce duplicate notifications when combined"
+                .to_string(),
+        );
+    }
+    (watch_patterns.clone(), String::new())
+}
+
+fn transform_sudo_command(command: &str, password: Option<&str>) -> (String, Option<String>) {
+    let (transformed, found) = rewrite_real_sudo_invocations(command);
+    if found {
+        if let Some(password) = password {
+            return (transformed, Some(format!("{password}\n")));
+        }
+    }
+    (command.to_string(), None)
+}
+
+fn rewrite_real_sudo_invocations(command: &str) -> (String, bool) {
+    let mut out = String::new();
+    let bytes = command.as_bytes();
+    let mut i = 0;
+    let mut command_start = true;
+    let mut found = false;
+
+    while i < bytes.len() {
+        let ch = bytes[i] as char;
+        if ch.is_ascii_whitespace() {
+            out.push(ch);
+            if ch == '\n' {
+                command_start = true;
+            }
+            i += 1;
+            continue;
+        }
+        if ch == '#' && command_start {
+            if let Some(offset) = command[i..].find('\n') {
+                out.push_str(&command[i..i + offset]);
+                i += offset;
+            } else {
+                out.push_str(&command[i..]);
+                break;
+            }
+            continue;
+        }
+        if command[i..].starts_with("&&")
+            || command[i..].starts_with("||")
+            || command[i..].starts_with(";;")
+        {
+            out.push_str(&command[i..i + 2]);
+            i += 2;
+            command_start = true;
+            continue;
+        }
+        if matches!(ch, ';' | '|' | '&' | '(') {
+            out.push(ch);
+            i += 1;
+            command_start = true;
+            continue;
+        }
+        if ch == ')' {
+            out.push(ch);
+            i += 1;
+            command_start = false;
+            continue;
+        }
+
+        let next_i = read_shell_token_end(command, i);
+        let token = &command[i..next_i];
+        if command_start && token == "sudo" {
+            out.push_str("sudo -S -p ''");
+            found = true;
+        } else {
+            out.push_str(token);
+        }
+        command_start = command_start && looks_like_env_assignment(token);
+        i = next_i.max(i + 1);
+    }
+    (out, found)
+}
+
+fn read_shell_token_end(command: &str, start: usize) -> usize {
+    let bytes = command.as_bytes();
+    let mut i = start;
+    while i < bytes.len() {
+        let ch = bytes[i] as char;
+        if ch.is_ascii_whitespace() || matches!(ch, ';' | '|' | '&' | '(' | ')') {
+            break;
+        }
+        if ch == '\'' {
+            i += 1;
+            while i < bytes.len() && bytes[i] != b'\'' {
+                i += 1;
+            }
+            if i < bytes.len() {
+                i += 1;
+            }
+            continue;
+        }
+        if ch == '"' {
+            i += 1;
+            while i < bytes.len() {
+                let inner = bytes[i] as char;
+                if inner == '\\' && i + 1 < bytes.len() {
+                    i += 2;
+                    continue;
+                }
+                if inner == '"' {
+                    i += 1;
+                    break;
+                }
+                i += 1;
+            }
+            continue;
+        }
+        if ch == '\\' && i + 1 < bytes.len() {
+            i += 2;
+            continue;
+        }
+        i += 1;
+    }
+    i
+}
+
+fn looks_like_env_assignment(token: &str) -> bool {
+    let Some((name, _)) = token.split_once('=') else {
+        return false;
+    };
+    if name.is_empty() {
+        return false;
+    }
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+}
+
+fn looks_like_help_or_version_command(command: &str) -> bool {
+    let normalized = command
+        .to_ascii_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    normalized.contains(" --help")
+        || normalized.ends_with(" -h")
+        || normalized.contains(" --version")
+        || normalized.ends_with(" -v")
+}
+
+fn strip_quotes(command: &str) -> String {
+    let mut out = String::with_capacity(command.len());
+    let bytes = command.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let ch = bytes[i] as char;
+        if ch == '\'' {
+            out.push_str("''");
+            i += 1;
+            while i < bytes.len() && bytes[i] != b'\'' {
+                i += 1;
+            }
+            if i < bytes.len() {
+                i += 1;
+            }
+        } else if ch == '"' {
+            out.push_str("\"\"");
+            i += 1;
+            while i < bytes.len() {
+                if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                    i += 2;
+                } else if bytes[i] == b'"' {
+                    i += 1;
+                    break;
+                } else {
+                    i += 1;
+                }
+            }
+        } else if ch == '`' {
+            out.push_str("``");
+            i += 1;
+            while i < bytes.len() && bytes[i] != b'`' {
+                i += 1;
+            }
+            if i < bytes.len() {
+                i += 1;
+            }
+        } else {
+            out.push(ch);
+            i += 1;
+        }
+    }
+    out
+}
+
+fn contains_shell_level_background_wrapper(command: &str) -> bool {
+    for needle in ["nohup", "disown", "setsid"] {
+        if command
+            .split(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ';' | '&' | '|' | '(' | '$'))
+            .any(|token| token == needle)
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn contains_inline_background_amp(command: &str) -> bool {
+    command.as_bytes().windows(3).any(|window| {
+        window[0].is_ascii_whitespace() && window[1] == b'&' && window[2].is_ascii_whitespace()
+    })
+}
+
+fn contains_trailing_background_amp(command: &str) -> bool {
+    let stripped = command
+        .split_once('#')
+        .map(|(prefix, _)| prefix)
+        .unwrap_or(command)
+        .trim_end();
+    stripped.ends_with(" &")
+}
+
+fn looks_long_lived(command: &str) -> bool {
+    command.contains("docker compose up")
+        || command.contains("next dev")
+        || command.contains("nodemon")
+        || command.contains("uvicorn")
+        || command.contains("gunicorn")
+        || command.contains("python -m http.server")
+        || command.contains("python3 -m http.server")
+        || command.split_whitespace().any(|token| token == "vite")
+        || command.contains("npm run dev")
+        || command.contains("npm run start")
+        || command.contains("npm run serve")
+        || command.contains("npm run watch")
+        || command.contains("pnpm run dev")
+        || command.contains("yarn run dev")
+        || command.contains("bun run dev")
 }
 
 fn quote_cwd_for_cd(cwd: &str) -> String {

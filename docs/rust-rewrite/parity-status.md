@@ -180,7 +180,10 @@ against those fixtures in `crates/hermes-parity`:
   backend command wrapping is fixture-backed for CWD marker names, `cd`
   quoting with `~` preservation, snapshot-aware command wrappers, stdin
   heredocs, Modal stdin heredocs with delimiter collision avoidance, and Modal
-  sudo password piping.
+  sudo password piping. Terminal safety helpers are fixture-backed for
+  compound `&& ... &`/`|| ... &` background rewriting, foreground long-lived
+  process guidance, shell-level background warning text, notification flag
+  conflict resolution, and sudo password command/stdin transformation.
 - Terminal execution: deterministic local foreground command execution for
   success and non-zero exits, invalid command-type rejection, and foreground
   timeout ceiling errors. Container/SSH/Modal execution remains outside this

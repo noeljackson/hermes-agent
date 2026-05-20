@@ -426,6 +426,120 @@
           "hermes@ssh.example.invalid"
         ]
       }
+    },
+    {
+      "compound_background": [
+        {
+          "command": "python server.py &",
+          "rewritten": "python server.py &"
+        },
+        {
+          "command": "npm install && npm run dev &",
+          "rewritten": "npm install && { npm run dev & }"
+        },
+        {
+          "command": "false || python -m http.server &",
+          "rewritten": "false || { python -m http.server & }"
+        },
+        {
+          "command": "npm install && { npm run dev & }",
+          "rewritten": "npm install && { npm run dev & }"
+        },
+        {
+          "command": "printf 'a && b &'",
+          "rewritten": "printf 'a && b &'"
+        },
+        {
+          "command": "echo hi &> out.txt",
+          "rewritten": "echo hi &> out.txt"
+        }
+      ],
+      "foreground_guidance": [
+        {
+          "command": "python -m http.server",
+          "guidance": "This foreground command appears to start a long-lived server/watch process. Run it with background=true, verify readiness (health endpoint/log signal), then execute tests in a separate command."
+        },
+        {
+          "command": "python -m http.server --help",
+          "guidance": null
+        },
+        {
+          "command": "nohup python server.py",
+          "guidance": "Foreground command uses shell-level background wrappers (nohup/disown/setsid). Use terminal(background=true) so Hermes can track the process, then run readiness checks and tests in separate commands."
+        },
+        {
+          "command": "sleep 1 &",
+          "guidance": "Foreground command uses '&' backgrounding. Use terminal(background=true) for long-lived processes, then run health checks and tests in follow-up terminal calls."
+        },
+        {
+          "command": "git commit -m 'run nohup now'",
+          "guidance": null
+        },
+        {
+          "command": "npm run dev",
+          "guidance": "This foreground command appears to start a long-lived server/watch process. Run it with background=true, verify readiness (health endpoint/log signal), then execute tests in a separate command."
+        }
+      ],
+      "name": "terminal_safety_helpers",
+      "notification_conflicts": [
+        {
+          "background": true,
+          "note": "watch_patterns ignored because notify_on_complete=True; these two flags produce duplicate notifications when combined",
+          "notify_on_complete": true,
+          "resolved_watch_patterns": null,
+          "watch_patterns": [
+            "READY"
+          ]
+        },
+        {
+          "background": false,
+          "note": "",
+          "notify_on_complete": true,
+          "resolved_watch_patterns": [
+            "READY"
+          ],
+          "watch_patterns": [
+            "READY"
+          ]
+        },
+        {
+          "background": true,
+          "note": "",
+          "notify_on_complete": false,
+          "resolved_watch_patterns": [
+            "READY"
+          ],
+          "watch_patterns": [
+            "READY"
+          ]
+        }
+      ],
+      "sudo_transform": [
+        {
+          "command": "sudo ls /root",
+          "password_present": false,
+          "sudo_stdin": null,
+          "transformed": "sudo ls /root"
+        },
+        {
+          "command": "sudo ls /root && echo done",
+          "password_present": true,
+          "sudo_stdin": "pa ss\n",
+          "transformed": "sudo -S -p '' ls /root && echo done"
+        },
+        {
+          "command": "echo sudo",
+          "password_present": true,
+          "sudo_stdin": null,
+          "transformed": "echo sudo"
+        },
+        {
+          "command": "FOO=1 sudo whoami",
+          "password_present": true,
+          "sudo_stdin": "pa ss\n",
+          "transformed": "FOO=1 sudo -S -p '' whoami"
+        }
+      ]
     }
   ],
   "source": {
