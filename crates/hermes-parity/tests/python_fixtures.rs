@@ -3401,6 +3401,29 @@ fn gateway_platforms_match_python_fixture() {
         helpers["chat_content"]["scalar"]
     );
 
+    assert_eq!(
+        hermes_gateway::gateway_config_normalizers_fixture(case(
+            &fixture,
+            "gateway_config_normalizers"
+        )),
+        *case(&fixture, "gateway_config_normalizers")
+    );
+    assert_eq!(
+        hermes_gateway::delivery_target_parsing_fixture(case(&fixture, "delivery_target_parsing")),
+        *case(&fixture, "delivery_target_parsing")
+    );
+    assert_eq!(
+        hermes_gateway::runtime_footer_helpers_fixture(case(&fixture, "runtime_footer_helpers")),
+        *case(&fixture, "runtime_footer_helpers")
+    );
+    assert_eq!(
+        hermes_gateway::restart_and_channel_helpers_fixture(case(
+            &fixture,
+            "restart_and_channel_helpers"
+        )),
+        *case(&fixture, "restart_and_channel_helpers")
+    );
+
     let slack = case(&fixture, "slack_rich_text_blocks");
     assert_eq!(
         hermes_gateway::slack_extract_text_from_blocks(&slack["blocks"]),

@@ -141,6 +141,371 @@
       }
     },
     {
+      "bools": [
+        {
+          "default": true,
+          "result": true,
+          "value": null
+        },
+        {
+          "default": false,
+          "result": false,
+          "value": null
+        },
+        {
+          "default": false,
+          "result": true,
+          "value": " YES "
+        },
+        {
+          "default": true,
+          "result": false,
+          "value": "off"
+        },
+        {
+          "default": false,
+          "result": false,
+          "value": "maybe"
+        },
+        {
+          "default": true,
+          "result": false,
+          "value": 0
+        },
+        {
+          "default": false,
+          "result": true,
+          "value": 2
+        }
+      ],
+      "floats": [
+        {
+          "default": 1.5,
+          "result": 1.5,
+          "value": null
+        },
+        {
+          "default": 1.5,
+          "result": 2.25,
+          "value": "2.25"
+        },
+        {
+          "default": 1.5,
+          "result": 1.5,
+          "value": "bad"
+        }
+      ],
+      "ints": [
+        {
+          "default": 7,
+          "result": 7,
+          "value": null
+        },
+        {
+          "default": 7,
+          "result": 42,
+          "value": "42"
+        },
+        {
+          "default": 7,
+          "result": 7,
+          "value": "bad"
+        }
+      ],
+      "name": "gateway_config_normalizers",
+      "notice_delivery": [
+        {
+          "result": "private",
+          "value": " private "
+        },
+        {
+          "result": "public",
+          "value": "public"
+        },
+        {
+          "result": "public",
+          "value": "dm"
+        }
+      ],
+      "unauthorized_dm": [
+        {
+          "result": "pair",
+          "value": " PAIR "
+        },
+        {
+          "result": "ignore",
+          "value": "ignore"
+        },
+        {
+          "result": "pair",
+          "value": "block"
+        }
+      ]
+    },
+    {
+      "cases": [
+        {
+          "parsed": {
+            "chat_id": "C123",
+            "is_explicit": false,
+            "is_origin": true,
+            "platform": "slack",
+            "thread_id": "T456"
+          },
+          "target": "origin",
+          "to_string": "origin",
+          "use_origin": true
+        },
+        {
+          "parsed": {
+            "chat_id": null,
+            "is_explicit": false,
+            "is_origin": true,
+            "platform": "local",
+            "thread_id": null
+          },
+          "target": "origin",
+          "to_string": "origin",
+          "use_origin": false
+        },
+        {
+          "parsed": {
+            "chat_id": null,
+            "is_explicit": false,
+            "is_origin": false,
+            "platform": "local",
+            "thread_id": null
+          },
+          "target": " local ",
+          "to_string": "local",
+          "use_origin": false
+        },
+        {
+          "parsed": {
+            "chat_id": null,
+            "is_explicit": false,
+            "is_origin": false,
+            "platform": "telegram",
+            "thread_id": null
+          },
+          "target": "Telegram",
+          "to_string": "telegram",
+          "use_origin": false
+        },
+        {
+          "parsed": {
+            "chat_id": "ChatID",
+            "is_explicit": true,
+            "is_origin": false,
+            "platform": "telegram",
+            "thread_id": "TopicID"
+          },
+          "target": "telegram:ChatID:TopicID",
+          "to_string": "telegram:ChatID:TopicID",
+          "use_origin": false
+        },
+        {
+          "parsed": {
+            "chat_id": "C123",
+            "is_explicit": true,
+            "is_origin": false,
+            "platform": "slack",
+            "thread_id": null
+          },
+          "target": "slack:C123",
+          "to_string": "slack:C123",
+          "use_origin": false
+        },
+        {
+          "parsed": {
+            "chat_id": null,
+            "is_explicit": false,
+            "is_origin": false,
+            "platform": "local",
+            "thread_id": null
+          },
+          "target": "unknown:C123",
+          "to_string": "local",
+          "use_origin": false
+        }
+      ],
+      "name": "delivery_target_parsing",
+      "origin": {
+        "chat_id": "C123",
+        "chat_name": null,
+        "chat_topic": null,
+        "chat_type": "thread",
+        "platform": "slack",
+        "thread_id": "T456",
+        "user_id": "U1",
+        "user_name": null
+      }
+    },
+    {
+      "build_footer": "gpt-5 \u00b7 25% \u00b7 /tmp/work",
+      "configs": [
+        {
+          "config": {},
+          "platform": null,
+          "resolved": {
+            "enabled": false,
+            "fields": [
+              "model",
+              "context_pct",
+              "cwd"
+            ]
+          }
+        },
+        {
+          "config": {
+            "display": {
+              "platforms": {
+                "slack": {
+                  "runtime_footer": {
+                    "enabled": false,
+                    "fields": [
+                      "context_pct"
+                    ]
+                  }
+                }
+              },
+              "runtime_footer": {
+                "enabled": true,
+                "fields": [
+                  "cwd",
+                  "model"
+                ]
+              }
+            }
+          },
+          "platform": "slack",
+          "resolved": {
+            "enabled": false,
+            "fields": [
+              "context_pct"
+            ]
+          }
+        }
+      ],
+      "formats": [
+        {
+          "context_length": 2048,
+          "context_tokens": 512,
+          "cwd": "/tmp/work",
+          "fields": [
+            "model",
+            "context_pct",
+            "cwd"
+          ],
+          "footer": "gpt-5.4 \u00b7 25% \u00b7 /tmp/work",
+          "model": "openai/gpt-5.4"
+        },
+        {
+          "context_length": 0,
+          "context_tokens": -1,
+          "cwd": "",
+          "fields": [
+            "model",
+            "context_pct",
+            "cwd",
+            "unknown"
+          ],
+          "footer": "",
+          "model": null
+        }
+      ],
+      "name": "runtime_footer_helpers"
+    },
+    {
+      "channel_queries": [
+        {
+          "normalized": "general",
+          "value": "#General "
+        },
+        {
+          "normalized": "thread name",
+          "value": "  Thread Name  "
+        }
+      ],
+      "name": "restart_and_channel_helpers",
+      "restart_timeouts": [
+        {
+          "result": 180.0,
+          "value": null
+        },
+        {
+          "result": 180.0,
+          "value": ""
+        },
+        {
+          "result": 2.5,
+          "value": "2.5"
+        },
+        {
+          "result": 0.0,
+          "value": "-5"
+        },
+        {
+          "result": 180.0,
+          "value": "bad"
+        }
+      ],
+      "session_entries": [
+        {
+          "id": "chat-1",
+          "name": "chat-1",
+          "origin": {
+            "chat_id": "chat-1"
+          }
+        },
+        {
+          "id": "chat-1:42",
+          "name": "Main / Ops",
+          "origin": {
+            "chat_id": "chat-1",
+            "chat_name": "Main",
+            "chat_topic": "Ops",
+            "thread_id": "42"
+          }
+        },
+        {
+          "id": "chat-1:7",
+          "name": "Noel / topic 7",
+          "origin": {
+            "chat_id": "chat-1",
+            "thread_id": "7",
+            "user_name": "Noel"
+          }
+        }
+      ],
+      "target_names": [
+        {
+          "channel": {
+            "guild": "Hermes",
+            "name": "bot-home",
+            "type": "channel"
+          },
+          "platform": "discord",
+          "target": "#bot-home"
+        },
+        {
+          "channel": {
+            "name": "Ops",
+            "type": "group"
+          },
+          "platform": "telegram",
+          "target": "Ops (group)"
+        },
+        {
+          "channel": {
+            "name": "alerts"
+          },
+          "platform": "slack",
+          "target": "alerts"
+        }
+      ]
+    },
+    {
       "blocks": [
         {
           "elements": [

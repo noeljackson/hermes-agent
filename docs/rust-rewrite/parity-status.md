@@ -133,7 +133,12 @@ against those fixtures in `crates/hermes-parity`:
   enums, media-as-audio routing, UTF-16 length accounting, safe URL logging,
   Telegram/Feishu thread metadata and reply-anchor behavior, webhook loopback
   validation, API-server port/bool/content normalization, and Slack rich-text
-  block extraction. Live platform adapters themselves remain opt-in/future
+  block extraction. Gateway-adjacent routing/config helpers now also cover
+  gateway config bool/int/float/mode normalizers, delivery-target parsing and
+  stringification with origin fallback, runtime-footer config/format/build
+  behavior, restart drain-timeout parsing, channel-query normalization,
+  channel target labels, and session-derived channel-directory IDs/names. Live
+  platform adapters themselves remain opt-in/future
   work until deterministic adapter fixtures cover each platform boundary.
 - MCP filtering: server/tool name sanitization, include/exclude filtering
   including include precedence, string filters, invalid filter fallback,

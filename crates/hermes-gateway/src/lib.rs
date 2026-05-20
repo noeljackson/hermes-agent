@@ -204,6 +204,473 @@ pub fn slack_extract_text_from_blocks(blocks: &Value) -> String {
     parts.join("\n")
 }
 
+pub fn gateway_config_normalizers_fixture(case: &Value) -> Value {
+    json!({
+        "bools": case["bools"].as_array().unwrap().iter().map(|item| {
+            let default = item["default"].as_bool().unwrap_or(true);
+            json!({"default": default, "result": gateway_coerce_bool(&item["value"], default), "value": item["value"]})
+        }).collect::<Vec<_>>(),
+        "floats": case["floats"].as_array().unwrap().iter().map(|item| {
+            let default = item["default"].as_f64().unwrap_or(0.0);
+            json!({"default": default, "result": gateway_coerce_float(&item["value"], default), "value": item["value"]})
+        }).collect::<Vec<_>>(),
+        "ints": case["ints"].as_array().unwrap().iter().map(|item| {
+            let default = item["default"].as_i64().unwrap_or(0);
+            json!({"default": default, "result": gateway_coerce_int(&item["value"], default), "value": item["value"]})
+        }).collect::<Vec<_>>(),
+        "notice_delivery": case["notice_delivery"].as_array().unwrap().iter().map(|item| {
+            json!({"result": normalize_notice_delivery(&item["value"], "public"), "value": item["value"]})
+        }).collect::<Vec<_>>(),
+        "name": "gateway_config_normalizers",
+        "unauthorized_dm": case["unauthorized_dm"].as_array().unwrap().iter().map(|item| {
+            json!({"result": normalize_unauthorized_dm_behavior(&item["value"], "pair"), "value": item["value"]})
+        }).collect::<Vec<_>>(),
+    })
+}
+
+fn gateway_coerce_bool(value: &Value, default: bool) -> bool {
+    match value {
+        Value::Null => default,
+        Value::String(text) => match text.trim().to_ascii_lowercase().as_str() {
+            "true" | "1" | "yes" | "on" => true,
+            "false" | "0" | "no" | "off" => false,
+            _ => default,
+        },
+        Value::Bool(value) => *value,
+        Value::Number(number) => number.as_i64().is_some_and(|value| value != 0),
+        _ => default,
+    }
+}
+
+fn gateway_coerce_float(value: &Value, default: f64) -> f64 {
+    match value {
+        Value::Null => default,
+        Value::Number(number) => number.as_f64().unwrap_or(default),
+        Value::String(text) => text.parse::<f64>().unwrap_or(default),
+        _ => default,
+    }
+}
+
+fn gateway_coerce_int(value: &Value, default: i64) -> i64 {
+    match value {
+        Value::Null => default,
+        Value::Number(number) => number.as_i64().unwrap_or(default),
+        Value::String(text) => text.parse::<i64>().unwrap_or(default),
+        _ => default,
+    }
+}
+
+fn normalize_unauthorized_dm_behavior(value: &Value, default: &str) -> String {
+    if let Some(text) = value.as_str() {
+        let normalized = text.trim().to_ascii_lowercase();
+        if matches!(normalized.as_str(), "pair" | "ignore") {
+            return normalized;
+        }
+    }
+    default.to_string()
+}
+
+fn normalize_notice_delivery(value: &Value, default: &str) -> String {
+    if let Some(text) = value.as_str() {
+        let normalized = text.trim().to_ascii_lowercase();
+        if matches!(normalized.as_str(), "public" | "private") {
+            return normalized;
+        }
+    }
+    default.to_string()
+}
+
+pub fn delivery_target_parsing_fixture(case: &Value) -> Value {
+    let origin = case
+        .get("origin")
+        .and_then(|value| SessionSource::from_json(value).ok());
+    let cases = case["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| {
+            let target = item["target"].as_str().unwrap_or("");
+            let parsed = parse_delivery_target(
+                target,
+                item["use_origin"]
+                    .as_bool()
+                    .unwrap_or(false)
+                    .then_some(())
+                    .and(origin.as_ref()),
+            );
+            json!({
+                "parsed": parsed.to_json(),
+                "target": target,
+                "to_string": parsed.as_target_string(),
+                "use_origin": item["use_origin"],
+            })
+        })
+        .collect::<Vec<_>>();
+    json!({"cases": cases, "name": "delivery_target_parsing", "origin": case["origin"]})
+}
+
+#[derive(Debug, Clone)]
+struct DeliveryTarget {
+    platform: String,
+    chat_id: Option<String>,
+    thread_id: Option<String>,
+    is_origin: bool,
+    is_explicit: bool,
+}
+
+impl DeliveryTarget {
+    fn to_json(&self) -> Value {
+        json!({
+            "chat_id": self.chat_id,
+            "is_explicit": self.is_explicit,
+            "is_origin": self.is_origin,
+            "platform": self.platform,
+            "thread_id": self.thread_id,
+        })
+    }
+
+    fn as_target_string(&self) -> String {
+        if self.is_origin {
+            return "origin".to_string();
+        }
+        if self.platform == "local" {
+            return "local".to_string();
+        }
+        if let Some(chat_id) = &self.chat_id {
+            if let Some(thread_id) = &self.thread_id {
+                return format!("{}:{chat_id}:{thread_id}", self.platform);
+            }
+            return format!("{}:{chat_id}", self.platform);
+        }
+        self.platform.clone()
+    }
+}
+
+fn parse_delivery_target(target: &str, origin: Option<&SessionSource>) -> DeliveryTarget {
+    let stripped = target.trim();
+    let lowered = stripped.to_ascii_lowercase();
+    if lowered == "origin" {
+        if let Some(origin) = origin {
+            return DeliveryTarget {
+                platform: origin.platform.clone(),
+                chat_id: Some(origin.chat_id.clone()),
+                thread_id: origin.thread_id.clone(),
+                is_origin: true,
+                is_explicit: false,
+            };
+        }
+        return DeliveryTarget {
+            platform: "local".to_string(),
+            chat_id: None,
+            thread_id: None,
+            is_origin: true,
+            is_explicit: false,
+        };
+    }
+    if lowered == "local" {
+        return DeliveryTarget {
+            platform: "local".to_string(),
+            chat_id: None,
+            thread_id: None,
+            is_origin: false,
+            is_explicit: false,
+        };
+    }
+    if stripped.contains(':') {
+        let mut parts = stripped.splitn(3, ':');
+        let platform = parts.next().unwrap_or("").to_ascii_lowercase();
+        let chat_id = parts.next().map(str::to_string);
+        let thread_id = parts.next().map(str::to_string);
+        if parse_platform(&platform).is_some() {
+            return DeliveryTarget {
+                platform,
+                chat_id,
+                thread_id,
+                is_origin: false,
+                is_explicit: true,
+            };
+        }
+        return DeliveryTarget {
+            platform: "local".to_string(),
+            chat_id: None,
+            thread_id: None,
+            is_origin: false,
+            is_explicit: false,
+        };
+    }
+    if parse_platform(&lowered).is_some() {
+        return DeliveryTarget {
+            platform: lowered,
+            chat_id: None,
+            thread_id: None,
+            is_origin: false,
+            is_explicit: false,
+        };
+    }
+    DeliveryTarget {
+        platform: "local".to_string(),
+        chat_id: None,
+        thread_id: None,
+        is_origin: false,
+        is_explicit: false,
+    }
+}
+
+pub fn runtime_footer_helpers_fixture(case: &Value) -> Value {
+    json!({
+        "build_footer": build_footer_line(
+            &json!({"display": {"runtime_footer": {"enabled": true}}}),
+            None,
+            Some("nous/gpt-5"),
+            101,
+            Some(400),
+            Some("/tmp/work"),
+        ),
+        "configs": case["configs"].as_array().unwrap().iter().map(|item| {
+            let platform = item["platform"].as_str();
+            json!({
+                "config": item["config"],
+                "platform": item["platform"],
+                "resolved": resolve_footer_config(&item["config"], platform),
+            })
+        }).collect::<Vec<_>>(),
+        "formats": case["formats"].as_array().unwrap().iter().map(|item| {
+            let fields = item["fields"].as_array().unwrap().iter().filter_map(Value::as_str).collect::<Vec<_>>();
+            json!({
+                "context_length": item["context_length"],
+                "context_tokens": item["context_tokens"],
+                "cwd": item["cwd"],
+                "fields": item["fields"],
+                "footer": format_runtime_footer(
+                    item["model"].as_str(),
+                    item["context_tokens"].as_i64().unwrap_or(0),
+                    item["context_length"].as_i64(),
+                    item["cwd"].as_str(),
+                    &fields,
+                ),
+                "model": item["model"],
+            })
+        }).collect::<Vec<_>>(),
+        "name": "runtime_footer_helpers",
+    })
+}
+
+fn resolve_footer_config(user_config: &Value, platform_key: Option<&str>) -> Value {
+    let mut enabled = false;
+    let mut fields = vec![
+        "model".to_string(),
+        "context_pct".to_string(),
+        "cwd".to_string(),
+    ];
+    let display = user_config.get("display").and_then(Value::as_object);
+    if let Some(global) = display
+        .and_then(|display| display.get("runtime_footer"))
+        .and_then(Value::as_object)
+    {
+        if let Some(value) = global.get("enabled") {
+            enabled = value.as_bool().unwrap_or_else(|| !value.is_null());
+        }
+        if let Some(values) = global.get("fields").and_then(Value::as_array) {
+            if !values.is_empty() {
+                fields = values.iter().map(value_to_python_string).collect();
+            }
+        }
+    }
+    if let Some(platform_key) = platform_key {
+        if let Some(platform_footer) = display
+            .and_then(|display| display.get("platforms"))
+            .and_then(Value::as_object)
+            .and_then(|platforms| platforms.get(platform_key))
+            .and_then(Value::as_object)
+            .and_then(|platform| platform.get("runtime_footer"))
+            .and_then(Value::as_object)
+        {
+            if let Some(value) = platform_footer.get("enabled") {
+                enabled = value.as_bool().unwrap_or_else(|| !value.is_null());
+            }
+            if let Some(values) = platform_footer.get("fields").and_then(Value::as_array) {
+                if !values.is_empty() {
+                    fields = values.iter().map(value_to_python_string).collect();
+                }
+            }
+        }
+    }
+    json!({"enabled": enabled, "fields": fields})
+}
+
+fn value_to_python_string(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        Value::Bool(true) => "True".to_string(),
+        Value::Bool(false) => "False".to_string(),
+        Value::Null => "None".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn format_runtime_footer(
+    model: Option<&str>,
+    context_tokens: i64,
+    context_length: Option<i64>,
+    cwd: Option<&str>,
+    fields: &[&str],
+) -> String {
+    let mut parts = Vec::new();
+    for field in fields {
+        match *field {
+            "model" => {
+                if let Some(model) = model_short(model) {
+                    parts.push(model);
+                }
+            }
+            "context_pct" => {
+                if let Some(length) = context_length {
+                    if length > 0 && context_tokens >= 0 {
+                        let pct = ((context_tokens as f64 / length as f64) * 100.0).round() as i64;
+                        parts.push(pct.clamp(0, 100).to_string() + "%");
+                    }
+                }
+            }
+            "cwd" => {
+                let rel = home_relative_cwd(cwd.unwrap_or(""));
+                if !rel.is_empty() {
+                    parts.push(rel);
+                }
+            }
+            _ => {}
+        }
+    }
+    parts.join(" · ")
+}
+
+fn build_footer_line(
+    user_config: &Value,
+    platform_key: Option<&str>,
+    model: Option<&str>,
+    context_tokens: i64,
+    context_length: Option<i64>,
+    cwd: Option<&str>,
+) -> String {
+    let cfg = resolve_footer_config(user_config, platform_key);
+    if !cfg["enabled"].as_bool().unwrap_or(false) {
+        return String::new();
+    }
+    let field_strings = cfg["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(Value::as_str)
+        .collect::<Vec<_>>();
+    format_runtime_footer(model, context_tokens, context_length, cwd, &field_strings)
+}
+
+fn model_short(model: Option<&str>) -> Option<String> {
+    let model = model?;
+    if model.is_empty() {
+        None
+    } else {
+        Some(model.rsplit('/').next().unwrap_or(model).to_string())
+    }
+}
+
+fn home_relative_cwd(cwd: &str) -> String {
+    if cwd.is_empty() {
+        String::new()
+    } else {
+        cwd.to_string()
+    }
+}
+
+pub fn restart_and_channel_helpers_fixture(case: &Value) -> Value {
+    json!({
+        "channel_queries": case["channel_queries"].as_array().unwrap().iter().map(|item| {
+            let value = item["value"].as_str().unwrap_or("");
+            json!({"normalized": normalize_channel_query(value), "value": value})
+        }).collect::<Vec<_>>(),
+        "restart_timeouts": case["restart_timeouts"].as_array().unwrap().iter().map(|item| {
+            json!({"result": parse_restart_drain_timeout(&item["value"]), "value": item["value"]})
+        }).collect::<Vec<_>>(),
+        "name": "restart_and_channel_helpers",
+        "session_entries": case["session_entries"].as_array().unwrap().iter().map(|item| {
+            let origin = &item["origin"];
+            json!({"id": session_entry_id(origin), "name": session_entry_name(origin), "origin": origin})
+        }).collect::<Vec<_>>(),
+        "target_names": case["target_names"].as_array().unwrap().iter().map(|item| {
+            let platform = item["platform"].as_str().unwrap_or("");
+            let channel = &item["channel"];
+            json!({"channel": channel, "platform": platform, "target": channel_target_name(platform, channel)})
+        }).collect::<Vec<_>>(),
+    })
+}
+
+fn parse_restart_drain_timeout(value: &Value) -> f64 {
+    let default = 180.0;
+    let parsed = match value {
+        Value::Null => default,
+        Value::String(text) if text.trim().is_empty() => default,
+        Value::String(text) => text.parse::<f64>().unwrap_or(default),
+        Value::Number(number) => number.as_f64().unwrap_or(default),
+        _ => default,
+    };
+    parsed.max(0.0)
+}
+
+fn normalize_channel_query(value: &str) -> String {
+    value.trim_start_matches('#').trim().to_ascii_lowercase()
+}
+
+fn channel_target_name(platform_name: &str, channel: &Value) -> String {
+    let name = channel["name"].as_str().unwrap_or("");
+    if platform_name == "discord" && channel.get("guild").is_some() {
+        return format!("#{name}");
+    }
+    if platform_name != "discord" && channel.get("type").is_some() {
+        return format!("{name} ({})", channel["type"].as_str().unwrap_or(""));
+    }
+    name.to_string()
+}
+
+fn session_entry_id(origin: &Value) -> Value {
+    let Some(chat_id) = origin.get("chat_id").and_then(Value::as_str) else {
+        return Value::Null;
+    };
+    if chat_id.is_empty() {
+        return Value::Null;
+    }
+    if let Some(thread_id) = origin.get("thread_id").and_then(Value::as_str) {
+        if !thread_id.is_empty() {
+            return json!(format!("{chat_id}:{thread_id}"));
+        }
+    }
+    json!(chat_id)
+}
+
+fn session_entry_name(origin: &Value) -> String {
+    let base = origin
+        .get("chat_name")
+        .or_else(|| origin.get("user_name"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .unwrap_or_else(|| {
+            origin
+                .get("chat_id")
+                .map(value_to_python_string)
+                .unwrap_or_default()
+        });
+    let Some(thread_id) = origin.get("thread_id").and_then(Value::as_str) else {
+        return base;
+    };
+    if thread_id.is_empty() {
+        return base;
+    }
+    let topic = origin
+        .get("chat_topic")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("topic {thread_id}"));
+    format!("{base} / {topic}")
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionSource {
     pub platform: String,
