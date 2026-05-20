@@ -1,0 +1,89 @@
+{
+  "cases": [
+    {
+      "name": "deduplicate_tool_calls",
+      "tool_calls": [
+        {
+          "arguments": "{\"cmd\":\"pwd\"}",
+          "id": "call-1",
+          "name": "terminal"
+        },
+        {
+          "arguments": "{\"cmd\":\"ls\"}",
+          "id": "call-3",
+          "name": "terminal"
+        },
+        {
+          "arguments": "{\"action\":\"add\"}",
+          "id": "call-4",
+          "name": "memory"
+        }
+      ]
+    },
+    {
+      "name": "cap_delegate_task_calls",
+      "tool_calls": [
+        {
+          "arguments": "{\"prompt\":\"one\"}",
+          "id": "delegate-1",
+          "name": "delegate_task"
+        },
+        {
+          "arguments": "{\"prompt\":\"two\"}",
+          "id": "delegate-2",
+          "name": "delegate_task"
+        },
+        {
+          "arguments": "{\"cmd\":\"pwd\"}",
+          "id": "terminal-1",
+          "name": "terminal"
+        },
+        {
+          "arguments": "{\"prompt\":\"three\"}",
+          "id": "delegate-3",
+          "name": "delegate_task"
+        }
+      ]
+    },
+    {
+      "message": {
+        "content": "ok",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{}",
+              "name": "terminal"
+            },
+            "id": "call-1",
+            "type": "function"
+          },
+          "non-dict-tool-call"
+        ]
+      },
+      "name": "strict_api_tool_call_sanitization",
+      "original": {
+        "content": "ok",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "call_id": "call-1",
+            "function": {
+              "arguments": "{}",
+              "name": "terminal"
+            },
+            "id": "call-1",
+            "response_item_id": "fc-1",
+            "type": "function"
+          },
+          "non-dict-tool-call"
+        ]
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/agent-loop-fixture.py"
+  }
+}

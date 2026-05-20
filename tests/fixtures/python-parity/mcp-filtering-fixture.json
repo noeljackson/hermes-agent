@@ -1,0 +1,207 @@
+{
+  "cases": [
+    {
+      "name": "all_tools",
+      "registered": [
+        "mcp_demo_all_tools_search",
+        "mcp_demo_all_tools_read_file",
+        "mcp_demo_all_tools_dangerous_tool",
+        "mcp_demo_all_tools_list_resources",
+        "mcp_demo_all_tools_read_resource"
+      ]
+    },
+    {
+      "name": "include_only",
+      "registered": [
+        "mcp_demo_include_only_search",
+        "mcp_demo_include_only_list_resources",
+        "mcp_demo_include_only_read_resource"
+      ]
+    },
+    {
+      "name": "include_precedence",
+      "registered": [
+        "mcp_demo_include_precedence_search",
+        "mcp_demo_include_precedence_list_resources",
+        "mcp_demo_include_precedence_read_resource"
+      ]
+    },
+    {
+      "name": "include_string",
+      "registered": [
+        "mcp_demo_include_string_read_file",
+        "mcp_demo_include_string_list_resources",
+        "mcp_demo_include_string_read_resource"
+      ]
+    },
+    {
+      "name": "invalid_filters_ignored",
+      "registered": [
+        "mcp_demo_invalid_filters_ignored_search",
+        "mcp_demo_invalid_filters_ignored_read_file",
+        "mcp_demo_invalid_filters_ignored_dangerous_tool",
+        "mcp_demo_invalid_filters_ignored_list_resources",
+        "mcp_demo_invalid_filters_ignored_read_resource"
+      ]
+    },
+    {
+      "name": "exclude_one",
+      "registered": [
+        "mcp_demo_exclude_one_search",
+        "mcp_demo_exclude_one_read_file",
+        "mcp_demo_exclude_one_list_resources",
+        "mcp_demo_exclude_one_read_resource"
+      ]
+    },
+    {
+      "name": "disable_utilities",
+      "registered": [
+        "mcp_demo_disable_utilities_search",
+        "mcp_demo_disable_utilities_read_file",
+        "mcp_demo_disable_utilities_dangerous_tool"
+      ]
+    },
+    {
+      "name": "boolish_false_utilities",
+      "registered": [
+        "mcp_demo_boolish_false_utilities_search",
+        "mcp_demo_boolish_false_utilities_read_file",
+        "mcp_demo_boolish_false_utilities_dangerous_tool"
+      ]
+    },
+    {
+      "name": "prompts_only_utilities",
+      "registered": [
+        "mcp_demo_prompts_only_search",
+        "mcp_demo_prompts_only_read_file",
+        "mcp_demo_prompts_only_dangerous_tool",
+        "mcp_demo_prompts_only_list_prompts",
+        "mcp_demo_prompts_only_get_prompt"
+      ]
+    },
+    {
+      "empty_schema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "schema_normalization",
+      "schema": {
+        "$defs": {
+          "Nested": {
+            "properties": {
+              "present": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "present"
+            ],
+            "type": "object"
+          }
+        },
+        "properties": {
+          "nested": {
+            "$ref": "#/$defs/Nested"
+          },
+          "optional_note": {
+            "default": null,
+            "nullable": true,
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "optional_note"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "env": {
+        "CUSTOM_TOKEN": "sk-user-configured",
+        "HOME": "/home/parity",
+        "MCP_ALLOWED": "yes",
+        "PATH": "/custom/bin",
+        "TERM": "xterm-256color",
+        "XDG_CONFIG_HOME": "/home/parity/.config"
+      },
+      "name": "safe_env_filtering"
+    },
+    {
+      "cases": {
+        "bearer": "Authorization: [REDACTED]",
+        "clean": "plain connection failure",
+        "env": "[REDACTED] [REDACTED]",
+        "github": "failed with [REDACTED]",
+        "openai": "bad [REDACTED]",
+        "query": "[REDACTED]&[REDACTED]"
+      },
+      "name": "error_redaction"
+    },
+    {
+      "cases": [
+        {
+          "name": "valid_http",
+          "ok": true,
+          "value": "http://localhost:8000/mcp"
+        },
+        {
+          "name": "valid_https",
+          "ok": true,
+          "value": "https://example.com/mcp?x=1"
+        },
+        {
+          "error": "Invalid MCP URL for 'demo': expected a string, got NoneType",
+          "name": "none",
+          "ok": false
+        },
+        {
+          "error": "Invalid MCP URL for 'demo': empty url",
+          "name": "empty",
+          "ok": false
+        },
+        {
+          "error": "Invalid MCP URL for 'demo': scheme must be http or https, got '' ('example.com/mcp')",
+          "name": "missing_scheme",
+          "ok": false
+        },
+        {
+          "error": "Invalid MCP URL for 'demo': scheme must be http or https, got 'file' ('file:///tmp/mcp')",
+          "name": "bad_scheme",
+          "ok": false
+        },
+        {
+          "error": "Invalid MCP URL for 'demo': missing host ('https:///mcp')",
+          "name": "missing_host",
+          "ok": false
+        },
+        {
+          "error": "Invalid MCP URL for 'demo': missing hostname ('http://:8080/mcp')",
+          "name": "missing_hostname",
+          "ok": false
+        }
+      ],
+      "name": "remote_url_validation"
+    },
+    {
+      "cases": {
+        "bad_string": 5,
+        "float_int_coerce": 2,
+        "int": 7,
+        "negative_minimum": 2,
+        "none": 5,
+        "string_int": 8,
+        "zero_minimum": 2
+      },
+      "name": "safe_numeric"
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/mcp-filtering-fixture.py"
+  }
+}

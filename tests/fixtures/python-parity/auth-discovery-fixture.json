@@ -1,0 +1,74 @@
+{
+  "cases": [
+    {
+      "keys": {
+        "ANTHROPIC_API_KEY": {
+          "category": "provider",
+          "password": true
+        },
+        "OPENAI_API_KEY": {
+          "category": null,
+          "password": null
+        },
+        "OPENROUTER_API_KEY": {
+          "category": "provider",
+          "password": true
+        }
+      },
+      "name": "known_secret_metadata"
+    },
+    {
+      "loaded_keys": [
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY"
+      ],
+      "name": "env_file_discovery",
+      "openai_value_present": true,
+      "values": {
+        "ANTHROPIC_API_KEY": "<redacted>",
+        "OPENAI_API_KEY": "<redacted>",
+        "OPENROUTER_API_KEY": "<redacted>"
+      }
+    },
+    {
+      "contains_raw_secret": false,
+      "name": "redaction",
+      "redacted": "sk-h...enai"
+    },
+    {
+      "lines": [
+        "OPENAI_API_KEY=sk-one",
+        "ANTHROPIC_API_KEY=sk-two"
+      ],
+      "name": "env_line_sanitization"
+    },
+    {
+      "mask_cases": {
+        "empty": "(not set)",
+        "long": "sk-p...3456",
+        "short": "***"
+      },
+      "name": "sensitive_text_redaction",
+      "redact_cases": {
+        "auth_header": "Authorization: Bearer ***",
+        "db_url": "postgres://user:***@example.invalid/db",
+        "discord_mention": "ping <@***>",
+        "env_assignment": "OPENAI_API_KEY=***",
+        "form_body": "client_secret=***&scope=read&token=***",
+        "json_field": "{\"api_key\": \"***\"}",
+        "json_field_code_file": "{\"api_key\": \"fixture-value\"}",
+        "phone": "call +155****4567",
+        "private_key": "[REDACTED PRIVATE KEY]",
+        "provider_prefix": "Token sk-pro...3456",
+        "url_query": "https://example.invalid/cb?code=***&state=ok&access_token=***",
+        "userinfo_url": "https://user:***@example.invalid/path"
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/auth-discovery-fixture.py"
+  }
+}

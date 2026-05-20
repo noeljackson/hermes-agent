@@ -1,0 +1,700 @@
+{
+  "cases": [
+    {
+      "name": "provider_inventory",
+      "profiles": [
+        {
+          "aliases": [
+            "ai_gateway",
+            "aigateway",
+            "vercel",
+            "vercel-ai-gateway"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://ai-gateway.vercel.sh/v1",
+          "default_header_keys": [
+            "HTTP-Referer",
+            "X-Title"
+          ],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "AI_GATEWAY_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "ai-gateway",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "alibaba-cloud",
+            "dashscope",
+            "qwen-dashscope"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "DASHSCOPE_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "alibaba",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "alibaba-coding",
+            "alibaba_coding",
+            "dashscope-coding"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://coding-intl.dashscope.aliyuncs.com/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "Alibaba Cloud (Coding Plan)",
+          "env_vars": [
+            "ALIBABA_CODING_PLAN_API_KEY",
+            "DASHSCOPE_API_KEY",
+            "ALIBABA_CODING_PLAN_BASE_URL"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "alibaba-coding-plan",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "claude",
+            "claude-code",
+            "claude-oauth"
+          ],
+          "api_mode": "anthropic_messages",
+          "auth_type": "api_key",
+          "base_url": "https://api.anthropic.com",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "ANTHROPIC_API_KEY",
+            "ANTHROPIC_TOKEN",
+            "CLAUDE_CODE_OAUTH_TOKEN"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "anthropic",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "arcee-ai",
+            "arceeai"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.arcee.ai/api/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "ARCEEAI_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "arcee",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "azure",
+            "azure-ai",
+            "azure-ai-foundry"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "Azure Foundry",
+          "env_vars": [
+            "AZURE_FOUNDRY_API_KEY",
+            "AZURE_FOUNDRY_BASE_URL"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "azure-foundry",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "amazon",
+            "amazon-bedrock",
+            "aws",
+            "aws-bedrock"
+          ],
+          "api_mode": "bedrock_converse",
+          "auth_type": "aws_sdk",
+          "base_url": "https://bedrock-runtime.us-east-1.amazonaws.com",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "bedrock",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "github",
+            "github-copilot",
+            "github-model",
+            "github-models"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "copilot",
+          "base_url": "https://api.githubcopilot.com",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "COPILOT_GITHUB_TOKEN",
+            "GH_TOKEN",
+            "GITHUB_TOKEN"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "copilot",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "copilot-acp-agent",
+            "github-copilot-acp"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "external_process",
+          "base_url": "acp://copilot",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "copilot-acp",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "llama-cpp",
+            "llama.cpp",
+            "llamacpp",
+            "local",
+            "ollama",
+            "vllm"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "custom",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "deepseek-chat"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.deepseek.com/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "DeepSeek",
+          "env_vars": [
+            "DEEPSEEK_API_KEY"
+          ],
+          "fallback_model_count": 2,
+          "fixed_temperature": null,
+          "name": "deepseek",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "google",
+            "google-ai-studio",
+            "google-gemini"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://generativelanguage.googleapis.com/v1beta",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "GOOGLE_API_KEY",
+            "GEMINI_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "gemini",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "gmi-cloud",
+            "gmicloud"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.gmi-serving.com/v1",
+          "default_header_keys": [
+            "User-Agent"
+          ],
+          "default_max_tokens": null,
+          "display_name": "GMI Cloud",
+          "env_vars": [
+            "GMI_API_KEY",
+            "GMI_BASE_URL"
+          ],
+          "fallback_model_count": 6,
+          "fixed_temperature": null,
+          "name": "gmi",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "gemini-cli",
+            "gemini-oauth"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "oauth_external",
+          "base_url": "cloudcode-pa://google",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "google-gemini-cli",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "hf",
+            "hugging-face",
+            "huggingface-hub"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://router.huggingface.co/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "HuggingFace",
+          "env_vars": [
+            "HF_TOKEN"
+          ],
+          "fallback_model_count": 2,
+          "fixed_temperature": null,
+          "name": "huggingface",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "kilo",
+            "kilo-code",
+            "kilo-gateway"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.kilo.ai/api/gateway",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "KILOCODE_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "kilocode",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "kimi",
+            "kimi-for-coding",
+            "moonshot"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.moonshot.ai/v1",
+          "default_header_keys": [
+            "User-Agent"
+          ],
+          "default_max_tokens": 32000,
+          "display_name": "",
+          "env_vars": [
+            "KIMI_API_KEY",
+            "KIMI_CODING_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": "omit",
+          "name": "kimi-coding",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "kimi-cn",
+            "moonshot-cn"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.moonshot.cn/v1",
+          "default_header_keys": [
+            "User-Agent"
+          ],
+          "default_max_tokens": 32000,
+          "display_name": "",
+          "env_vars": [
+            "KIMI_CN_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": "omit",
+          "name": "kimi-coding-cn",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "mini-max"
+          ],
+          "api_mode": "anthropic_messages",
+          "auth_type": "api_key",
+          "base_url": "https://api.minimax.io/anthropic",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "MINIMAX_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "minimax",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "minimax-china",
+            "minimax_cn"
+          ],
+          "api_mode": "anthropic_messages",
+          "auth_type": "api_key",
+          "base_url": "https://api.minimaxi.com/anthropic",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "MINIMAX_CN_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "minimax-cn",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "minimax-oauth-io",
+            "minimax_oauth"
+          ],
+          "api_mode": "anthropic_messages",
+          "auth_type": "oauth_external",
+          "base_url": "https://api.minimax.io/anthropic",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "MiniMax (OAuth)",
+          "env_vars": [],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "minimax-oauth",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "nous-portal",
+            "nousresearch"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "oauth_device_code",
+          "base_url": "https://inference.nousresearch.com/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "Nous Research",
+          "env_vars": [
+            "NOUS_API_KEY"
+          ],
+          "fallback_model_count": 2,
+          "fixed_temperature": null,
+          "name": "nous",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "novita-ai",
+            "novitaai"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.novita.ai/openai/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "NovitaAI",
+          "env_vars": [
+            "NOVITA_API_KEY",
+            "NOVITA_BASE_URL"
+          ],
+          "fallback_model_count": 6,
+          "fixed_temperature": null,
+          "name": "novita",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "nvidia-nim"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://integrate.api.nvidia.com/v1",
+          "default_header_keys": [],
+          "default_max_tokens": 16384,
+          "display_name": "NVIDIA NIM",
+          "env_vars": [
+            "NVIDIA_API_KEY"
+          ],
+          "fallback_model_count": 2,
+          "fixed_temperature": null,
+          "name": "nvidia",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "ollama_cloud"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://ollama.com/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "OLLAMA_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "ollama-cloud",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "codex",
+            "openai_codex"
+          ],
+          "api_mode": "codex_responses",
+          "auth_type": "oauth_external",
+          "base_url": "https://chatgpt.com/backend-api/codex",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "openai-codex",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "go",
+            "opencode-go-sub",
+            "opencode_go"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://opencode.ai/zen/go/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "OPENCODE_GO_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "opencode-go",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "opencode",
+            "opencode_zen",
+            "zen"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://opencode.ai/zen/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "OPENCODE_ZEN_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "opencode-zen",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "or"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://openrouter.ai/api/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "OpenRouter",
+          "env_vars": [
+            "OPENROUTER_API_KEY"
+          ],
+          "fallback_model_count": 5,
+          "fixed_temperature": null,
+          "name": "openrouter",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "qwen",
+            "qwen-cli",
+            "qwen-portal"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "oauth_external",
+          "base_url": "https://portal.qwen.ai/v1",
+          "default_header_keys": [],
+          "default_max_tokens": 65536,
+          "display_name": "",
+          "env_vars": [
+            "QWEN_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "qwen-oauth",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "step",
+            "stepfun-coding-plan"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.stepfun.ai/step_plan/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "STEPFUN_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "stepfun",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "grok",
+            "x-ai",
+            "x.ai"
+          ],
+          "api_mode": "codex_responses",
+          "auth_type": "api_key",
+          "base_url": "https://api.x.ai/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "XAI_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "xai",
+          "supports_health_check": true
+        },
+        {
+          "aliases": [
+            "mimo",
+            "xiaomi-mimo"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.xiaomimimo.com/v1",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "",
+          "env_vars": [
+            "XIAOMI_API_KEY"
+          ],
+          "fallback_model_count": 0,
+          "fixed_temperature": null,
+          "name": "xiaomi",
+          "supports_health_check": false
+        },
+        {
+          "aliases": [
+            "glm",
+            "z-ai",
+            "z.ai",
+            "zhipu"
+          ],
+          "api_mode": "chat_completions",
+          "auth_type": "api_key",
+          "base_url": "https://api.z.ai/api/paas/v4",
+          "default_header_keys": [],
+          "default_max_tokens": null,
+          "display_name": "Z.AI (GLM)",
+          "env_vars": [
+            "GLM_API_KEY",
+            "ZAI_API_KEY",
+            "Z_AI_API_KEY"
+          ],
+          "fallback_model_count": 2,
+          "fixed_temperature": null,
+          "name": "zai",
+          "supports_health_check": true
+        }
+      ],
+      "provider_count": 34
+    },
+    {
+      "aliases": {
+        "anthropic": "anthropic",
+        "claude": "anthropic",
+        "openai-codex": "openai-codex",
+        "openrouter": "openrouter",
+        "or": "openrouter"
+      },
+      "name": "provider_alias_resolution"
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/provider-profiles-fixture.py"
+  }
+}

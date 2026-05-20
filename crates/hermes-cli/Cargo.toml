@@ -1,0 +1,16 @@
+[package]
+name = "hermes-cli"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "hermes"
+path = "src/main.rs"
+
+[dependencies]
+hermes-config = { path = "../hermes-config" }
+hermes-session = { path = "../hermes-session" }
+serde_json.workspace = true
+serde_yaml.workspace = true

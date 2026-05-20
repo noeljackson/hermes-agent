@@ -1,0 +1,41 @@
+FROM python:3.13-slim-bookworm
+
+ARG REFERENCE_REPO=https://github.com/NousResearch/hermes-agent.git
+ARG REFERENCE_REF=main
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV HERMES_PARITY_DOCKER=1
+ENV HERMES_HOME=/tmp/hermes-parity-home
+ENV NO_COLOR=1
+ENV TERM=dumb
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        git \
+        nodejs \
+        npm \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /reference
+
+RUN git clone "${REFERENCE_REPO}" hermes-agent \
+    && cd hermes-agent \
+    && (git fetch --tags origin "${REFERENCE_REF}" || true) \
+    && git checkout "${REFERENCE_REF}"
+
+WORKDIR /reference/hermes-agent
+
+RUN python -m pip install --upgrade pip \
+    && python -m pip install --no-cache-dir -e ".[all]"
+
+COPY tests/parity/python /parity
+
+ENV PYTHONPATH=/reference/hermes-agent
+ENV REFERENCE_REPO=${REFERENCE_REPO}
+ENV REFERENCE_REF=${REFERENCE_REF}
+
+ENTRYPOINT ["python", "/parity/run-all.py", "--out", "/fixtures"]

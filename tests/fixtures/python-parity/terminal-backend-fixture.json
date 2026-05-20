@@ -1,0 +1,272 @@
+{
+  "cases": [
+    {
+      "config": {
+        "container_cpu": 1.0,
+        "container_disk": 51200,
+        "container_memory": 5120,
+        "container_persistent": true,
+        "cwd": "/reference/hermes-agent",
+        "docker_env": {},
+        "docker_extra_args": [],
+        "docker_forward_env": [],
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_mount_cwd_to_workspace": false,
+        "docker_volumes": [],
+        "env_type": "local",
+        "host_cwd": null,
+        "local_persistent": false,
+        "modal_mode": "auto",
+        "ssh_host": "",
+        "ssh_key_present": false,
+        "ssh_persistent": true,
+        "ssh_port": 22,
+        "ssh_user": "",
+        "timeout": 180
+      },
+      "name": "local_defaults"
+    },
+    {
+      "config": {
+        "container_cpu": 1.0,
+        "container_disk": 51200,
+        "container_memory": 5120,
+        "container_persistent": true,
+        "cwd": "/root",
+        "docker_env": {},
+        "docker_extra_args": [],
+        "docker_forward_env": [],
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_mount_cwd_to_workspace": false,
+        "docker_volumes": [],
+        "env_type": "docker",
+        "host_cwd": null,
+        "local_persistent": false,
+        "modal_mode": "auto",
+        "ssh_host": "",
+        "ssh_key_present": false,
+        "ssh_persistent": true,
+        "ssh_port": 22,
+        "ssh_user": "",
+        "timeout": 180
+      },
+      "name": "docker_sandbox_defaults"
+    },
+    {
+      "config": {
+        "container_cpu": 1.0,
+        "container_disk": 51200,
+        "container_memory": 5120,
+        "container_persistent": true,
+        "cwd": "/workspace",
+        "docker_env": {
+          "CI": "1"
+        },
+        "docker_extra_args": [
+          "--network=none"
+        ],
+        "docker_forward_env": [
+          "SSH_AUTH_SOCK"
+        ],
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_mount_cwd_to_workspace": true,
+        "docker_volumes": [
+          "/tmp:/output"
+        ],
+        "env_type": "docker",
+        "host_cwd": "/home/user/project",
+        "local_persistent": false,
+        "modal_mode": "auto",
+        "ssh_host": "",
+        "ssh_key_present": false,
+        "ssh_persistent": true,
+        "ssh_port": 22,
+        "ssh_user": "",
+        "timeout": 180
+      },
+      "name": "docker_mount_cwd"
+    },
+    {
+      "config": {
+        "container_cpu": 1.0,
+        "container_disk": 51200,
+        "container_memory": 5120,
+        "container_persistent": true,
+        "cwd": "/root",
+        "docker_env": {},
+        "docker_extra_args": [],
+        "docker_forward_env": [],
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_mount_cwd_to_workspace": false,
+        "docker_volumes": [],
+        "env_type": "ssh",
+        "host_cwd": null,
+        "local_persistent": false,
+        "modal_mode": "auto",
+        "ssh_host": "ssh.example.invalid",
+        "ssh_key_present": true,
+        "ssh_persistent": true,
+        "ssh_port": 2222,
+        "ssh_user": "hermes",
+        "timeout": 45
+      },
+      "name": "ssh_config"
+    },
+    {
+      "config": {
+        "container_cpu": 2.5,
+        "container_disk": 102400,
+        "container_memory": 8192,
+        "container_persistent": false,
+        "cwd": "/root",
+        "docker_env": {},
+        "docker_extra_args": [],
+        "docker_forward_env": [],
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_mount_cwd_to_workspace": false,
+        "docker_volumes": [],
+        "env_type": "modal",
+        "host_cwd": null,
+        "local_persistent": false,
+        "modal_mode": "direct",
+        "ssh_host": "",
+        "ssh_key_present": false,
+        "ssh_persistent": true,
+        "ssh_port": 22,
+        "ssh_user": "",
+        "timeout": 180
+      },
+      "name": "modal_config"
+    },
+    {
+      "config": {
+        "container_cpu": 1.0,
+        "container_disk": 51200,
+        "container_memory": 5120,
+        "container_persistent": true,
+        "cwd": "/root",
+        "docker_env": {},
+        "docker_extra_args": [],
+        "docker_forward_env": [],
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_mount_cwd_to_workspace": false,
+        "docker_volumes": [],
+        "env_type": "daytona",
+        "host_cwd": null,
+        "local_persistent": false,
+        "modal_mode": "auto",
+        "ssh_host": "",
+        "ssh_key_present": false,
+        "ssh_persistent": true,
+        "ssh_port": 22,
+        "ssh_user": "",
+        "timeout": 180
+      },
+      "name": "daytona_config"
+    },
+    {
+      "config": {
+        "container_cpu": 1.0,
+        "container_disk": 51200,
+        "container_memory": 5120,
+        "container_persistent": true,
+        "cwd": "/root",
+        "docker_env": {},
+        "docker_extra_args": [],
+        "docker_forward_env": [],
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_mount_cwd_to_workspace": false,
+        "docker_volumes": [],
+        "env_type": "singularity",
+        "host_cwd": null,
+        "local_persistent": false,
+        "modal_mode": "auto",
+        "ssh_host": "",
+        "ssh_key_present": false,
+        "ssh_persistent": true,
+        "ssh_port": 22,
+        "ssh_user": "",
+        "timeout": 180
+      },
+      "name": "singularity_config"
+    },
+    {
+      "config": {
+        "container_cpu": 1.0,
+        "container_disk": 51200,
+        "container_memory": 5120,
+        "container_persistent": true,
+        "cwd": "/vercel/sandbox",
+        "docker_env": {},
+        "docker_extra_args": [],
+        "docker_forward_env": [],
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_mount_cwd_to_workspace": false,
+        "docker_volumes": [],
+        "env_type": "vercel_sandbox",
+        "host_cwd": null,
+        "local_persistent": false,
+        "modal_mode": "auto",
+        "ssh_host": "",
+        "ssh_key_present": false,
+        "ssh_persistent": true,
+        "ssh_port": 22,
+        "ssh_user": "",
+        "timeout": 180
+      },
+      "name": "vercel_sandbox_config"
+    },
+    {
+      "config": {
+        "container_cpu": 1.0,
+        "container_disk": 51200,
+        "container_memory": 5120,
+        "container_persistent": true,
+        "cwd": "/root",
+        "docker_env": {},
+        "docker_extra_args": [],
+        "docker_forward_env": [],
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_mount_cwd_to_workspace": false,
+        "docker_volumes": [],
+        "env_type": "ssh",
+        "host_cwd": null,
+        "local_persistent": true,
+        "modal_mode": "auto",
+        "ssh_host": "",
+        "ssh_key_present": false,
+        "ssh_persistent": true,
+        "ssh_port": 22,
+        "ssh_user": "",
+        "timeout": 180
+      },
+      "name": "persistent_and_modal_coercion"
+    },
+    {
+      "name": "invalid_timeout_error",
+      "result": {
+        "error": "Invalid value for TERMINAL_TIMEOUT: '5m' (expected integer). Check ~/.hermes/.env or environment variables.",
+        "ok": false
+      }
+    },
+    {
+      "name": "invalid_docker_env_json_error",
+      "result": {
+        "error": "Invalid value for TERMINAL_DOCKER_ENV: '{bad' (expected valid JSON). Check ~/.hermes/.env or environment variables.",
+        "ok": false
+      }
+    },
+    {
+      "name": "invalid_container_cpu_error",
+      "result": {
+        "error": "Invalid value for TERMINAL_CONTAINER_CPU: 'large' (expected number). Check ~/.hermes/.env or environment variables.",
+        "ok": false
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/terminal-backend-fixture.py"
+  }
+}

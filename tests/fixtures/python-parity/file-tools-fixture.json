@@ -1,0 +1,125 @@
+{
+  "cases": [
+    {
+      "name": "pagination",
+      "read": {
+        "bad": [
+          1,
+          500
+        ],
+        "max": [
+          2,
+          2000
+        ],
+        "negative": [
+          1,
+          1
+        ],
+        "zero": [
+          1,
+          1
+        ]
+      },
+      "search": {
+        "bad": [
+          0,
+          50
+        ],
+        "negative": [
+          0,
+          1
+        ],
+        "zero_limit": [
+          3,
+          1
+        ]
+      }
+    },
+    {
+      "name": "write_deny",
+      "paths": {
+        "aws_credentials": true,
+        "kube_config": true,
+        "netrc": true,
+        "project_file": false,
+        "ssh_authorized_keys": true,
+        "ssh_private_key": true
+      }
+    },
+    {
+      "binary": {
+        "binary_content": true,
+        "png": true,
+        "python": false,
+        "sqlite": true,
+        "text_content": false
+      },
+      "image": {
+        "ico": true,
+        "jpg": true,
+        "pdf": false,
+        "png": true,
+        "py": false
+      },
+      "name": "classification"
+    },
+    {
+      "default": "     1|line one\n     2|line two\n     3|line three",
+      "name": "line_numbers",
+      "offset": "    50|continued\n    51|more",
+      "truncated": "     1|line one\n     2|line two\n     3|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx... [truncated]"
+    },
+    {
+      "cases": {
+        "empty_old": {
+          "content": "abc",
+          "count": 0,
+          "error": "old_string cannot be empty",
+          "strategy": null
+        },
+        "exact": {
+          "content": "alpha BETA alpha",
+          "count": 1,
+          "error": null,
+          "strategy": "exact"
+        },
+        "identical": {
+          "content": "abc",
+          "count": 0,
+          "error": "old_string and new_string are identical",
+          "strategy": null
+        },
+        "multiple_error": {
+          "content": "same same",
+          "count": 0,
+          "error": "Found 2 matches for old_string. Provide more context to make it unique, or use replace_all=True.",
+          "strategy": null
+        },
+        "not_found": {
+          "content": "abc",
+          "count": 0,
+          "error": "Could not find a match for old_string in the file",
+          "strategy": null
+        },
+        "replace_all": {
+          "content": "other other",
+          "count": 2,
+          "error": null,
+          "strategy": "exact"
+        },
+        "unicode_normalized": {
+          "content": "hi \u2014 world",
+          "count": 1,
+          "error": null,
+          "strategy": "unicode_normalized"
+        }
+      },
+      "name": "fuzzy_replace"
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/file-tools-fixture.py"
+  }
+}

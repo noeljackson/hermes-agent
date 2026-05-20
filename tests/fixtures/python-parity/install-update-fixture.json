@@ -1,0 +1,37 @@
+{
+  "cases": [
+    {
+      "commands": {
+        "docker": "docker pull nousresearch/hermes-agent:latest",
+        "git": "hermes update",
+        "homebrew": "brew upgrade hermes-agent",
+        "nixos": "Update your Nix flake input and rebuild (e.g. nix flake update, nixos-rebuild, or home-manager switch)",
+        "pip": "pip install --upgrade hermes-agent",
+        "unknown": "hermes update"
+      },
+      "name": "update_command_mapping"
+    },
+    {
+      "name": "install_method_stamp",
+      "stamped": {
+        "docker": {
+          "detected": "docker",
+          "stamp": "docker\n"
+        },
+        "git": {
+          "detected": "git",
+          "stamp": "git\n"
+        },
+        "pip": {
+          "detected": "pip",
+          "stamp": "pip\n"
+        }
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/install-update-fixture.py"
+  }
+}

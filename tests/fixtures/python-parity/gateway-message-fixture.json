@@ -1,0 +1,100 @@
+{
+  "cases": [
+    {
+      "command": "new",
+      "command_args": "--model fake/model",
+      "is_command": true,
+      "mention_args": "topic",
+      "mention_command": "help",
+      "name": "message_normalization",
+      "path_command": null,
+      "source": {
+        "chat_id": "chat-1",
+        "chat_name": "Parity Chat",
+        "chat_topic": null,
+        "chat_type": "dm",
+        "message_id": "msg-1",
+        "platform": "telegram",
+        "thread_id": null,
+        "user_id": "user-1",
+        "user_name": "Ada"
+      }
+    },
+    {
+      "cases": {
+        "already_slash": "/restart",
+        "command_message_type": "restart gateway",
+        "dm_restart_gateway": "/restart",
+        "dm_restart_hermes": "/restart",
+        "dm_restart_hermes_gateway": "/restart",
+        "group_restart_gateway": "restart gateway",
+        "unrelated": "restart the build"
+      },
+      "name": "plaintext_restart_coercion"
+    },
+    {
+      "dm_description": "DM with Ada",
+      "from_dict_roundtrip": {
+        "chat_id": "channel-1",
+        "chat_id_alt": "internal-1",
+        "chat_name": "ops",
+        "chat_topic": "operations",
+        "chat_type": "channel",
+        "guild_id": "workspace-1",
+        "message_id": "msg-99",
+        "parent_chat_id": "parent-1",
+        "platform": "slack",
+        "thread_id": "thread-1",
+        "user_id": "user-1",
+        "user_id_alt": "union-1",
+        "user_name": "Ada"
+      },
+      "group_description": "group: Parity Chat",
+      "name": "session_source_roundtrip",
+      "rich_source": {
+        "chat_id": "channel-1",
+        "chat_id_alt": "internal-1",
+        "chat_name": "ops",
+        "chat_topic": "operations",
+        "chat_type": "channel",
+        "guild_id": "workspace-1",
+        "message_id": "msg-99",
+        "parent_chat_id": "parent-1",
+        "platform": "slack",
+        "thread_id": "thread-1",
+        "user_id": "user-1",
+        "user_id_alt": "union-1",
+        "user_name": "Ada"
+      }
+    },
+    {
+      "cases": {
+        "discord_thread_per_user": "agent:main:discord:group:channel-1:thread-1:user-1",
+        "discord_thread_shared": "agent:main:discord:group:channel-1:thread-1",
+        "group_no_ids": "agent:main:telegram:group",
+        "telegram_dm": "agent:main:telegram:dm:chat-1",
+        "telegram_dm_thread": "agent:main:telegram:dm:chat-1:topic-1",
+        "telegram_group_default_per_user": "agent:main:telegram:group:group-1:user-1",
+        "telegram_group_shared": "agent:main:telegram:group:group-1",
+        "whatsapp_dm_normalized": "agent:main:whatsapp:dm:15551234567",
+        "whatsapp_group_participant_normalized": "agent:main:whatsapp:group:group-1@g.us:15551234567"
+      },
+      "name": "session_key_construction"
+    },
+    {
+      "cases": {
+        "dm": false,
+        "group_default_per_user": false,
+        "group_shared": true,
+        "thread_per_user": false,
+        "thread_shared_default": true
+      },
+      "name": "shared_multi_user_detection"
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/gateway-message-fixture.py"
+  }
+}

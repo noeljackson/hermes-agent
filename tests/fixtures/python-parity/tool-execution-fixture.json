@@ -1,0 +1,94 @@
+{
+  "cases": [
+    {
+      "name": "clarify_empty_question",
+      "result": {
+        "error": "Question text is required."
+      }
+    },
+    {
+      "name": "clarify_no_callback",
+      "result": {
+        "error": "Clarify tool is not available in this execution context."
+      }
+    },
+    {
+      "name": "agent_loop_tool_block",
+      "result": {
+        "error": "memory must be handled by the agent loop"
+      }
+    },
+    {
+      "name": "unknown_tool_error",
+      "result": {
+        "error": "Unknown tool: __missing_tool__"
+      }
+    },
+    {
+      "name": "tool_error_with_extra",
+      "result": {
+        "code": 400,
+        "error": "bad input",
+        "success": false
+      }
+    },
+    {
+      "name": "read_file_handler",
+      "result": {
+        "content": "     2|beta\n     3|alpha beta\n     4|",
+        "file_size": 22,
+        "is_binary": false,
+        "is_image": false,
+        "total_lines": 3,
+        "truncated": false
+      }
+    },
+    {
+      "name": "write_file_handler_missing_content",
+      "result": {
+        "error": "write_file: missing required field 'content'. The tool call included a path but no content argument \u2014 this is almost always a dropped-arg bug under context pressure. Re-emit the tool call with the full content payload, or use execute_code with hermes_tools.write_file() for very large files."
+      }
+    },
+    {
+      "file_content": "created\n",
+      "name": "write_file_handler",
+      "result": {
+        "bytes_written": 8,
+        "dirs_created": false,
+        "lint": {
+          "message": "No linter for .txt files",
+          "status": "skipped"
+        }
+      }
+    },
+    {
+      "file_content": "alpha\nbeta\nalpha BETA\n",
+      "name": "patch_replace_handler",
+      "result": {
+        "diff": "--- a/patch.txt\n+++ b/patch.txt\n@@ -1,3 +1,3 @@\n alpha\n beta\n-alpha beta\n+alpha BETA\n",
+        "files_modified": [
+          "patch.txt"
+        ],
+        "lint": {
+          "message": "No linter for .txt files",
+          "status": "skipped"
+        },
+        "success": true
+      }
+    },
+    {
+      "name": "search_files_files_handler",
+      "result": {
+        "files": [
+          "./nested/alpha.md"
+        ],
+        "total_count": 1
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/tool-execution-fixture.py"
+  }
+}

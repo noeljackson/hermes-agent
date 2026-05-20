@@ -1,0 +1,60 @@
+{
+  "cases": [
+    {
+      "commands": {
+        "/capi-tool": {
+          "description": "Fallback body description should be used and kept stable for parity.",
+          "name": "C++/API Tool",
+          "skill_md_basename": "SKILL.md"
+        },
+        "/demo-skill": {
+          "description": "Demonstrates parity loading.",
+          "name": "Demo Skill",
+          "skill_md_basename": "SKILL.md"
+        }
+      },
+      "name": "user_skill_command_scan"
+    },
+    {
+      "cases": {
+        "capi_tool": "/capi-tool",
+        "demo-skill": "/demo-skill",
+        "demo_skill": "/demo-skill",
+        "empty": null,
+        "missing": null
+      },
+      "name": "skill_command_resolution"
+    },
+    {
+      "diff": {
+        "added": [
+          {
+            "description": "Added during reload.",
+            "name": "new-skill"
+          }
+        ],
+        "commands": 2,
+        "removed": [
+          {
+            "description": "Fallback body description should be used and kept stable for parity.",
+            "name": "capi-tool"
+          }
+        ],
+        "total": 2,
+        "unchanged": [
+          "demo-skill"
+        ]
+      },
+      "name": "reload_skills_diff"
+    },
+    {
+      "message": "[IMPORTANT: The user has invoked the \"Demo Skill\" skill, indicating they want you to follow its instructions. The full skill content is loaded below.]\n\n---\nname: Demo Skill\ndescription: Demonstrates parity loading.\nversion: 1.0.0\nauthor: Hermes Parity\nplatforms: [linux, macos]\nmetadata:\n  hermes:\n    tags: [parity]\n    category: testing\n---\n# Demo Skill\n\nUse this deterministic skill for parity tests.\n\n[Skill directory: <HERMES_HOME>/skills/demo/demo-skill]\nResolve any relative paths in this skill (e.g. `scripts/foo.js`, `templates/config.yaml`) against that directory, then run them with the terminal tool using the absolute path.\n\n[This skill has supporting files:]\n- scripts/helper.sh  ->  <HERMES_HOME>/skills/demo/demo-skill/scripts/helper.sh\n\nLoad any of these with skill_view(name=\"demo/demo-skill\", file_path=\"<path>\"), or run scripts directly by absolute path (e.g. `node <HERMES_HOME>/skills/demo/demo-skill/scripts/foo.js`).\n\nThe user has provided the following instruction alongside the skill invocation: Use it now.\n\n[Runtime note: gateway runtime]",
+      "name": "skill_invocation_message"
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/skills-fixture.py"
+  }
+}

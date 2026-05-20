@@ -1,0 +1,240 @@
+{
+  "cases": [
+    {
+      "name": "parse_schedule",
+      "schedules": {
+        "cron": {
+          "display": "0 9 * * *",
+          "expr": "0 9 * * *",
+          "kind": "cron"
+        },
+        "interval": {
+          "display": "every 120m",
+          "kind": "interval",
+          "minutes": 120
+        },
+        "timestamp": {
+          "display": "once at 2026-06-01 09:00",
+          "kind": "once",
+          "run_at": "2026-06-01T09:00:00+00:00"
+        }
+      }
+    },
+    {
+      "job": {
+        "created_at": "<timestamp>",
+        "enabled": true,
+        "id": "job-1",
+        "name": "demo",
+        "profile": null,
+        "prompt": "",
+        "schedule": {
+          "display": "0 9 * * *",
+          "expr": "0 9 * * *",
+          "kind": "cron"
+        },
+        "schedule_display": "0 9 * * *",
+        "skill": "demo",
+        "skills": [
+          "demo"
+        ],
+        "state": "scheduled"
+      },
+      "name": "legacy_record_normalization"
+    },
+    {
+      "jobs": {
+        "name_from_id_paused_profile": {
+          "enabled": false,
+          "id": "job-id",
+          "name": "job-id",
+          "profile": null,
+          "prompt": "",
+          "schedule": {},
+          "schedule_display": "?",
+          "skill": null,
+          "skills": [],
+          "state": "paused"
+        },
+        "name_from_script": {
+          "enabled": true,
+          "id": "job-script",
+          "name": "/tmp/demo.sh",
+          "profile": null,
+          "prompt": "",
+          "schedule": {
+            "display": "manual"
+          },
+          "schedule_display": "manual",
+          "script": "/tmp/demo.sh",
+          "skill": null,
+          "skills": [],
+          "state": "scheduled"
+        },
+        "schedule_display_wins": {
+          "enabled": true,
+          "id": "job-display",
+          "name": "Prompt",
+          "profile": null,
+          "prompt": "Prompt",
+          "schedule": {
+            "display": "ignored",
+            "expr": "0 9 * * *"
+          },
+          "schedule_display": "custom display",
+          "skill": null,
+          "skills": [],
+          "state": "scheduled"
+        },
+        "schedule_expr_fallback": {
+          "enabled": true,
+          "id": "job-expr",
+          "name": "Prompt",
+          "profile": null,
+          "prompt": "Prompt",
+          "schedule": {
+            "expr": "0 9 * * *"
+          },
+          "schedule_display": "0 9 * * *",
+          "skill": null,
+          "skills": [],
+          "state": "scheduled"
+        },
+        "schedule_run_at_fallback": {
+          "enabled": true,
+          "id": "job-run-at",
+          "name": "Prompt",
+          "profile": null,
+          "prompt": "Prompt",
+          "schedule": {
+            "run_at": "<timestamp>"
+          },
+          "schedule_display": "2026-06-01T09:00:00+00:00",
+          "skill": null,
+          "skills": [],
+          "state": "scheduled"
+        },
+        "schedule_string_fallback": {
+          "enabled": true,
+          "id": "job-schedule-string",
+          "name": "Prompt",
+          "profile": null,
+          "prompt": "Prompt",
+          "schedule": "every 10m",
+          "schedule_display": "every 10m",
+          "skill": null,
+          "skills": [],
+          "state": "scheduled"
+        },
+        "schedule_value_fallback": {
+          "enabled": true,
+          "id": "job-value",
+          "name": "Prompt",
+          "profile": null,
+          "prompt": "Prompt",
+          "schedule": {
+            "value": "value display"
+          },
+          "schedule_display": "value display",
+          "skill": null,
+          "skills": [],
+          "state": "scheduled"
+        },
+        "single_skill_string": {
+          "enabled": true,
+          "id": "job-skill-string",
+          "name": "Prompt",
+          "profile": null,
+          "prompt": "Prompt",
+          "schedule": {
+            "display": "every 5m"
+          },
+          "schedule_display": "every 5m",
+          "skill": "demo",
+          "skills": [
+            "demo"
+          ],
+          "state": "scheduled"
+        },
+        "skills_list_dedupes": {
+          "enabled": true,
+          "id": "job-skills-dedupe",
+          "name": "Prompt",
+          "profile": null,
+          "prompt": "Prompt",
+          "schedule": {
+            "display": "every 5m"
+          },
+          "schedule_display": "every 5m",
+          "skill": "demo",
+          "skills": [
+            "demo",
+            "other"
+          ],
+          "state": "scheduled"
+        },
+        "skills_string_overrides_legacy": {
+          "enabled": true,
+          "id": "job-skills-string",
+          "name": "Prompt",
+          "profile": null,
+          "prompt": "Prompt",
+          "schedule": {
+            "display": "every 5m"
+          },
+          "schedule_display": "every 5m",
+          "skill": "demo",
+          "skills": [
+            "demo"
+          ],
+          "state": "scheduled"
+        }
+      },
+      "name": "record_normalization_matrix"
+    },
+    {
+      "fixed_now": "2026-05-20T12:00:00+00:00",
+      "name": "scheduler_time_math",
+      "results": {
+        "grace_10m": 300,
+        "grace_1d": 7200,
+        "grace_1m": 120,
+        "interval_after_last_run": "2026-05-20T11:30:00+00:00",
+        "interval_first_run": "2026-05-20T12:30:00+00:00",
+        "once_already_run": null,
+        "once_expired": null,
+        "once_future": "2026-05-20T12:05:00+00:00",
+        "once_within_grace": "2026-05-20T11:59:00+00:00"
+      }
+    },
+    {
+      "jobs": [
+        {
+          "created_at": "<timestamp>",
+          "enabled": true,
+          "id": "job-1",
+          "name": "demo",
+          "profile": null,
+          "prompt": "",
+          "schedule": {
+            "display": "0 9 * * *",
+            "expr": "0 9 * * *",
+            "kind": "cron"
+          },
+          "schedule_display": "0 9 * * *",
+          "skill": "demo",
+          "skills": [
+            "demo"
+          ],
+          "state": "scheduled"
+        }
+      ],
+      "name": "storage_shape"
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/cron-schedule-fixture.py"
+  }
+}

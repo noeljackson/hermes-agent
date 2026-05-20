@@ -1,0 +1,29 @@
+[workspace]
+members = [
+    "crates/hermes-config",
+    "crates/hermes-core",
+    "crates/hermes-cron",
+    "crates/hermes-cli",
+    "crates/hermes-gateway",
+    "crates/hermes-mcp",
+    "crates/hermes-memory",
+    "crates/hermes-parity",
+    "crates/hermes-provider",
+    "crates/hermes-session",
+    "crates/hermes-skills",
+    "crates/hermes-slash",
+    "crates/hermes-terminal",
+    "crates/hermes-tools",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/NousResearch/hermes-agent"
+
+[workspace.dependencies]
+rusqlite = { version = "0.37.0", features = ["bundled"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+serde_yaml = "0.9.34"

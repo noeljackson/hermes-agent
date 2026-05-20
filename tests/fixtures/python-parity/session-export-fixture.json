@@ -1,0 +1,488 @@
+{
+  "cases": [
+    {
+      "name": "single_session_export",
+      "session": {
+        "actual_cost_usd": null,
+        "api_call_count": 0,
+        "billing_base_url": null,
+        "billing_mode": null,
+        "billing_provider": null,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_source": null,
+        "cost_status": null,
+        "end_reason": null,
+        "ended_at": null,
+        "estimated_cost_usd": null,
+        "handoff_error": null,
+        "handoff_platform": null,
+        "handoff_state": null,
+        "id": "parity-session-1",
+        "input_tokens": 0,
+        "message_count": 3,
+        "messages": [
+          {
+            "codex_message_items": null,
+            "codex_reasoning_items": null,
+            "content": "hello",
+            "finish_reason": null,
+            "id": 1,
+            "reasoning": null,
+            "reasoning_content": null,
+            "reasoning_details": null,
+            "role": "user",
+            "session_id": "parity-session-1",
+            "timestamp": "<timestamp>",
+            "token_count": null,
+            "tool_call_id": null,
+            "tool_calls": null,
+            "tool_name": null
+          },
+          {
+            "codex_message_items": null,
+            "codex_reasoning_items": null,
+            "content": "calling tool",
+            "finish_reason": "tool_calls",
+            "id": 2,
+            "reasoning": null,
+            "reasoning_content": null,
+            "reasoning_details": null,
+            "role": "assistant",
+            "session_id": "parity-session-1",
+            "timestamp": "<timestamp>",
+            "token_count": null,
+            "tool_call_id": null,
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{}",
+                  "name": "memory"
+                },
+                "id": "call-1",
+                "type": "function"
+              }
+            ],
+            "tool_name": null
+          },
+          {
+            "codex_message_items": null,
+            "codex_reasoning_items": null,
+            "content": "{\"success\": true}",
+            "finish_reason": null,
+            "id": 3,
+            "reasoning": null,
+            "reasoning_content": null,
+            "reasoning_details": null,
+            "role": "tool",
+            "session_id": "parity-session-1",
+            "timestamp": "<timestamp>",
+            "token_count": null,
+            "tool_call_id": "call-1",
+            "tool_calls": null,
+            "tool_name": "memory"
+          }
+        ],
+        "model": "fake/model",
+        "model_config": "{\"provider\": \"fake\"}",
+        "output_tokens": 0,
+        "parent_session_id": null,
+        "pricing_version": null,
+        "reasoning_tokens": 0,
+        "source": "cli",
+        "started_at": "<timestamp>",
+        "system_prompt": "system prompt",
+        "title": null,
+        "tool_call_count": 1,
+        "user_id": "user-1"
+      }
+    },
+    {
+      "messages": [
+        {
+          "content": "hello",
+          "role": "user"
+        },
+        {
+          "content": "calling tool",
+          "finish_reason": "tool_calls",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{}",
+                "name": "memory"
+              },
+              "id": "call-1",
+              "type": "function"
+            }
+          ]
+        },
+        {
+          "content": "{\"success\": true}",
+          "role": "tool",
+          "tool_call_id": "call-1",
+          "tool_name": "memory"
+        }
+      ],
+      "name": "resume_conversation_shape"
+    },
+    {
+      "name": "export_all_shape",
+      "sessions": [
+        {
+          "actual_cost_usd": null,
+          "api_call_count": 0,
+          "billing_base_url": null,
+          "billing_mode": null,
+          "billing_provider": null,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "cost_source": null,
+          "cost_status": null,
+          "end_reason": null,
+          "ended_at": null,
+          "estimated_cost_usd": null,
+          "handoff_error": null,
+          "handoff_platform": null,
+          "handoff_state": null,
+          "id": "parity-session-1",
+          "input_tokens": 0,
+          "last_active": "<timestamp>",
+          "message_count": 3,
+          "messages": [
+            {
+              "codex_message_items": null,
+              "codex_reasoning_items": null,
+              "content": "hello",
+              "finish_reason": null,
+              "id": 1,
+              "reasoning": null,
+              "reasoning_content": null,
+              "reasoning_details": null,
+              "role": "user",
+              "session_id": "parity-session-1",
+              "timestamp": "<timestamp>",
+              "token_count": null,
+              "tool_call_id": null,
+              "tool_calls": null,
+              "tool_name": null
+            },
+            {
+              "codex_message_items": null,
+              "codex_reasoning_items": null,
+              "content": "calling tool",
+              "finish_reason": "tool_calls",
+              "id": 2,
+              "reasoning": null,
+              "reasoning_content": null,
+              "reasoning_details": null,
+              "role": "assistant",
+              "session_id": "parity-session-1",
+              "timestamp": "<timestamp>",
+              "token_count": null,
+              "tool_call_id": null,
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{}",
+                    "name": "memory"
+                  },
+                  "id": "call-1",
+                  "type": "function"
+                }
+              ],
+              "tool_name": null
+            },
+            {
+              "codex_message_items": null,
+              "codex_reasoning_items": null,
+              "content": "{\"success\": true}",
+              "finish_reason": null,
+              "id": 3,
+              "reasoning": null,
+              "reasoning_content": null,
+              "reasoning_details": null,
+              "role": "tool",
+              "session_id": "parity-session-1",
+              "timestamp": "<timestamp>",
+              "token_count": null,
+              "tool_call_id": "call-1",
+              "tool_calls": null,
+              "tool_name": "memory"
+            }
+          ],
+          "model": "fake/model",
+          "model_config": "{\"provider\": \"fake\"}",
+          "output_tokens": 0,
+          "parent_session_id": null,
+          "pricing_version": null,
+          "reasoning_tokens": 0,
+          "source": "cli",
+          "started_at": "<timestamp>",
+          "system_prompt": "system prompt",
+          "title": null,
+          "tool_call_count": 1,
+          "user_id": "user-1"
+        }
+      ]
+    },
+    {
+      "name": "session_state_operations",
+      "state": {
+        "by_title": {
+          "actual_cost_usd": null,
+          "api_call_count": 0,
+          "billing_base_url": null,
+          "billing_mode": null,
+          "billing_provider": null,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "cost_source": null,
+          "cost_status": null,
+          "end_reason": null,
+          "ended_at": null,
+          "estimated_cost_usd": null,
+          "handoff_error": null,
+          "handoff_platform": null,
+          "handoff_state": null,
+          "id": "alpha-111",
+          "input_tokens": 0,
+          "message_count": 0,
+          "model": "fake/model",
+          "model_config": "{\"provider\": \"fake\"}",
+          "output_tokens": 0,
+          "parent_session_id": null,
+          "pricing_version": null,
+          "reasoning_tokens": 0,
+          "source": "cli",
+          "started_at": "<timestamp>",
+          "system_prompt": "system prompt",
+          "title": "My Session Title",
+          "tool_call_count": 0,
+          "user_id": "user-state"
+        },
+        "counts_before_delete": {
+          "messages_all": 3,
+          "messages_missing": 0,
+          "messages_parent": 2,
+          "sessions_all": 7,
+          "sessions_cli": 7,
+          "sessions_gateway": 0
+        },
+        "delete": {
+          "child_parent_session_id": null,
+          "first": true,
+          "messages_all": 1,
+          "messages_parent": 0,
+          "parent_after": null,
+          "second": false,
+          "sessions_all": 6,
+          "transcript_files_remaining": []
+        },
+        "duplicate_title_error": "Title 'My Session Title' is already in use by session alpha-111",
+        "missing_title_result": false,
+        "resolve_cases": {
+          "ambiguous_prefix": null,
+          "exact": "alpha-111",
+          "literal_percent_prefix": "literal%one",
+          "literal_underscore_prefix": "literal_one",
+          "missing_prefix": null,
+          "unique_prefix": "beta-111"
+        },
+        "set_title_ok": true,
+        "title_after_set": "My Session Title",
+        "title_cases": [
+          {
+            "input": null,
+            "name": "none",
+            "ok": true,
+            "value": null
+          },
+          {
+            "input": "",
+            "name": "empty",
+            "ok": true,
+            "value": null
+          },
+          {
+            "input": " \t\n ",
+            "name": "whitespace",
+            "ok": true,
+            "value": null
+          },
+          {
+            "input": "  My\tSession\nTitle  ",
+            "name": "collapsed",
+            "ok": true,
+            "value": "My Session Title"
+          },
+          {
+            "input": "bad\u0000 title\u007f",
+            "name": "ascii_control",
+            "ok": true,
+            "value": "bad title"
+          },
+          {
+            "input": "zero\u200bwidth\u202e",
+            "name": "unicode_control",
+            "ok": true,
+            "value": "zerowidth"
+          },
+          {
+            "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "name": "max_len",
+            "ok": true,
+            "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          },
+          {
+            "error": "Title too long (101 chars, max 100)",
+            "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "name": "too_long",
+            "ok": false
+          }
+        ]
+      }
+    },
+    {
+      "migration": {
+        "conversation": [
+          {
+            "content": "legacy hello",
+            "role": "user"
+          }
+        ],
+        "fts_tables": [
+          "messages_fts",
+          "messages_fts_config",
+          "messages_fts_content",
+          "messages_fts_data",
+          "messages_fts_docsize",
+          "messages_fts_idx",
+          "messages_fts_trigram",
+          "messages_fts_trigram_config",
+          "messages_fts_trigram_content",
+          "messages_fts_trigram_data",
+          "messages_fts_trigram_docsize",
+          "messages_fts_trigram_idx"
+        ],
+        "messages_columns": [
+          "id",
+          "session_id",
+          "role",
+          "content",
+          "timestamp",
+          "tool_call_id",
+          "tool_calls",
+          "tool_name",
+          "token_count",
+          "finish_reason",
+          "reasoning",
+          "reasoning_content",
+          "reasoning_details",
+          "codex_reasoning_items",
+          "codex_message_items"
+        ],
+        "schema_version": 11,
+        "session": {
+          "actual_cost_usd": null,
+          "api_call_count": 0,
+          "billing_base_url": null,
+          "billing_mode": null,
+          "billing_provider": null,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "cost_source": null,
+          "cost_status": null,
+          "end_reason": null,
+          "ended_at": null,
+          "estimated_cost_usd": null,
+          "handoff_error": null,
+          "handoff_platform": null,
+          "handoff_state": null,
+          "id": "legacy-session",
+          "input_tokens": 0,
+          "message_count": 0,
+          "messages": [
+            {
+              "codex_message_items": null,
+              "codex_reasoning_items": null,
+              "content": "legacy hello",
+              "finish_reason": null,
+              "id": 1,
+              "reasoning": null,
+              "reasoning_content": null,
+              "reasoning_details": null,
+              "role": "user",
+              "session_id": "legacy-session",
+              "timestamp": "<timestamp>",
+              "token_count": null,
+              "tool_call_id": null,
+              "tool_calls": null,
+              "tool_name": null
+            }
+          ],
+          "model": "fake/model",
+          "model_config": "{\"provider\":\"fake\"}",
+          "output_tokens": 0,
+          "parent_session_id": null,
+          "pricing_version": null,
+          "reasoning_tokens": 0,
+          "source": "cli",
+          "started_at": "<timestamp>",
+          "system_prompt": "system prompt",
+          "title": null,
+          "tool_call_count": 0,
+          "user_id": "user-legacy"
+        },
+        "sessions_columns": [
+          "id",
+          "source",
+          "user_id",
+          "model",
+          "model_config",
+          "system_prompt",
+          "parent_session_id",
+          "started_at",
+          "ended_at",
+          "end_reason",
+          "message_count",
+          "tool_call_count",
+          "input_tokens",
+          "output_tokens",
+          "cache_read_tokens",
+          "cache_write_tokens",
+          "reasoning_tokens",
+          "billing_provider",
+          "billing_base_url",
+          "billing_mode",
+          "estimated_cost_usd",
+          "actual_cost_usd",
+          "cost_status",
+          "cost_source",
+          "pricing_version",
+          "title",
+          "api_call_count",
+          "handoff_state",
+          "handoff_platform",
+          "handoff_error"
+        ]
+      },
+      "name": "legacy_schema_migration"
+    },
+    {
+      "messages": {
+        "custom_prefix": "Resume unavailable: OperationalError: locking protocol (state.db may be on NFS/SMB/FUSE \u2014 see https://www.sqlite.org/wal.html).",
+        "no_cause": "Session database not available.",
+        "plain_error": "Session database not available: OperationalError: database is locked.",
+        "wal_incompatible": "Session database not available: OperationalError: locking protocol (state.db may be on NFS/SMB/FUSE \u2014 see https://www.sqlite.org/wal.html)."
+      },
+      "name": "db_unavailable_error_format"
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/session-export-fixture.py"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "name": "local_printf",
+      "result": {
+        "error": null,
+        "exit_code": 0,
+        "output": "hello parity"
+      }
+    },
+    {
+      "name": "local_nonzero_exit",
+      "result": {
+        "error": null,
+        "exit_code": 7,
+        "output": "fail"
+      }
+    },
+    {
+      "name": "invalid_command_type",
+      "result": {
+        "error": "Invalid command: expected string, got list",
+        "exit_code": -1,
+        "output": "",
+        "status": "error"
+      }
+    },
+    {
+      "name": "foreground_timeout_too_large",
+      "result": {
+        "error": "Foreground timeout 999999s exceeds the maximum of 600s. Use background=true with notify_on_complete=true for long-running commands."
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/terminal-execution-fixture.py"
+  }
+}

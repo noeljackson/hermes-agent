@@ -1,0 +1,312 @@
+{
+  "cases": [
+    {
+      "config": {
+        "agent": {
+          "max_turns": 90,
+          "system_prompt": null
+        },
+        "config_version": 23,
+        "display": {
+          "skin": "default",
+          "tool_progress_command": false
+        },
+        "memory": {
+          "enabled": null,
+          "provider": ""
+        },
+        "model": {
+          "base_url": null,
+          "default": null,
+          "provider": null,
+          "raw": ""
+        },
+        "terminal": {
+          "backend": "local",
+          "cwd": "."
+        },
+        "top_level_keys": [
+          "_config_version",
+          "agent",
+          "approvals",
+          "auxiliary",
+          "bedrock",
+          "browser",
+          "checkpoints",
+          "code_execution",
+          "command_allowlist",
+          "compression",
+          "context",
+          "credential_pool_strategies",
+          "cron",
+          "curator",
+          "dashboard",
+          "delegation",
+          "discord",
+          "display",
+          "fallback_providers",
+          "file_read_max_chars",
+          "goals",
+          "honcho",
+          "hooks",
+          "hooks_auto_accept",
+          "human_delay",
+          "kanban",
+          "logging",
+          "lsp",
+          "matrix",
+          "mattermost",
+          "memory",
+          "model",
+          "model_catalog",
+          "network",
+          "onboarding",
+          "openrouter",
+          "personalities",
+          "prefill_messages_file",
+          "privacy",
+          "prompt_caching",
+          "providers",
+          "quick_commands",
+          "security",
+          "sessions",
+          "skills",
+          "slack",
+          "stt",
+          "telegram",
+          "terminal",
+          "timezone",
+          "tool_loop_guardrails",
+          "tool_output",
+          "toolsets",
+          "tts",
+          "updates",
+          "voice",
+          "web",
+          "whatsapp",
+          "x_search"
+        ]
+      },
+      "name": "defaults"
+    },
+    {
+      "config": {
+        "agent": {
+          "max_turns": 7,
+          "system_prompt": null
+        },
+        "config_version": 23,
+        "display": {
+          "skin": "mono",
+          "tool_progress_command": false
+        },
+        "memory": {
+          "enabled": null,
+          "provider": ""
+        },
+        "model": {
+          "base_url": null,
+          "default": "fake/model",
+          "provider": "openrouter",
+          "raw": null
+        },
+        "terminal": {
+          "backend": "local",
+          "cwd": "/workspace"
+        },
+        "top_level_keys": [
+          "_config_version",
+          "agent",
+          "approvals",
+          "auxiliary",
+          "bedrock",
+          "browser",
+          "checkpoints",
+          "code_execution",
+          "command_allowlist",
+          "compression",
+          "context",
+          "credential_pool_strategies",
+          "cron",
+          "curator",
+          "custom_section",
+          "dashboard",
+          "delegation",
+          "discord",
+          "display",
+          "fallback_providers",
+          "file_read_max_chars",
+          "goals",
+          "honcho",
+          "hooks",
+          "hooks_auto_accept",
+          "human_delay",
+          "kanban",
+          "logging",
+          "lsp",
+          "matrix",
+          "mattermost",
+          "memory",
+          "model",
+          "model_catalog",
+          "network",
+          "onboarding",
+          "openrouter",
+          "personalities",
+          "prefill_messages_file",
+          "privacy",
+          "prompt_caching",
+          "providers",
+          "quick_commands",
+          "security",
+          "sessions",
+          "skills",
+          "slack",
+          "stt",
+          "telegram",
+          "terminal",
+          "timezone",
+          "tool_loop_guardrails",
+          "tool_output",
+          "toolsets",
+          "tts",
+          "updates",
+          "voice",
+          "web",
+          "whatsapp",
+          "x_search"
+        ]
+      },
+      "name": "deep_merge_overlay"
+    },
+    {
+      "config": {
+        "agent": {
+          "max_turns": 5,
+          "system_prompt": null
+        },
+        "config_version": 23,
+        "display": {
+          "skin": "default",
+          "tool_progress_command": false
+        },
+        "memory": {
+          "enabled": null,
+          "provider": ""
+        },
+        "model": {
+          "base_url": "https://example.invalid/v1",
+          "default": null,
+          "provider": "legacy-provider",
+          "raw": null
+        },
+        "terminal": {
+          "backend": "local",
+          "cwd": "."
+        },
+        "top_level_keys": [
+          "_config_version",
+          "agent",
+          "approvals",
+          "auxiliary",
+          "bedrock",
+          "browser",
+          "checkpoints",
+          "code_execution",
+          "command_allowlist",
+          "compression",
+          "context",
+          "credential_pool_strategies",
+          "cron",
+          "curator",
+          "dashboard",
+          "delegation",
+          "discord",
+          "display",
+          "fallback_providers",
+          "file_read_max_chars",
+          "goals",
+          "honcho",
+          "hooks",
+          "hooks_auto_accept",
+          "human_delay",
+          "kanban",
+          "logging",
+          "lsp",
+          "matrix",
+          "mattermost",
+          "memory",
+          "model",
+          "model_catalog",
+          "network",
+          "onboarding",
+          "openrouter",
+          "personalities",
+          "prefill_messages_file",
+          "privacy",
+          "prompt_caching",
+          "providers",
+          "quick_commands",
+          "security",
+          "sessions",
+          "skills",
+          "slack",
+          "stt",
+          "telegram",
+          "terminal",
+          "timezone",
+          "tool_loop_guardrails",
+          "tool_output",
+          "toolsets",
+          "tts",
+          "updates",
+          "voice",
+          "web",
+          "whatsapp",
+          "x_search"
+        ]
+      },
+      "name": "legacy_root_key_normalization"
+    },
+    {
+      "config": {
+        "agent": {
+          "max_turns": 12
+        },
+        "custom_providers": [
+          {
+            "api_key": "${ALPHA_KEY}",
+            "enabled": true,
+            "name": "alpha"
+          },
+          {
+            "api_key": "updated",
+            "name": "beta"
+          }
+        ],
+        "display": {
+          "opacity": 0.75
+        },
+        "terminal": {
+          "backend": "local",
+          "timeout": 42
+        }
+      },
+      "env_lines": [
+        "TERMINAL_TIMEOUT=42"
+      ],
+      "name": "set_config_value_contract",
+      "stdout_markers": {
+        "agent_max_turns": true,
+        "custom_provider_index": true,
+        "display_float": true,
+        "terminal_timeout": true
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/settings-fixture.py"
+  }
+}

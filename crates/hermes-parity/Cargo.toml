@@ -1,0 +1,24 @@
+[package]
+name = "hermes-parity"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+hermes-config = { path = "../hermes-config" }
+hermes-core = { path = "../hermes-core" }
+hermes-cron = { path = "../hermes-cron" }
+hermes-cli = { path = "../hermes-cli" }
+hermes-gateway = { path = "../hermes-gateway" }
+hermes-mcp = { path = "../hermes-mcp" }
+hermes-memory = { path = "../hermes-memory" }
+hermes-provider = { path = "../hermes-provider" }
+hermes-session = { path = "../hermes-session" }
+hermes-skills = { path = "../hermes-skills" }
+hermes-slash = { path = "../hermes-slash" }
+hermes-terminal = { path = "../hermes-terminal" }
+hermes-tools = { path = "../hermes-tools" }
+rusqlite.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true

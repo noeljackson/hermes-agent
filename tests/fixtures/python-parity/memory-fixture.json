@@ -1,0 +1,134 @@
+{
+  "cases": [
+    {
+      "add_memory": {
+        "entries": [
+          "Project uses parity fixtures."
+        ],
+        "entry_count": 1,
+        "message": "Entry added.",
+        "success": true,
+        "target": "memory",
+        "usage": "5% \u2014 29/500 chars"
+      },
+      "add_user": {
+        "entries": [
+          "User prefers concise answers."
+        ],
+        "entry_count": 1,
+        "message": "Entry added.",
+        "success": true,
+        "target": "user",
+        "usage": "5% \u2014 29/500 chars"
+      },
+      "duplicate": {
+        "entries": [
+          "Project uses parity fixtures."
+        ],
+        "entry_count": 1,
+        "message": "Entry already exists (no duplicate added).",
+        "success": true,
+        "target": "memory",
+        "usage": "5% \u2014 29/500 chars"
+      },
+      "memory_entries": [
+        "Project uses Rust parity fixtures."
+      ],
+      "name": "local_memory_store",
+      "remove_user": {
+        "entries": [],
+        "entry_count": 0,
+        "message": "Entry removed.",
+        "success": true,
+        "target": "user",
+        "usage": "0% \u2014 0/500 chars"
+      },
+      "replace_memory": {
+        "entries": [
+          "Project uses Rust parity fixtures."
+        ],
+        "entry_count": 1,
+        "message": "Entry replaced.",
+        "success": true,
+        "target": "memory",
+        "usage": "6% \u2014 34/500 chars"
+      },
+      "user_entries": []
+    },
+    {
+      "name": "ambiguous_match_error",
+      "replace": {
+        "error": "Multiple entries matched 'shared phrase'. Be more specific.",
+        "matches": [
+          "Alpha shared phrase.",
+          "Beta shared phrase."
+        ],
+        "success": false
+      }
+    },
+    {
+      "add_memory": {
+        "current_entries": [],
+        "error": "Memory at 0/20 chars. Adding this entry (37 chars) would exceed the limit. Replace or remove existing entries first.",
+        "success": false,
+        "usage": "0/20"
+      },
+      "name": "char_limit_error"
+    },
+    {
+      "errors": {
+        "invalid_target": {
+          "error": "Invalid target 'project'. Use 'memory' or 'user'.",
+          "success": false
+        },
+        "missing_add_content": {
+          "error": "Content is required for 'add' action.",
+          "success": false
+        },
+        "missing_remove_old_text": {
+          "error": "old_text is required for 'remove' action.",
+          "success": false
+        },
+        "missing_replace_content": {
+          "error": "content is required for 'replace' action.",
+          "success": false
+        },
+        "missing_replace_old_text": {
+          "error": "old_text is required for 'replace' action.",
+          "success": false
+        },
+        "unknown_action": {
+          "error": "Unknown action 'read'. Use: add, replace, remove",
+          "success": false
+        }
+      },
+      "name": "memory_tool_validation"
+    },
+    {
+      "after_mid_session_add": "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nMEMORY (your personal notes) [4% \u2014 21/500 chars]\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nInitial durable fact.",
+      "before": "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nMEMORY (your personal notes) [4% \u2014 21/500 chars]\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nInitial durable fact.",
+      "live_entries": [
+        "Initial durable fact.",
+        "Live-only mid-session fact."
+      ],
+      "name": "system_prompt_snapshot"
+    },
+    {
+      "name": "threat_scan",
+      "results": {
+        "disregard_rules": "Blocked: content matches threat pattern 'disregard_rules'. Memory entries are injected into the system prompt and must not contain injection or exfiltration payloads.",
+        "exfil_curl": "Blocked: content matches threat pattern 'exfil_curl'. Memory entries are injected into the system prompt and must not contain injection or exfiltration payloads.",
+        "exfil_wget": "Blocked: content matches threat pattern 'exfil_wget'. Memory entries are injected into the system prompt and must not contain injection or exfiltration payloads.",
+        "invisible_unicode": "Blocked: content contains invisible unicode character U+200B (possible injection).",
+        "prompt_injection": "Blocked: content matches threat pattern 'prompt_injection'. Memory entries are injected into the system prompt and must not contain injection or exfiltration payloads.",
+        "read_secrets": "Blocked: content matches threat pattern 'read_secrets'. Memory entries are injected into the system prompt and must not contain injection or exfiltration payloads.",
+        "ssh_backdoor": "Blocked: content matches threat pattern 'ssh_backdoor'. Memory entries are injected into the system prompt and must not contain injection or exfiltration payloads."
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/memory-fixture.py"
+  }
+}

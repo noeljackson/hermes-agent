@@ -1,0 +1,246 @@
+{
+  "cases": [
+    {
+      "name": "chat_completions_fake_provider",
+      "request": {
+        "max_tokens": 123,
+        "messages": [
+          {
+            "content": "system",
+            "role": "system"
+          },
+          {
+            "content": "hello",
+            "role": "user"
+          }
+        ],
+        "model": "fake/model",
+        "temperature": 0.2,
+        "timeout": 30,
+        "tools": [
+          {
+            "function": {
+              "description": "Remember facts.",
+              "name": "memory",
+              "parameters": {
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "type": "object"
+              }
+            },
+            "type": "function"
+          }
+        ]
+      }
+    },
+    {
+      "name": "chat_completions_strips_codex_leaks",
+      "request": {
+        "messages": [
+          {
+            "content": "ok",
+            "role": "assistant",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{}",
+                  "name": "terminal"
+                },
+                "id": "call_1",
+                "type": "function"
+              }
+            ]
+          }
+        ],
+        "model": "gpt-4o",
+        "timeout": 10
+      }
+    },
+    {
+      "name": "codex_responses_standard",
+      "request": {
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "input": [
+          {
+            "content": "hello",
+            "role": "user"
+          }
+        ],
+        "instructions": "system",
+        "max_output_tokens": 4096,
+        "model": "gpt-5.4",
+        "parallel_tool_calls": true,
+        "prompt_cache_key": "session-1",
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        },
+        "store": false,
+        "tool_choice": "auto",
+        "tools": [
+          {
+            "description": "Remember facts.",
+            "name": "memory",
+            "parameters": {
+              "properties": {
+                "action": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action"
+              ],
+              "type": "object"
+            },
+            "strict": false,
+            "type": "function"
+          }
+        ]
+      }
+    },
+    {
+      "name": "codex_responses_xai_cache_routing",
+      "request": {
+        "extra_body": {
+          "caller": true,
+          "prompt_cache_key": "conv-xai-1"
+        },
+        "extra_headers": {
+          "X-Test": "1",
+          "x-grok-conv-id": "conv-xai-1"
+        },
+        "include": [],
+        "input": [
+          {
+            "content": "hello",
+            "role": "user"
+          }
+        ],
+        "instructions": "You are Hermes Agent, an intelligent AI assistant created by Nous Research. You are helpful, knowledgeable, and direct. You assist users with a wide range of tasks including answering questions, writing and editing code, analyzing information, creative work, and executing actions via your tools. You communicate clearly, admit uncertainty when appropriate, and prioritize being genuinely useful over being verbose unless otherwise directed below. Be targeted and efficient in your exploration and investigations.",
+        "max_output_tokens": 2048,
+        "model": "grok-3-mini",
+        "reasoning": {
+          "effort": "high"
+        },
+        "store": false,
+        "tools": null
+      }
+    },
+    {
+      "name": "anthropic_messages_standard",
+      "request": {
+        "max_tokens": 1024,
+        "messages": [
+          {
+            "content": "hello",
+            "role": "user"
+          }
+        ],
+        "model": "claude-sonnet-4-6",
+        "output_config": {
+          "effort": "high"
+        },
+        "system": "system",
+        "thinking": {
+          "display": "summarized",
+          "type": "adaptive"
+        },
+        "tool_choice": {
+          "type": "any"
+        },
+        "tools": [
+          {
+            "description": "Remember facts.",
+            "input_schema": {
+              "properties": {
+                "action": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action"
+              ],
+              "type": "object"
+            },
+            "name": "memory"
+          }
+        ]
+      }
+    },
+    {
+      "finish_reason_map": {
+        "known": "tool_calls",
+        "none": "stop",
+        "unknown": "stop"
+      },
+      "name": "normalized_transport_types",
+      "response": {
+        "codex_message_items": [
+          {
+            "id": "msg_1",
+            "type": "message"
+          }
+        ],
+        "codex_reasoning_items": [
+          {
+            "id": "rs_1"
+          }
+        ],
+        "content": "answer",
+        "finish_reason": "tool_calls",
+        "reasoning": "I thought about it",
+        "reasoning_content": "hidden chain",
+        "reasoning_details": [
+          {
+            "thinking": "hmm",
+            "type": "thinking"
+          }
+        ]
+      },
+      "tool_call": {
+        "arguments": "{\"cmd\": \"ls\"}",
+        "call_id": "call_3",
+        "extra_content": {
+          "google": {
+            "thought_signature": "SIG_ABC123"
+          }
+        },
+        "function_arguments": "{\"cmd\": \"ls\"}",
+        "function_is_self": true,
+        "function_name": "terminal",
+        "id": "call_3",
+        "name": "terminal",
+        "provider_data": {
+          "call_id": "call_3",
+          "extra_content": {
+            "google": {
+              "thought_signature": "SIG_ABC123"
+            }
+          },
+          "response_item_id": "fc_3"
+        },
+        "response_item_id": "fc_3",
+        "type": "function"
+      },
+      "usage_defaults": {
+        "cached_tokens": 0,
+        "completion_tokens": 0,
+        "prompt_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/provider-request-fixture.py"
+  }
+}

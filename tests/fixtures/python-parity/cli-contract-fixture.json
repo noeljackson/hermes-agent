@@ -1,0 +1,564 @@
+{
+  "cases": [
+    {
+      "argv": [
+        "hermes",
+        "--help"
+      ],
+      "exit_code": 0,
+      "name": "top_level_help",
+      "stderr_empty": true,
+      "stdout_markers": {
+        "Usage": false,
+        "config": true,
+        "gateway": true,
+        "logs": true,
+        "setup": true,
+        "tools": true
+      }
+    },
+    {
+      "commands": [
+        "acp",
+        "auth",
+        "backup",
+        "bundles",
+        "chat",
+        "checkpoints",
+        "claw",
+        "completion",
+        "computer-use",
+        "config",
+        "cron",
+        "curator",
+        "dashboard",
+        "debug",
+        "doctor",
+        "dump",
+        "fallback",
+        "gateway",
+        "help",
+        "hooks",
+        "import",
+        "insights",
+        "kanban",
+        "login",
+        "logout",
+        "logs",
+        "lsp",
+        "mcp",
+        "memory",
+        "model",
+        "pairing",
+        "plugins",
+        "postinstall",
+        "profile",
+        "proxy",
+        "send",
+        "sessions",
+        "setup",
+        "skills",
+        "slack",
+        "status",
+        "tools",
+        "uninstall",
+        "update",
+        "version",
+        "webhook",
+        "whatsapp"
+      ],
+      "name": "builtin_subcommand_inventory"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "config",
+            "--help"
+          ],
+          "exit_code": 0,
+          "stderr_empty": true,
+          "stdout_markers": {
+            "check": true,
+            "edit": true,
+            "env-path": true,
+            "migrate": true,
+            "path": true,
+            "set": true,
+            "show": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "--help"
+          ],
+          "exit_code": 0,
+          "stderr_empty": true,
+          "stdout_markers": {
+            "--platform": false,
+            "disable": true,
+            "enable": true,
+            "list": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "--help"
+          ],
+          "exit_code": 0,
+          "stderr_empty": true,
+          "stdout_markers": {
+            "add": true,
+            "configure": true,
+            "list": true,
+            "login": true,
+            "remove": true,
+            "serve": true,
+            "test": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "--help"
+          ],
+          "exit_code": 0,
+          "stderr_empty": true,
+          "stdout_markers": {
+            "browse": true,
+            "delete": true,
+            "export": true,
+            "list": true,
+            "prune": true,
+            "rename": true,
+            "stats": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "--help"
+          ],
+          "exit_code": 0,
+          "stderr_empty": true,
+          "stdout_markers": {
+            "create": true,
+            "list": true,
+            "pause": true,
+            "remove": true,
+            "resume": true,
+            "tick": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "gateway",
+            "--help"
+          ],
+          "exit_code": 0,
+          "stderr_empty": true,
+          "stdout_markers": {
+            "restart": true,
+            "run": true,
+            "setup": true,
+            "start": true,
+            "status": true,
+            "stop": true
+          }
+        }
+      ],
+      "name": "selected_subcommand_help"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "--version"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Hermes Agent v": true,
+            "OpenAI SDK:": true,
+            "Project:": true,
+            "Python:": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "version"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Hermes Agent v": true,
+            "OpenAI SDK:": true,
+            "Project:": true,
+            "Python:": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
+            "path"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "<HERMES_HOME>/config.yaml\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
+            "env-path"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "<HERMES_HOME>/.env\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
+            "set",
+            "display.skin",
+            "mono"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\u2713 Set display.skin = mono in <HERMES_HOME>/config.yaml\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
+            "set",
+            "terminal.timeout",
+            "42"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\u2713 Set terminal.timeout = 42 in <HERMES_HOME>/config.yaml\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
+            "set",
+            "OPENROUTER_API_KEY",
+            "sk-test-parity"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\u2713 Set OPENROUTER_API_KEY in <HERMES_HOME>/.env\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "No scheduled jobs.\nCreate one with 'hermes cron create ...' or the /cron command in chat.\n",
+          "stdout_markers": {}
+        }
+      ],
+      "name": "safe_command_execution"
+    },
+    {
+      "config": {
+        "display": {
+          "skin": "mono"
+        },
+        "terminal": {
+          "timeout": 42
+        }
+      },
+      "env_lines": [
+        "TERMINAL_TIMEOUT=42",
+        "OPENROUTER_API_KEY=sk-test-parity"
+      ],
+      "name": "safe_command_file_state"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "list",
+            "--limit",
+            "5"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "cli-session-1": true,
+            "hello cli": true,
+            "hello telegram": true,
+            "telegram-session-1": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "export",
+            "-"
+          ],
+          "exit_code": 0,
+          "exports": [
+            {
+              "actual_cost_usd": null,
+              "api_call_count": 0,
+              "billing_base_url": null,
+              "billing_mode": null,
+              "billing_provider": null,
+              "cache_read_tokens": 0,
+              "cache_write_tokens": 0,
+              "cost_source": null,
+              "cost_status": null,
+              "end_reason": null,
+              "ended_at": null,
+              "estimated_cost_usd": null,
+              "handoff_error": null,
+              "handoff_platform": null,
+              "handoff_state": null,
+              "id": "telegram-session-1",
+              "input_tokens": 0,
+              "last_active": "<timestamp>",
+              "message_count": 1,
+              "messages": [
+                {
+                  "codex_message_items": null,
+                  "codex_reasoning_items": null,
+                  "content": "hello telegram",
+                  "finish_reason": null,
+                  "id": 2,
+                  "reasoning": null,
+                  "reasoning_content": null,
+                  "reasoning_details": null,
+                  "role": "user",
+                  "session_id": "telegram-session-1",
+                  "timestamp": "<timestamp>",
+                  "token_count": null,
+                  "tool_call_id": null,
+                  "tool_calls": null,
+                  "tool_name": null
+                }
+              ],
+              "model": "fake/model",
+              "model_config": "{\"provider\": \"fake\"}",
+              "output_tokens": 0,
+              "parent_session_id": null,
+              "pricing_version": null,
+              "reasoning_tokens": 0,
+              "source": "telegram",
+              "started_at": "<timestamp>",
+              "system_prompt": "system",
+              "title": null,
+              "tool_call_count": 0,
+              "user_id": "user-telegram"
+            },
+            {
+              "actual_cost_usd": null,
+              "api_call_count": 0,
+              "billing_base_url": null,
+              "billing_mode": null,
+              "billing_provider": null,
+              "cache_read_tokens": 0,
+              "cache_write_tokens": 0,
+              "cost_source": null,
+              "cost_status": null,
+              "end_reason": null,
+              "ended_at": null,
+              "estimated_cost_usd": null,
+              "handoff_error": null,
+              "handoff_platform": null,
+              "handoff_state": null,
+              "id": "cli-session-1",
+              "input_tokens": 0,
+              "last_active": "<timestamp>",
+              "message_count": 1,
+              "messages": [
+                {
+                  "codex_message_items": null,
+                  "codex_reasoning_items": null,
+                  "content": "hello cli",
+                  "finish_reason": null,
+                  "id": 1,
+                  "reasoning": null,
+                  "reasoning_content": null,
+                  "reasoning_details": null,
+                  "role": "user",
+                  "session_id": "cli-session-1",
+                  "timestamp": "<timestamp>",
+                  "token_count": null,
+                  "tool_call_id": null,
+                  "tool_calls": null,
+                  "tool_name": null
+                }
+              ],
+              "model": "fake/model",
+              "model_config": "{\"provider\": \"fake\"}",
+              "output_tokens": 0,
+              "parent_session_id": null,
+              "pricing_version": null,
+              "reasoning_tokens": 0,
+              "source": "cli",
+              "started_at": "<timestamp>",
+              "system_prompt": "system",
+              "title": null,
+              "tool_call_count": 0,
+              "user_id": "user-cli"
+            }
+          ],
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "stats"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Database size:": true,
+            "Total messages: 2": true,
+            "Total sessions: 2": true,
+            "cli: 1 sessions": true,
+            "telegram: 1 sessions": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "export",
+            "-",
+            "--session-id",
+            "cli-session-1"
+          ],
+          "exit_code": 0,
+          "export": {
+            "actual_cost_usd": null,
+            "api_call_count": 0,
+            "billing_base_url": null,
+            "billing_mode": null,
+            "billing_provider": null,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_source": null,
+            "cost_status": null,
+            "end_reason": null,
+            "ended_at": null,
+            "estimated_cost_usd": null,
+            "handoff_error": null,
+            "handoff_platform": null,
+            "handoff_state": null,
+            "id": "cli-session-1",
+            "input_tokens": 0,
+            "message_count": 1,
+            "messages": [
+              {
+                "codex_message_items": null,
+                "codex_reasoning_items": null,
+                "content": "hello cli",
+                "finish_reason": null,
+                "id": 1,
+                "reasoning": null,
+                "reasoning_content": null,
+                "reasoning_details": null,
+                "role": "user",
+                "session_id": "cli-session-1",
+                "timestamp": "<timestamp>",
+                "token_count": null,
+                "tool_call_id": null,
+                "tool_calls": null,
+                "tool_name": null
+              }
+            ],
+            "model": "fake/model",
+            "model_config": "{\"provider\": \"fake\"}",
+            "output_tokens": 0,
+            "parent_session_id": null,
+            "pricing_version": null,
+            "reasoning_tokens": 0,
+            "source": "cli",
+            "started_at": "<timestamp>",
+            "system_prompt": "system",
+            "title": null,
+            "tool_call_count": 0,
+            "user_id": "user-cli"
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "rename",
+            "cli-session-1",
+            "Renamed",
+            "Session"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "Session 'cli-session-1' renamed to: Renamed Session\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "delete",
+            "telegram-session-1",
+            "--yes"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "Deleted session 'telegram-session-1'.\n",
+          "stdout_markers": {}
+        }
+      ],
+      "name": "safe_session_command_execution",
+      "state": {
+        "deleted_session": null,
+        "message_count": 1,
+        "renamed_title": "Renamed Session",
+        "session_count": 1
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/cli-contract-fixture.py"
+  }
+}

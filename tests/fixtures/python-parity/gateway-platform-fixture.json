@@ -1,0 +1,63 @@
+{
+  "cases": [
+    {
+      "name": "builtin_platform_inventory",
+      "parsed_platform": "telegram",
+      "platform_count": 22,
+      "platforms": [
+        "local",
+        "telegram",
+        "discord",
+        "whatsapp",
+        "slack",
+        "signal",
+        "mattermost",
+        "matrix",
+        "homeassistant",
+        "email",
+        "sms",
+        "dingtalk",
+        "api_server",
+        "webhook",
+        "msgraph_webhook",
+        "feishu",
+        "wecom",
+        "wecom_callback",
+        "weixin",
+        "bluebubbles",
+        "qqbot",
+        "yuanbao"
+      ]
+    },
+    {
+      "config": {
+        "enabled": false,
+        "extra": {},
+        "gateway_restart_notification": true,
+        "reply_to_mode": "first"
+      },
+      "home_channel": {
+        "chat_id": "chat-1",
+        "name": "Parity Chat",
+        "platform": "telegram",
+        "thread_id": "topic-1"
+      },
+      "name": "platform_config_defaults",
+      "reset_policy": {
+        "at_hour": 4,
+        "idle_minutes": 1440,
+        "mode": "both",
+        "notify": true,
+        "notify_exclude_platforms": [
+          "api_server",
+          "webhook"
+        ]
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/gateway-platform-fixture.py"
+  }
+}

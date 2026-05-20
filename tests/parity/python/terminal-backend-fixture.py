@@ -1,0 +1,199 @@
+from __future__ import annotations
+
+import os
+
+from parity_common import fixture, isolated_hermes_home, parse_out_arg, write_fixture
+
+
+SCRIPT = "terminal-backend-fixture.py"
+
+
+TERMINAL_ENV_KEYS = [
+    "TERMINAL_ENV",
+    "TERMINAL_CWD",
+    "TERMINAL_DOCKER_MOUNT_CWD_TO_WORKSPACE",
+    "TERMINAL_DOCKER_IMAGE",
+    "TERMINAL_DOCKER_FORWARD_ENV",
+    "TERMINAL_DOCKER_ENV",
+    "TERMINAL_DOCKER_VOLUMES",
+    "TERMINAL_DOCKER_EXTRA_ARGS",
+    "TERMINAL_SSH_HOST",
+    "TERMINAL_SSH_USER",
+    "TERMINAL_SSH_PORT",
+    "TERMINAL_SSH_KEY",
+    "TERMINAL_TIMEOUT",
+    "TERMINAL_CONTAINER_CPU",
+    "TERMINAL_CONTAINER_MEMORY",
+    "TERMINAL_CONTAINER_DISK",
+    "TERMINAL_CONTAINER_PERSISTENT",
+    "TERMINAL_LOCAL_PERSISTENT",
+    "TERMINAL_PERSISTENT_SHELL",
+    "TERMINAL_SSH_PERSISTENT",
+    "TERMINAL_MODAL_MODE",
+]
+
+
+def selected(config):
+    return {
+        "env_type": config.get("env_type"),
+        "cwd": config.get("cwd"),
+        "host_cwd": config.get("host_cwd"),
+        "timeout": config.get("timeout"),
+        "docker_image": config.get("docker_image"),
+        "docker_mount_cwd_to_workspace": config.get("docker_mount_cwd_to_workspace"),
+        "docker_forward_env": config.get("docker_forward_env"),
+        "docker_env": config.get("docker_env"),
+        "docker_volumes": config.get("docker_volumes"),
+        "docker_extra_args": config.get("docker_extra_args"),
+        "ssh_host": config.get("ssh_host"),
+        "ssh_user": config.get("ssh_user"),
+        "ssh_port": config.get("ssh_port"),
+        "ssh_key_present": bool(config.get("ssh_key")),
+        "local_persistent": config.get("local_persistent"),
+        "ssh_persistent": config.get("ssh_persistent"),
+        "modal_mode": config.get("modal_mode"),
+        "container_cpu": config.get("container_cpu"),
+        "container_memory": config.get("container_memory"),
+        "container_disk": config.get("container_disk"),
+        "container_persistent": config.get("container_persistent"),
+    }
+
+
+def with_env(values):
+    for key in TERMINAL_ENV_KEYS:
+        os.environ.pop(key, None)
+    os.environ.update(values)
+    from tools.terminal_tool import _get_env_config
+
+    return selected(_get_env_config())
+
+
+def error_with_env(values):
+    for key in TERMINAL_ENV_KEYS:
+        os.environ.pop(key, None)
+    os.environ.update(values)
+    from tools.terminal_tool import _get_env_config
+
+    try:
+        return {"ok": True, "config": selected(_get_env_config())}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def main() -> int:
+    out = parse_out_arg()
+    with isolated_hermes_home():
+        cases = [
+            {
+                "name": "local_defaults",
+                "config": with_env({}),
+            },
+            {
+                "name": "docker_sandbox_defaults",
+                "config": with_env(
+                    {
+                        "TERMINAL_ENV": "docker",
+                        "TERMINAL_CWD": "/home/user/project",
+                    }
+                ),
+            },
+            {
+                "name": "docker_mount_cwd",
+                "config": with_env(
+                    {
+                        "TERMINAL_ENV": "docker",
+                        "TERMINAL_CWD": "/home/user/project",
+                        "TERMINAL_DOCKER_MOUNT_CWD_TO_WORKSPACE": "true",
+                        "TERMINAL_DOCKER_FORWARD_ENV": '["SSH_AUTH_SOCK"]',
+                        "TERMINAL_DOCKER_ENV": '{"CI": "1"}',
+                        "TERMINAL_DOCKER_VOLUMES": '["/tmp:/output"]',
+                        "TERMINAL_DOCKER_EXTRA_ARGS": '["--network=none"]',
+                    }
+                ),
+            },
+            {
+                "name": "ssh_config",
+                "config": with_env(
+                    {
+                        "TERMINAL_ENV": "ssh",
+                        "TERMINAL_SSH_HOST": "ssh.example.invalid",
+                        "TERMINAL_SSH_USER": "hermes",
+                        "TERMINAL_SSH_PORT": "2222",
+                        "TERMINAL_SSH_KEY": "/tmp/fake-key",
+                        "TERMINAL_TIMEOUT": "45",
+                    }
+                ),
+            },
+            {
+                "name": "modal_config",
+                "config": with_env(
+                    {
+                        "TERMINAL_ENV": "modal",
+                        "TERMINAL_CWD": "/home/user/project",
+                        "TERMINAL_MODAL_MODE": "direct",
+                        "TERMINAL_CONTAINER_CPU": "2.5",
+                        "TERMINAL_CONTAINER_MEMORY": "8192",
+                        "TERMINAL_CONTAINER_DISK": "102400",
+                        "TERMINAL_CONTAINER_PERSISTENT": "false",
+                    }
+                ),
+            },
+            {
+                "name": "daytona_config",
+                "config": with_env(
+                    {
+                        "TERMINAL_ENV": "daytona",
+                        "TERMINAL_CWD": "/home/user/project",
+                    }
+                ),
+            },
+            {
+                "name": "singularity_config",
+                "config": with_env(
+                    {
+                        "TERMINAL_ENV": "singularity",
+                        "TERMINAL_CWD": "/home/user/project",
+                    }
+                ),
+            },
+            {
+                "name": "vercel_sandbox_config",
+                "config": with_env(
+                    {
+                        "TERMINAL_ENV": "vercel_sandbox",
+                        "TERMINAL_CWD": "/home/user/project",
+                    }
+                ),
+            },
+            {
+                "name": "persistent_and_modal_coercion",
+                "config": with_env(
+                    {
+                        "TERMINAL_ENV": "ssh",
+                        "TERMINAL_LOCAL_PERSISTENT": "yes",
+                        "TERMINAL_PERSISTENT_SHELL": "false",
+                        "TERMINAL_SSH_PERSISTENT": "true",
+                        "TERMINAL_MODAL_MODE": "invalid-mode",
+                    }
+                ),
+            },
+            {
+                "name": "invalid_timeout_error",
+                "result": error_with_env({"TERMINAL_TIMEOUT": "5m"}),
+            },
+            {
+                "name": "invalid_docker_env_json_error",
+                "result": error_with_env({"TERMINAL_DOCKER_ENV": "{bad"}),
+            },
+            {
+                "name": "invalid_container_cpu_error",
+                "result": error_with_env({"TERMINAL_CONTAINER_CPU": "large"}),
+            },
+        ]
+
+    write_fixture(out, fixture(SCRIPT, cases))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

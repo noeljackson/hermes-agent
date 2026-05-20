@@ -1,0 +1,1511 @@
+{
+  "cases": [
+    {
+      "imported_module_count": 30,
+      "name": "builtin_registry",
+      "tool_count": 64,
+      "tools": [
+        {
+          "is_async": false,
+          "name": "browser_back",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [],
+            "required": []
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "browser_cdp",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "frame_id",
+              "method",
+              "params",
+              "target_id",
+              "timeout"
+            ],
+            "required": [
+              "method"
+            ]
+          },
+          "toolset": "browser-cdp"
+        },
+        {
+          "is_async": false,
+          "name": "browser_click",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "ref"
+            ],
+            "required": [
+              "ref"
+            ]
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "browser_console",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "clear",
+              "expression"
+            ],
+            "required": []
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "browser_dialog",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "action",
+              "dialog_id",
+              "prompt_text"
+            ],
+            "required": [
+              "action"
+            ]
+          },
+          "toolset": "browser-cdp"
+        },
+        {
+          "is_async": false,
+          "name": "browser_get_images",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [],
+            "required": []
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "browser_navigate",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "url"
+            ],
+            "required": [
+              "url"
+            ]
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "browser_press",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "key"
+            ],
+            "required": [
+              "key"
+            ]
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "browser_scroll",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "direction"
+            ],
+            "required": [
+              "direction"
+            ]
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "browser_snapshot",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "full"
+            ],
+            "required": []
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "browser_type",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "ref",
+              "text"
+            ],
+            "required": [
+              "ref",
+              "text"
+            ]
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "browser_vision",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "annotate",
+              "question"
+            ],
+            "required": [
+              "question"
+            ]
+          },
+          "toolset": "browser"
+        },
+        {
+          "is_async": false,
+          "name": "clarify",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "choices",
+              "question"
+            ],
+            "required": [
+              "question"
+            ]
+          },
+          "toolset": "clarify"
+        },
+        {
+          "is_async": false,
+          "name": "computer_use",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "action",
+              "amount",
+              "app",
+              "button",
+              "capture_after",
+              "coordinate",
+              "direction",
+              "element",
+              "from_coordinate",
+              "from_element",
+              "keys",
+              "mode",
+              "modifiers",
+              "raise_window",
+              "seconds",
+              "text",
+              "to_coordinate",
+              "to_element",
+              "value"
+            ],
+            "required": [
+              "action"
+            ]
+          },
+          "toolset": "computer_use"
+        },
+        {
+          "is_async": false,
+          "name": "cronjob",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "action",
+              "context_from",
+              "deliver",
+              "enabled_toolsets",
+              "job_id",
+              "model",
+              "name",
+              "no_agent",
+              "profile",
+              "prompt",
+              "repeat",
+              "schedule",
+              "script",
+              "skills",
+              "workdir"
+            ],
+            "required": [
+              "action"
+            ]
+          },
+          "toolset": "cronjob"
+        },
+        {
+          "is_async": false,
+          "name": "delegate_task",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "acp_args",
+              "acp_command",
+              "context",
+              "goal",
+              "role",
+              "tasks",
+              "toolsets"
+            ],
+            "required": []
+          },
+          "toolset": "delegation"
+        },
+        {
+          "is_async": false,
+          "name": "discord",
+          "requires_env": [
+            "DISCORD_BOT_TOKEN"
+          ],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "action",
+              "after",
+              "auto_archive_duration",
+              "before",
+              "channel_id",
+              "guild_id",
+              "limit",
+              "message_id",
+              "name",
+              "query",
+              "role_id",
+              "user_id"
+            ],
+            "required": [
+              "action"
+            ]
+          },
+          "toolset": "discord"
+        },
+        {
+          "is_async": false,
+          "name": "discord_admin",
+          "requires_env": [
+            "DISCORD_BOT_TOKEN"
+          ],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "action",
+              "after",
+              "auto_archive_duration",
+              "before",
+              "channel_id",
+              "guild_id",
+              "limit",
+              "message_id",
+              "name",
+              "query",
+              "role_id",
+              "user_id"
+            ],
+            "required": [
+              "action"
+            ]
+          },
+          "toolset": "discord_admin"
+        },
+        {
+          "is_async": false,
+          "name": "execute_code",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "code"
+            ],
+            "required": [
+              "code"
+            ]
+          },
+          "toolset": "code_execution"
+        },
+        {
+          "is_async": false,
+          "name": "feishu_doc_read",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "doc_token"
+            ],
+            "required": [
+              "doc_token"
+            ]
+          },
+          "toolset": "feishu_doc"
+        },
+        {
+          "is_async": false,
+          "name": "feishu_drive_add_comment",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "content",
+              "file_token",
+              "file_type"
+            ],
+            "required": [
+              "file_token",
+              "content"
+            ]
+          },
+          "toolset": "feishu_drive"
+        },
+        {
+          "is_async": false,
+          "name": "feishu_drive_list_comment_replies",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "comment_id",
+              "file_token",
+              "file_type",
+              "page_size",
+              "page_token"
+            ],
+            "required": [
+              "file_token",
+              "comment_id"
+            ]
+          },
+          "toolset": "feishu_drive"
+        },
+        {
+          "is_async": false,
+          "name": "feishu_drive_list_comments",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "file_token",
+              "file_type",
+              "is_whole",
+              "page_size",
+              "page_token"
+            ],
+            "required": [
+              "file_token"
+            ]
+          },
+          "toolset": "feishu_drive"
+        },
+        {
+          "is_async": false,
+          "name": "feishu_drive_reply_comment",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "comment_id",
+              "content",
+              "file_token",
+              "file_type"
+            ],
+            "required": [
+              "file_token",
+              "comment_id",
+              "content"
+            ]
+          },
+          "toolset": "feishu_drive"
+        },
+        {
+          "is_async": false,
+          "name": "ha_call_service",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "data",
+              "domain",
+              "entity_id",
+              "service"
+            ],
+            "required": [
+              "domain",
+              "service"
+            ]
+          },
+          "toolset": "homeassistant"
+        },
+        {
+          "is_async": false,
+          "name": "ha_get_state",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "entity_id"
+            ],
+            "required": [
+              "entity_id"
+            ]
+          },
+          "toolset": "homeassistant"
+        },
+        {
+          "is_async": false,
+          "name": "ha_list_entities",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "area",
+              "domain"
+            ],
+            "required": []
+          },
+          "toolset": "homeassistant"
+        },
+        {
+          "is_async": false,
+          "name": "ha_list_services",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "domain"
+            ],
+            "required": []
+          },
+          "toolset": "homeassistant"
+        },
+        {
+          "is_async": false,
+          "name": "image_generate",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "aspect_ratio",
+              "prompt"
+            ],
+            "required": [
+              "prompt"
+            ]
+          },
+          "toolset": "image_gen"
+        },
+        {
+          "is_async": false,
+          "name": "kanban_block",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "board",
+              "reason",
+              "task_id"
+            ],
+            "required": [
+              "reason"
+            ]
+          },
+          "toolset": "kanban"
+        },
+        {
+          "is_async": false,
+          "name": "kanban_comment",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "board",
+              "body",
+              "task_id"
+            ],
+            "required": [
+              "task_id",
+              "body"
+            ]
+          },
+          "toolset": "kanban"
+        },
+        {
+          "is_async": false,
+          "name": "kanban_complete",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "artifacts",
+              "board",
+              "created_cards",
+              "metadata",
+              "result",
+              "summary",
+              "task_id"
+            ],
+            "required": []
+          },
+          "toolset": "kanban"
+        },
+        {
+          "is_async": false,
+          "name": "kanban_create",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "assignee",
+              "board",
+              "body",
+              "idempotency_key",
+              "initial_status",
+              "max_runtime_seconds",
+              "parents",
+              "priority",
+              "skills",
+              "tenant",
+              "title",
+              "triage",
+              "workspace_kind",
+              "workspace_path"
+            ],
+            "required": [
+              "title",
+              "assignee"
+            ]
+          },
+          "toolset": "kanban"
+        },
+        {
+          "is_async": false,
+          "name": "kanban_heartbeat",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "board",
+              "note",
+              "task_id"
+            ],
+            "required": []
+          },
+          "toolset": "kanban"
+        },
+        {
+          "is_async": false,
+          "name": "kanban_link",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "board",
+              "child_id",
+              "parent_id"
+            ],
+            "required": [
+              "parent_id",
+              "child_id"
+            ]
+          },
+          "toolset": "kanban"
+        },
+        {
+          "is_async": false,
+          "name": "kanban_list",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "assignee",
+              "board",
+              "include_archived",
+              "limit",
+              "status",
+              "tenant"
+            ],
+            "required": []
+          },
+          "toolset": "kanban"
+        },
+        {
+          "is_async": false,
+          "name": "kanban_show",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "board",
+              "task_id"
+            ],
+            "required": []
+          },
+          "toolset": "kanban"
+        },
+        {
+          "is_async": false,
+          "name": "kanban_unblock",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "board",
+              "task_id"
+            ],
+            "required": [
+              "task_id"
+            ]
+          },
+          "toolset": "kanban"
+        },
+        {
+          "is_async": false,
+          "name": "memory",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "action",
+              "content",
+              "old_text",
+              "target"
+            ],
+            "required": [
+              "action",
+              "target"
+            ]
+          },
+          "toolset": "memory"
+        },
+        {
+          "is_async": true,
+          "name": "mixture_of_agents",
+          "requires_env": [
+            "OPENROUTER_API_KEY"
+          ],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "user_prompt"
+            ],
+            "required": [
+              "user_prompt"
+            ]
+          },
+          "toolset": "moa"
+        },
+        {
+          "is_async": false,
+          "name": "patch",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "mode",
+              "new_string",
+              "old_string",
+              "patch",
+              "path",
+              "replace_all"
+            ],
+            "required": [
+              "mode"
+            ]
+          },
+          "toolset": "file"
+        },
+        {
+          "is_async": false,
+          "name": "process",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "action",
+              "data",
+              "limit",
+              "offset",
+              "session_id",
+              "timeout"
+            ],
+            "required": [
+              "action"
+            ]
+          },
+          "toolset": "terminal"
+        },
+        {
+          "is_async": false,
+          "name": "read_file",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "limit",
+              "offset",
+              "path"
+            ],
+            "required": [
+              "path"
+            ]
+          },
+          "toolset": "file"
+        },
+        {
+          "is_async": false,
+          "name": "search_files",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "context",
+              "file_glob",
+              "limit",
+              "offset",
+              "output_mode",
+              "path",
+              "pattern",
+              "target"
+            ],
+            "required": [
+              "pattern"
+            ]
+          },
+          "toolset": "file"
+        },
+        {
+          "is_async": false,
+          "name": "send_message",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "action",
+              "message",
+              "target"
+            ],
+            "required": []
+          },
+          "toolset": "messaging"
+        },
+        {
+          "is_async": false,
+          "name": "session_search",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "around_message_id",
+              "limit",
+              "query",
+              "role_filter",
+              "session_id",
+              "sort",
+              "window"
+            ],
+            "required": []
+          },
+          "toolset": "session_search"
+        },
+        {
+          "is_async": false,
+          "name": "skill_manage",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "absorbed_into",
+              "action",
+              "category",
+              "content",
+              "file_content",
+              "file_path",
+              "name",
+              "new_string",
+              "old_string",
+              "replace_all"
+            ],
+            "required": [
+              "action",
+              "name"
+            ]
+          },
+          "toolset": "skills"
+        },
+        {
+          "is_async": false,
+          "name": "skill_view",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "file_path",
+              "name"
+            ],
+            "required": [
+              "name"
+            ]
+          },
+          "toolset": "skills"
+        },
+        {
+          "is_async": false,
+          "name": "skills_list",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "category"
+            ],
+            "required": []
+          },
+          "toolset": "skills"
+        },
+        {
+          "is_async": false,
+          "name": "terminal",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "background",
+              "command",
+              "notify_on_complete",
+              "pty",
+              "timeout",
+              "watch_patterns",
+              "workdir"
+            ],
+            "required": [
+              "command"
+            ]
+          },
+          "toolset": "terminal"
+        },
+        {
+          "is_async": false,
+          "name": "text_to_speech",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "output_path",
+              "text"
+            ],
+            "required": [
+              "text"
+            ]
+          },
+          "toolset": "tts"
+        },
+        {
+          "is_async": false,
+          "name": "todo",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "merge",
+              "todos"
+            ],
+            "required": []
+          },
+          "toolset": "todo"
+        },
+        {
+          "is_async": true,
+          "name": "video_analyze",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "question",
+              "video_url"
+            ],
+            "required": [
+              "video_url",
+              "question"
+            ]
+          },
+          "toolset": "video"
+        },
+        {
+          "is_async": false,
+          "name": "video_generate",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "aspect_ratio",
+              "audio",
+              "duration",
+              "image_url",
+              "model",
+              "negative_prompt",
+              "prompt",
+              "reference_image_urls",
+              "resolution",
+              "seed"
+            ],
+            "required": [
+              "prompt"
+            ]
+          },
+          "toolset": "video_gen"
+        },
+        {
+          "is_async": true,
+          "name": "vision_analyze",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "image_url",
+              "question"
+            ],
+            "required": [
+              "image_url",
+              "question"
+            ]
+          },
+          "toolset": "vision"
+        },
+        {
+          "is_async": true,
+          "name": "web_extract",
+          "requires_env": [
+            "EXA_API_KEY",
+            "PARALLEL_API_KEY",
+            "TAVILY_API_KEY",
+            "FIRECRAWL_API_KEY",
+            "FIRECRAWL_API_URL",
+            "FIRECRAWL_GATEWAY_URL",
+            "TOOL_GATEWAY_DOMAIN",
+            "TOOL_GATEWAY_SCHEME",
+            "TOOL_GATEWAY_USER_TOKEN"
+          ],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "urls"
+            ],
+            "required": [
+              "urls"
+            ]
+          },
+          "toolset": "web"
+        },
+        {
+          "is_async": false,
+          "name": "web_search",
+          "requires_env": [
+            "EXA_API_KEY",
+            "PARALLEL_API_KEY",
+            "TAVILY_API_KEY",
+            "FIRECRAWL_API_KEY",
+            "FIRECRAWL_API_URL",
+            "FIRECRAWL_GATEWAY_URL",
+            "TOOL_GATEWAY_DOMAIN",
+            "TOOL_GATEWAY_SCHEME",
+            "TOOL_GATEWAY_USER_TOKEN"
+          ],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "limit",
+              "query"
+            ],
+            "required": [
+              "query"
+            ]
+          },
+          "toolset": "web"
+        },
+        {
+          "is_async": false,
+          "name": "write_file",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "content",
+              "path"
+            ],
+            "required": [
+              "path",
+              "content"
+            ]
+          },
+          "toolset": "file"
+        },
+        {
+          "is_async": false,
+          "name": "x_search",
+          "requires_env": [
+            "XAI_API_KEY"
+          ],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "allowed_x_handles",
+              "enable_image_understanding",
+              "enable_video_understanding",
+              "excluded_x_handles",
+              "from_date",
+              "query",
+              "to_date"
+            ],
+            "required": [
+              "query"
+            ]
+          },
+          "toolset": "x_search"
+        },
+        {
+          "is_async": true,
+          "name": "yb_query_group_info",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "group_code"
+            ],
+            "required": [
+              "group_code"
+            ]
+          },
+          "toolset": "hermes-yuanbao"
+        },
+        {
+          "is_async": true,
+          "name": "yb_query_group_members",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "action",
+              "group_code",
+              "mention",
+              "name"
+            ],
+            "required": [
+              "group_code",
+              "action"
+            ]
+          },
+          "toolset": "hermes-yuanbao"
+        },
+        {
+          "is_async": true,
+          "name": "yb_search_sticker",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "limit",
+              "query"
+            ],
+            "required": []
+          },
+          "toolset": "hermes-yuanbao"
+        },
+        {
+          "is_async": true,
+          "name": "yb_send_dm",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "group_code",
+              "media_files",
+              "message",
+              "name",
+              "user_id"
+            ],
+            "required": []
+          },
+          "toolset": "hermes-yuanbao"
+        },
+        {
+          "is_async": true,
+          "name": "yb_send_sticker",
+          "requires_env": [],
+          "schema": {
+            "description_present": true,
+            "parameter_names": [
+              "chat_id",
+              "reply_to",
+              "sticker"
+            ],
+            "required": []
+          },
+          "toolset": "hermes-yuanbao"
+        }
+      ],
+      "toolsets": [
+        "browser",
+        "browser-cdp",
+        "clarify",
+        "code_execution",
+        "computer_use",
+        "cronjob",
+        "delegation",
+        "discord",
+        "discord_admin",
+        "feishu_doc",
+        "feishu_drive",
+        "file",
+        "hermes-yuanbao",
+        "homeassistant",
+        "image_gen",
+        "kanban",
+        "memory",
+        "messaging",
+        "moa",
+        "session_search",
+        "skills",
+        "terminal",
+        "todo",
+        "tts",
+        "video",
+        "video_gen",
+        "vision",
+        "web",
+        "x_search"
+      ]
+    },
+    {
+      "name": "selected_core_schemas",
+      "schemas": {
+        "memory": {
+          "name": "memory",
+          "parameters": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "add",
+                  "replace",
+                  "remove"
+                ],
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "old_text": {
+                "type": "string"
+              },
+              "target": {
+                "enum": [
+                  "memory",
+                  "user"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "action",
+              "target"
+            ],
+            "type": "object"
+          }
+        },
+        "patch": {
+          "name": "patch",
+          "parameters": {
+            "properties": {
+              "mode": {
+                "default": "replace",
+                "enum": [
+                  "replace",
+                  "patch"
+                ],
+                "type": "string"
+              },
+              "new_string": {
+                "type": "string"
+              },
+              "old_string": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "replace_all": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "type": "object"
+          }
+        },
+        "read_file": {
+          "name": "read_file",
+          "parameters": {
+            "properties": {
+              "limit": {
+                "default": 500,
+                "maximum": 2000,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 1,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          }
+        },
+        "search_files": {
+          "name": "search_files",
+          "parameters": {
+            "properties": {
+              "context": {
+                "default": 0,
+                "type": "integer"
+              },
+              "file_glob": {
+                "type": "string"
+              },
+              "limit": {
+                "default": 50,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "type": "integer"
+              },
+              "output_mode": {
+                "default": "content",
+                "enum": [
+                  "content",
+                  "files_only",
+                  "count"
+                ],
+                "type": "string"
+              },
+              "path": {
+                "default": ".",
+                "type": "string"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "target": {
+                "default": "content",
+                "enum": [
+                  "content",
+                  "files"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "type": "object"
+          }
+        },
+        "session_search": {
+          "name": "session_search",
+          "parameters": {
+            "properties": {
+              "around_message_id": {
+                "type": "integer"
+              },
+              "limit": {
+                "default": 3,
+                "type": "integer"
+              },
+              "query": {
+                "type": "string"
+              },
+              "role_filter": {
+                "type": "string"
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "sort": {
+                "enum": [
+                  "newest",
+                  "oldest"
+                ],
+                "type": "string"
+              },
+              "window": {
+                "default": 5,
+                "type": "integer"
+              }
+            },
+            "required": [],
+            "type": "object"
+          }
+        },
+        "skill_manage": {
+          "name": "skill_manage",
+          "parameters": {
+            "properties": {
+              "absorbed_into": {
+                "type": "string"
+              },
+              "action": {
+                "enum": [
+                  "create",
+                  "patch",
+                  "edit",
+                  "delete",
+                  "write_file",
+                  "remove_file"
+                ],
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "file_content": {
+                "type": "string"
+              },
+              "file_path": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "new_string": {
+                "type": "string"
+              },
+              "old_string": {
+                "type": "string"
+              },
+              "replace_all": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "action",
+              "name"
+            ],
+            "type": "object"
+          }
+        },
+        "skills_list": {
+          "name": "skills_list",
+          "parameters": {
+            "properties": {
+              "category": {
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
+          }
+        },
+        "terminal": {
+          "name": "terminal",
+          "parameters": {
+            "properties": {
+              "background": {
+                "default": false,
+                "type": "boolean"
+              },
+              "command": {
+                "type": "string"
+              },
+              "notify_on_complete": {
+                "default": false,
+                "type": "boolean"
+              },
+              "pty": {
+                "default": false,
+                "type": "boolean"
+              },
+              "timeout": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "watch_patterns": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "workdir": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          }
+        },
+        "write_file": {
+          "name": "write_file",
+          "parameters": {
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "content"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/tool-registry-fixture.py"
+  }
+}

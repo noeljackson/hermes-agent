@@ -1,0 +1,171 @@
+{
+  "cases": [
+    {
+      "name": "sanitize_fts5_query",
+      "queries": {
+        "\"docker networking\"": "\"docker networking\"",
+        "\"unterminated": "unterminated",
+        "(problem": "problem",
+        "***": "",
+        "C++": "C",
+        "OR world": "world",
+        "chat-send": "\"chat-send\"",
+        "deploy*": "deploy*",
+        "hello AND": "hello",
+        "hello world": "hello world",
+        "simulate.p2.test.ts": "\"simulate.p2.test.ts\""
+      }
+    },
+    {
+      "name": "message_search",
+      "searches": {
+        "assistant_fastapi": [
+          {
+            "context": [
+              {
+                "content": "What is FastAPI?",
+                "role": "user"
+              },
+              {
+                "content": "FastAPI is a web framework.",
+                "role": "assistant"
+              }
+            ],
+            "role": "assistant",
+            "session_id": "s-api",
+            "snippet": ">>>FastAPI<<< is a web framework.  ",
+            "source": "cli"
+          }
+        ],
+        "docker": [
+          {
+            "context": [
+              {
+                "content": "How do I deploy with Docker?",
+                "role": "user"
+              },
+              {
+                "content": "Use docker compose up.",
+                "role": "assistant"
+              },
+              {
+                "content": "Run the chat-send command",
+                "role": "user"
+              }
+            ],
+            "role": "assistant",
+            "session_id": "s-cli",
+            "snippet": "Use >>>docker<<< compose up.  ",
+            "source": "cli"
+          },
+          {
+            "context": [
+              {
+                "content": "How do I deploy with Docker?",
+                "role": "user"
+              },
+              {
+                "content": "Use docker compose up.",
+                "role": "assistant"
+              }
+            ],
+            "role": "user",
+            "session_id": "s-cli",
+            "snippet": "How do I deploy with >>>Docker<<<?  ",
+            "source": "cli"
+          }
+        ],
+        "empty": [],
+        "hyphenated": [
+          {
+            "context": [
+              {
+                "content": "Use docker compose up.",
+                "role": "assistant"
+              },
+              {
+                "content": "Run the chat-send command",
+                "role": "user"
+              }
+            ],
+            "role": "user",
+            "session_id": "s-cli",
+            "snippet": "Run the >>>chat-send<<< command  ",
+            "source": "cli"
+          }
+        ],
+        "telegram_python": [
+          {
+            "context": [
+              {
+                "content": "Telegram question about Python",
+                "role": "user"
+              }
+            ],
+            "role": "user",
+            "session_id": "s-telegram",
+            "snippet": "Telegram question about >>>Python<<<  ",
+            "source": "telegram"
+          }
+        ],
+        "tool_call_arguments": [
+          {
+            "context": [
+              {
+                "content": "",
+                "role": "assistant"
+              },
+              {
+                "content": "{}",
+                "role": "tool"
+              }
+            ],
+            "role": "assistant",
+            "session_id": "s-tool",
+            "snippet": "  [{\"id\": \"call-tool\", \"type\": \"function\", \"function\": {\"name\": \"terminal\", \"arguments\": \"{\\\"cmd\\\":\\\"echo >>>unique_tool_token<<<\\\"}\"}}]",
+            "source": "cli"
+          }
+        ],
+        "tool_name": [
+          {
+            "context": [
+              {
+                "content": "",
+                "role": "assistant"
+              },
+              {
+                "content": "{}",
+                "role": "tool"
+              }
+            ],
+            "role": "tool",
+            "session_id": "s-tool",
+            "snippet": "{} >>>terminal<<< ",
+            "source": "cli"
+          },
+          {
+            "context": [
+              {
+                "content": "",
+                "role": "assistant"
+              },
+              {
+                "content": "{}",
+                "role": "tool"
+              }
+            ],
+            "role": "assistant",
+            "session_id": "s-tool",
+            "snippet": "  [{\"id\": \"call-tool\", \"type\": \"function\", \"function\": {\"name\": \">>>terminal<<<\", \"arguments\": \"{\\\"cmd\\\":\\\"echo unique_tool_token\\\"}\"}}]",
+            "source": "cli"
+          }
+        ]
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/session-search-fixture.py"
+  }
+}
