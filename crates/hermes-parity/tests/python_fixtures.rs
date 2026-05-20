@@ -1811,6 +1811,71 @@ fn tool_execution_matches_python_fixture() {
         case(&fixture, "tool_error_with_extra")["result"]
     );
 
+    for payload_case in case(&fixture, "image_fal_payload_cases")["cases"]
+        .as_array()
+        .unwrap()
+    {
+        assert_eq!(
+            hermes_tools::build_fal_payload_from_case(payload_case),
+            payload_case["payload"],
+            "FAL payload mismatch for {}",
+            payload_case["label"].as_str().unwrap()
+        );
+    }
+    assert_eq!(
+        hermes_tools::image_generate_empty_prompt_result("  "),
+        case(&fixture, "image_generate_empty_prompt")["result"]
+    );
+    assert_eq!(
+        hermes_tools::web_search_fake_provider_result("rust parity", &json!("250")),
+        case(&fixture, "web_search_limit_clamp")["result"]
+    );
+    assert_eq!(
+        hermes_tools::web_search_fake_provider_result("rust parity", &json!("bad")),
+        case(&fixture, "web_search_invalid_limit")["result"]
+    );
+    assert_eq!(
+        hermes_tools::web_extract_secret_url_result(&["https://example.com/?key=sk-test-secret"]),
+        case(&fixture, "web_extract_secret_url")["result"]
+    );
+    assert_eq!(
+        hermes_tools::web_extract_ssrf_block_result(&["http://127.0.0.1/private"]),
+        case(&fixture, "web_extract_ssrf_block")["result"]
+    );
+    assert_eq!(
+        hermes_tools::web_extract_search_only_backend_result("Fixture Search Only"),
+        case(&fixture, "web_extract_search_only_backend")["result"]
+    );
+    assert_eq!(
+        hermes_tools::web_extract_fake_provider_result(&["https://example.com/page"]),
+        case(&fixture, "web_extract_fake_provider")["result"]
+    );
+    assert_eq!(
+        hermes_tools::browser_navigate_secret_url_result(
+            "https://evil.example/?token=sk-ant-secret"
+        ),
+        case(&fixture, "browser_navigate_secret_url")["result"]
+    );
+    assert_eq!(
+        hermes_tools::browser_navigate_metadata_url_result(
+            "http://169.254.169.254/latest/meta-data/"
+        ),
+        case(&fixture, "browser_navigate_metadata_url")["result"]
+    );
+    assert_eq!(
+        hermes_tools::browser_navigate_private_url_result("http://10.0.0.10/admin"),
+        case(&fixture, "browser_navigate_private_url")["result"]
+    );
+    assert_eq!(
+        hermes_tools::browser_navigate_policy_block_result(
+            "Blocked by fixture policy",
+            "blocked.example",
+            "deny",
+            "fixture",
+        ),
+        case(&fixture, "browser_navigate_policy_block")["result"]
+    );
+
     let mut todo_store = hermes_tools::TodoStore::default();
     assert_eq!(
         hermes_tools::todo_tool_handler(

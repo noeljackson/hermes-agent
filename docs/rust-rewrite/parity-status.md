@@ -221,7 +221,11 @@ against those fixtures in `crates/hermes-parity`:
   local memory files. The `skills_list` handler is fixture-backed for all-skills
   and category-filtered listings from a controlled local skills root. The
   `skill_view` handler is fixture-backed for main `SKILL.md` loading, linked
-  reference/script discovery, and linked reference-file reads.
+  reference/script discovery, and linked reference-file reads. Deterministic
+  browser/web/image wrapper behavior is fixture-backed for FAL payload
+  translation, empty image prompt errors, web search limit coercion, web extract
+  secret/SSRF/search-only/fake-provider envelopes, browser navigation
+  secret/metadata/private URL blocks, and website-policy block shape.
   Deterministic local file-tool handlers are also fixture-backed for `read_file`,
   `write_file` validation, `write_file`, replace-mode `patch`, and
   `search_files` with `target=files`.

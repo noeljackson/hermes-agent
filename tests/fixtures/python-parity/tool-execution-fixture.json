@@ -33,6 +33,202 @@
       }
     },
     {
+      "cases": [
+        {
+          "aspect_ratio": "LANDSCAPE",
+          "label": "flux_defaults_seed_and_supported_overrides",
+          "model": "fal-ai/flux-2/klein/9b",
+          "overrides": {
+            "guidance_scale": 9.9,
+            "output_format": "jpeg",
+            "unknown": "drop"
+          },
+          "payload": {
+            "enable_safety_checker": false,
+            "image_size": "landscape_16_9",
+            "num_inference_steps": 4,
+            "output_format": "jpeg",
+            "prompt": "Painted skyline",
+            "seed": 123
+          },
+          "prompt": "  Painted skyline  ",
+          "seed": 123
+        },
+        {
+          "aspect_ratio": "portrait",
+          "label": "nano_banana_aspect_ratio_and_web_search_override",
+          "model": "fal-ai/nano-banana-pro",
+          "overrides": {
+            "enable_web_search": true,
+            "limit_generations": false
+          },
+          "payload": {
+            "aspect_ratio": "9:16",
+            "enable_web_search": true,
+            "limit_generations": false,
+            "num_images": 1,
+            "output_format": "png",
+            "prompt": "portrait subject",
+            "resolution": "1K",
+            "safety_tolerance": "5"
+          },
+          "prompt": "portrait subject",
+          "seed": null
+        },
+        {
+          "aspect_ratio": "square",
+          "label": "gpt_literal_square_and_unsupported_drop",
+          "model": "fal-ai/gpt-image-1.5",
+          "overrides": {
+            "background": "transparent",
+            "enable_web_search": true
+          },
+          "payload": {
+            "background": "transparent",
+            "image_size": "1024x1024",
+            "num_images": 1,
+            "output_format": "png",
+            "prompt": "logo",
+            "quality": "medium"
+          },
+          "prompt": "logo",
+          "seed": 42
+        },
+        {
+          "aspect_ratio": "panorama",
+          "label": "invalid_aspect_defaults_to_landscape",
+          "model": "fal-ai/gpt-image-2",
+          "overrides": {},
+          "payload": {
+            "image_size": "landscape_4_3",
+            "num_images": 1,
+            "output_format": "png",
+            "prompt": "wide scene",
+            "quality": "medium"
+          },
+          "prompt": "wide scene",
+          "seed": null
+        }
+      ],
+      "name": "image_fal_payload_cases"
+    },
+    {
+      "name": "image_generate_empty_prompt",
+      "result": {
+        "error": "Prompt is required and must be a non-empty string",
+        "error_type": "ValueError",
+        "image": null,
+        "success": false
+      }
+    },
+    {
+      "name": "web_search_limit_clamp",
+      "result": {
+        "data": {
+          "web": [
+            {
+              "description": "rust parity",
+              "position": 1,
+              "title": "Result 100",
+              "url": "https://example.com/result"
+            }
+          ]
+        },
+        "provider": "fixture-search",
+        "success": true
+      }
+    },
+    {
+      "name": "web_search_invalid_limit",
+      "result": {
+        "data": {
+          "web": [
+            {
+              "description": "rust parity",
+              "position": 1,
+              "title": "Result 5",
+              "url": "https://example.com/result"
+            }
+          ]
+        },
+        "provider": "fixture-search",
+        "success": true
+      }
+    },
+    {
+      "name": "web_extract_secret_url",
+      "result": {
+        "error": "Blocked: URL contains what appears to be an API key or token. Secrets must not be sent in URLs.",
+        "success": false
+      }
+    },
+    {
+      "name": "web_extract_ssrf_block",
+      "result": {
+        "results": [
+          {
+            "content": "",
+            "error": "Blocked: URL targets a private or internal network address",
+            "title": "",
+            "url": "http://127.0.0.1/private"
+          }
+        ]
+      }
+    },
+    {
+      "name": "web_extract_search_only_backend",
+      "result": {
+        "error": "Fixture Search Only is a search-only backend and cannot extract URL content. Set web.extract_backend to firecrawl, tavily, exa, or parallel.",
+        "success": false
+      }
+    },
+    {
+      "name": "web_extract_fake_provider",
+      "result": {
+        "results": [
+          {
+            "content": "Text before ![inline][BASE64_IMAGE_REMOVED] text after.",
+            "error": null,
+            "title": "Fixture Page",
+            "url": "https://example.com/page"
+          }
+        ]
+      }
+    },
+    {
+      "name": "browser_navigate_secret_url",
+      "result": {
+        "error": "Blocked: URL contains what appears to be an API key or token. Secrets must not be sent in URLs.",
+        "success": false
+      }
+    },
+    {
+      "name": "browser_navigate_metadata_url",
+      "result": {
+        "error": "Blocked: URL targets a cloud metadata endpoint",
+        "success": false
+      }
+    },
+    {
+      "name": "browser_navigate_private_url",
+      "result": {
+        "error": "Blocked: URL targets a private or internal address",
+        "success": false
+      }
+    },
+    {
+      "name": "browser_navigate_policy_block",
+      "result": {
+        "blocked_by_policy": {
+          "host": "blocked.example",
+          "rule": "deny",
+          "source": "fixture"
+        },
+        "error": "Blocked by fixture policy",
+        "success": false
+      }
+    },
+    {
       "name": "todo_handler_replace",
       "result": {
         "summary": {
