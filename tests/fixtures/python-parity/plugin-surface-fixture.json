@@ -1,0 +1,136 @@
+{
+  "cases": [
+    {
+      "entry_points_group": "hermes_agent.plugins",
+      "name": "plugin_boundary_constants",
+      "valid_hooks": [
+        "on_session_end",
+        "on_session_finalize",
+        "on_session_reset",
+        "on_session_start",
+        "post_api_request",
+        "post_approval_response",
+        "post_llm_call",
+        "post_tool_call",
+        "pre_api_request",
+        "pre_approval_request",
+        "pre_gateway_dispatch",
+        "pre_llm_call",
+        "pre_tool_call",
+        "subagent_stop",
+        "transform_llm_output",
+        "transform_terminal_output",
+        "transform_tool_result"
+      ],
+      "valid_kinds": [
+        "backend",
+        "exclusive",
+        "model-provider",
+        "platform",
+        "standalone"
+      ]
+    },
+    {
+      "files": {
+        "bad-kind/__init__.py": "def register(ctx): pass\n",
+        "bad-kind/plugin.yaml": "name: bad-kind\nkind: surprising\ndescription: Invalid kind falls back.\n",
+        "flat-demo/__init__.py": "def register(ctx): pass\n",
+        "flat-demo/plugin.yaml": "name: flat-demo\nversion: 1.2.3\ndescription: Flat demo plugin.\nauthor: Parity\nrequires_env:\n  - FLAT_TOKEN\n  - name: FLAT_OPTIONAL\n    optional: true\nprovides_tools:\n  - flat_tool\nprovides_hooks:\n  - pre_tool_call\n",
+        "image_gen/openai/__init__.py": "def register(ctx): pass\n",
+        "image_gen/openai/plugin.yaml": "name: openai\nkind: backend\nversion: 0.1.0\ndescription: Image backend.\n",
+        "memory-auto/__init__.py": "from agent.memory_provider import MemoryProvider\n",
+        "memory-auto/plugin.yaml": "name: memory-auto\ndescription: Auto-detected memory provider.\n",
+        "provider-auto/__init__.py": "from providers import register_provider, ProviderProfile\n",
+        "provider-auto/plugin.yaml": "name: provider-auto\ndescription: Auto-detected model provider.\n",
+        "skip-me/plugin.yaml": "name: skip-me\n",
+        "too/deep/plugin/plugin.yaml": "name: too-deep\n"
+      },
+      "manifests": [
+        {
+          "author": "",
+          "description": "Invalid kind falls back.",
+          "key": "bad-kind",
+          "kind": "standalone",
+          "name": "bad-kind",
+          "path": "bad-kind",
+          "provides_hooks": [],
+          "provides_tools": [],
+          "requires_env": [],
+          "source": "user",
+          "version": ""
+        },
+        {
+          "author": "Parity",
+          "description": "Flat demo plugin.",
+          "key": "flat-demo",
+          "kind": "standalone",
+          "name": "flat-demo",
+          "path": "flat-demo",
+          "provides_hooks": [
+            "pre_tool_call"
+          ],
+          "provides_tools": [
+            "flat_tool"
+          ],
+          "requires_env": [
+            "FLAT_TOKEN",
+            {
+              "name": "FLAT_OPTIONAL",
+              "optional": true
+            }
+          ],
+          "source": "user",
+          "version": "1.2.3"
+        },
+        {
+          "author": "",
+          "description": "Image backend.",
+          "key": "image_gen/openai",
+          "kind": "backend",
+          "name": "openai",
+          "path": "image_gen/openai",
+          "provides_hooks": [],
+          "provides_tools": [],
+          "requires_env": [],
+          "source": "user",
+          "version": "0.1.0"
+        },
+        {
+          "author": "",
+          "description": "Auto-detected memory provider.",
+          "key": "memory-auto",
+          "kind": "exclusive",
+          "name": "memory-auto",
+          "path": "memory-auto",
+          "provides_hooks": [],
+          "provides_tools": [],
+          "requires_env": [],
+          "source": "user",
+          "version": ""
+        },
+        {
+          "author": "",
+          "description": "Auto-detected model provider.",
+          "key": "provider-auto",
+          "kind": "model-provider",
+          "name": "provider-auto",
+          "path": "provider-auto",
+          "provides_hooks": [],
+          "provides_tools": [],
+          "requires_env": [],
+          "source": "user",
+          "version": ""
+        }
+      ],
+      "name": "controlled_manifest_scan",
+      "skip_names": [
+        "skip-me"
+      ]
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/plugin-surface-fixture.py"
+  }
+}

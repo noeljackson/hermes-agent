@@ -75,6 +75,13 @@ against those fixtures in `crates/hermes-parity`:
 - Provider profiles: built-in provider inventory, aliases, API modes, auth
   types, environment key discovery metadata, base URLs, fallback counts,
   max-token defaults, fixed-temperature sentinels, and default header keys.
+- Plugin surfaces: valid plugin hook and plugin-kind inventories, entry-point
+  group name, controlled manifest parsing, flat and category plugin key
+  construction, skip-list behavior, two-level scan depth cap, invalid-kind
+  fallback to `standalone`, and source-text auto-classification for memory
+  providers (`exclusive`) and model providers (`model-provider`). The Rust
+  side records manifest metadata only; it does not execute arbitrary Python
+  plugin modules.
 - Core runtime: fake provider-driven tool loop, OpenAI-style assistant/tool
   message appends, final response return, unknown-tool errors, and iteration
   limit stop behavior. Python fixture coverage now protects core agent-loop

@@ -17,6 +17,7 @@ const FIXTURES: &[&str] = &[
     "install-update-fixture.json",
     "mcp-filtering-fixture.json",
     "memory-fixture.json",
+    "plugin-surface-fixture.json",
     "provider-profiles-fixture.json",
     "provider-request-fixture.json",
     "session-export-fixture.json",
@@ -2163,6 +2164,66 @@ fn provider_profiles_match_python_fixture() {
             "{alias} alias"
         );
     }
+}
+
+#[test]
+fn plugin_surfaces_match_python_fixture() {
+    let fixture = load_fixture("plugin-surface-fixture.json");
+
+    let constants = case(&fixture, "plugin_boundary_constants");
+    assert_eq!(
+        hermes_cli::plugin_valid_hooks(),
+        constants["valid_hooks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>()
+            .as_slice()
+    );
+    assert_eq!(
+        hermes_cli::plugin_valid_kinds(),
+        constants["valid_kinds"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>()
+            .as_slice()
+    );
+    assert_eq!(
+        hermes_cli::plugin_entry_points_group(),
+        constants["entry_points_group"].as_str().unwrap()
+    );
+
+    let controlled = case(&fixture, "controlled_manifest_scan");
+    let root = std::env::temp_dir().join(format!("hermes-parity-plugins-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(&root).unwrap();
+    for (relative, contents) in controlled["files"].as_object().unwrap() {
+        let path = root.join(relative);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, contents.as_str().unwrap()).unwrap();
+    }
+
+    let skip_names = controlled["skip_names"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    let mut actual = hermes_cli::scan_plugin_manifests(&root, "user", &skip_names).unwrap();
+    for manifest in &mut actual {
+        let path = manifest["path"].as_str().unwrap();
+        let relative = PathBuf::from(path)
+            .strip_prefix(&root)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        manifest["path"] = json!(relative);
+    }
+    assert_eq!(Value::Array(actual), controlled["manifests"]);
+    let _ = fs::remove_dir_all(root);
 }
 
 #[test]

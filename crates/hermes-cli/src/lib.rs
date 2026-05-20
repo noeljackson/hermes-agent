@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -836,6 +836,180 @@ pub fn tui_content_display_text(content: &Value) -> String {
     }
 }
 
+pub fn plugin_valid_hooks() -> &'static [&'static str] {
+    PLUGIN_VALID_HOOKS
+}
+
+pub fn plugin_valid_kinds() -> &'static [&'static str] {
+    PLUGIN_VALID_KINDS
+}
+
+pub fn plugin_entry_points_group() -> &'static str {
+    "hermes_agent.plugins"
+}
+
+pub fn scan_plugin_manifests(
+    root: &Path,
+    source: &str,
+    skip_names: &[&str],
+) -> io::Result<Vec<Value>> {
+    let skip_names = skip_names.iter().copied().collect::<BTreeSet<_>>();
+    scan_plugin_manifest_level(root, source, &skip_names, "", 0)
+}
+
+fn scan_plugin_manifest_level(
+    path: &Path,
+    source: &str,
+    skip_names: &BTreeSet<&str>,
+    prefix: &str,
+    depth: usize,
+) -> io::Result<Vec<Value>> {
+    let mut manifests = Vec::new();
+    if !path.is_dir() {
+        return Ok(manifests);
+    }
+
+    let mut children = fs::read_dir(path)?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_dir())
+        .collect::<Vec<_>>();
+    children.sort_by_key(|entry| entry.file_name());
+
+    for child in children {
+        let child_path = child.path();
+        let child_name = child.file_name().to_string_lossy().to_string();
+        if depth == 0 && skip_names.contains(child_name.as_str()) {
+            continue;
+        }
+
+        let yaml_path = child_path.join("plugin.yaml");
+        let yml_path = child_path.join("plugin.yml");
+        let manifest_file = if yaml_path.exists() {
+            Some(yaml_path)
+        } else if yml_path.exists() {
+            Some(yml_path)
+        } else {
+            None
+        };
+
+        if let Some(manifest_file) = manifest_file {
+            manifests.push(parse_plugin_manifest(
+                &manifest_file,
+                &child_path,
+                source,
+                prefix,
+            )?);
+            continue;
+        }
+
+        if depth >= 1 {
+            continue;
+        }
+        let sub_prefix = if prefix.is_empty() {
+            child_name
+        } else {
+            format!("{prefix}/{child_name}")
+        };
+        manifests.extend(scan_plugin_manifest_level(
+            &child_path,
+            source,
+            skip_names,
+            &sub_prefix,
+            depth + 1,
+        )?);
+    }
+
+    Ok(manifests)
+}
+
+fn parse_plugin_manifest(
+    manifest_file: &Path,
+    plugin_dir: &Path,
+    source: &str,
+    prefix: &str,
+) -> io::Result<Value> {
+    let text = fs::read_to_string(manifest_file)?;
+    let data: serde_yaml::Value = serde_yaml::from_str(&text).unwrap_or(serde_yaml::Value::Null);
+    let name = yaml_str(&data, "name")
+        .map(str::to_string)
+        .unwrap_or_else(|| {
+            plugin_dir
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string()
+        });
+    let key = if prefix.is_empty() {
+        name.clone()
+    } else {
+        format!(
+            "{}/{}",
+            prefix,
+            plugin_dir.file_name().unwrap_or_default().to_string_lossy()
+        )
+    };
+
+    let mut kind = yaml_str(&data, "kind")
+        .unwrap_or("standalone")
+        .trim()
+        .to_ascii_lowercase();
+    if !PLUGIN_VALID_KINDS.contains(&kind.as_str()) {
+        kind = "standalone".to_string();
+    }
+
+    if kind == "standalone" && !yaml_has_key(&data, "kind") {
+        let init_file = plugin_dir.join("__init__.py");
+        if let Ok(source_text) = fs::read_to_string(init_file) {
+            let source_text = truncate_chars(&source_text, 8192);
+            if source_text.contains("register_memory_provider")
+                || source_text.contains("MemoryProvider")
+            {
+                kind = "exclusive".to_string();
+            } else if source_text.contains("register_provider")
+                && source_text.contains("ProviderProfile")
+            {
+                kind = "model-provider".to_string();
+            }
+        }
+    }
+
+    Ok(json!({
+        "name": name,
+        "version": yaml_string_field(&data, "version"),
+        "description": yaml_string_field(&data, "description"),
+        "author": yaml_string_field(&data, "author"),
+        "requires_env": yaml_json_field(&data, "requires_env"),
+        "provides_tools": yaml_json_field(&data, "provides_tools"),
+        "provides_hooks": yaml_json_field(&data, "provides_hooks"),
+        "source": source,
+        "path": plugin_dir.to_string_lossy(),
+        "kind": kind,
+        "key": key,
+    }))
+}
+
+fn yaml_str<'a>(data: &'a serde_yaml::Value, key: &str) -> Option<&'a str> {
+    data.as_mapping()?
+        .get(serde_yaml::Value::String(key.to_string()))?
+        .as_str()
+}
+
+fn yaml_has_key(data: &serde_yaml::Value, key: &str) -> bool {
+    data.as_mapping()
+        .is_some_and(|map| map.contains_key(serde_yaml::Value::String(key.to_string())))
+}
+
+fn yaml_string_field(data: &serde_yaml::Value, key: &str) -> String {
+    yaml_str(data, key).unwrap_or("").to_string()
+}
+
+fn yaml_json_field(data: &serde_yaml::Value, key: &str) -> Value {
+    data.as_mapping()
+        .and_then(|map| map.get(serde_yaml::Value::String(key.to_string())))
+        .and_then(|value| serde_json::to_value(value).ok())
+        .unwrap_or_else(|| json!([]))
+}
+
 pub fn dashboard_loopback_hosts() -> &'static [&'static str] {
     &["127.0.0.1", "::1", "localhost", "testclient"]
 }
@@ -999,6 +1173,34 @@ const TUI_GATEWAY_METHODS: &[&str] = &[
 
 const DETAIL_SECTION_NAMES: &[&str] = &["thinking", "tools", "subagents", "activity"];
 const DETAIL_MODES: &[&str] = &["hidden", "collapsed", "expanded"];
+
+const PLUGIN_VALID_KINDS: &[&str] = &[
+    "backend",
+    "exclusive",
+    "model-provider",
+    "platform",
+    "standalone",
+];
+
+const PLUGIN_VALID_HOOKS: &[&str] = &[
+    "on_session_end",
+    "on_session_finalize",
+    "on_session_reset",
+    "on_session_start",
+    "post_api_request",
+    "post_approval_response",
+    "post_llm_call",
+    "post_tool_call",
+    "pre_api_request",
+    "pre_approval_request",
+    "pre_gateway_dispatch",
+    "pre_llm_call",
+    "pre_tool_call",
+    "subagent_stop",
+    "transform_llm_output",
+    "transform_terminal_output",
+    "transform_tool_result",
+];
 
 #[cfg(test)]
 mod tests {
