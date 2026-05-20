@@ -46,7 +46,10 @@ against those fixtures in `crates/hermes-parity`:
   chat-completions exception, OpenRouter GPT-5 routing, blank-provider fallback,
   and Copilot non-GPT-5 behavior. Max-token parameter routing is fixture-backed
   for direct OpenAI, Azure OpenAI, GitHub Copilot, OpenRouter, and local
-  OpenAI-compatible URLs.
+  OpenAI-compatible URLs. Codex app-server event projection is fixture-backed
+  for ignored streaming deltas, reasoning carry-forward, assistant/user
+  messages, command/file-change/MCP/dynamic tool-call materialization, tool
+  iteration counters, final-text capture, and opaque event fallback.
 - Provider profiles: built-in provider inventory, aliases, API modes, auth
   types, environment key discovery metadata, base URLs, fallback counts,
   max-token defaults, fixed-temperature sentinels, and default header keys.

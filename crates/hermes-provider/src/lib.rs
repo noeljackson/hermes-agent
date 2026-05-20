@@ -343,6 +343,361 @@ fn base_url_hostname(base_url: &str) -> String {
         .to_string()
 }
 
+#[derive(Debug, Default)]
+pub struct CodexEventProjector {
+    pending_reasoning: Vec<String>,
+}
+
+impl CodexEventProjector {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn project(&mut self, notification: &Value) -> Value {
+        let method = get_str(notification, "method");
+        let params = notification.get("params").unwrap_or(&Value::Null);
+        if method != "item/completed" {
+            return projection_result(Vec::new(), false, None);
+        }
+
+        let item = params.get("item").unwrap_or(&Value::Null);
+        let item_type = get_str(item, "type");
+        let item_id = get_str(item, "id");
+        match item_type {
+            "agentMessage" => self.project_agent_message(item),
+            "reasoning" => {
+                self.extend_reasoning(item.get("summary"));
+                self.extend_reasoning(item.get("content"));
+                projection_result(Vec::new(), false, None)
+            }
+            "commandExecution" => self.project_command(item, item_id),
+            "fileChange" => self.project_file_change(item, item_id),
+            "mcpToolCall" => self.project_mcp_tool_call(item, item_id),
+            "dynamicToolCall" => self.project_dynamic_tool_call(item, item_id),
+            "userMessage" => self.project_user_message(item),
+            _ => self.project_opaque(item, item_type),
+        }
+    }
+
+    fn extend_reasoning(&mut self, value: Option<&Value>) {
+        if let Some(items) = value.and_then(Value::as_array) {
+            self.pending_reasoning.extend(
+                items
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(ToOwned::to_owned),
+            );
+        }
+    }
+
+    fn project_agent_message(&mut self, item: &Value) -> Value {
+        let text = get_str(item, "text").to_string();
+        let mut message = json!({"role": "assistant", "content": text});
+        self.attach_pending_reasoning(&mut message);
+        projection_result(
+            vec![message],
+            false,
+            Some(get_str(item, "text").to_string()),
+        )
+    }
+
+    fn project_user_message(&mut self, item: &Value) -> Value {
+        let mut text_parts = Vec::new();
+        if let Some(fragments) = item.get("content").and_then(Value::as_array) {
+            for fragment in fragments {
+                if !fragment.is_object() {
+                    continue;
+                }
+                if get_str(fragment, "type") == "text" {
+                    text_parts.push(get_str(fragment, "text").to_string());
+                } else if let Some(text) = fragment.get("text") {
+                    if let Some(text) = text.as_str() {
+                        text_parts.push(text.to_string());
+                    } else {
+                        text_parts.push(text.to_string());
+                    }
+                }
+            }
+        }
+        projection_result(
+            vec![json!({"role": "user", "content": text_parts.join("\n")})],
+            false,
+            None,
+        )
+    }
+
+    fn project_command(&mut self, item: &Value, item_id: &str) -> Value {
+        let call_id = deterministic_call_id("exec", item_id);
+        let args = json!({
+            "command": get_str(item, "command"),
+            "cwd": get_str(item, "cwd"),
+        });
+        let mut assistant = tool_call_message(&call_id, "exec_command", &python_json_sorted(&args));
+        self.attach_pending_reasoning(&mut assistant);
+
+        let mut output = get_str(item, "aggregatedOutput").to_string();
+        if let Some(exit_code) = item.get("exitCode").and_then(Value::as_i64) {
+            if exit_code != 0 {
+                output = format!("[exit {exit_code}]\n{output}");
+            }
+        }
+        let tool = json!({
+            "role": "tool",
+            "tool_call_id": call_id,
+            "content": output,
+        });
+        projection_result(vec![assistant, tool], true, None)
+    }
+
+    fn project_file_change(&mut self, item: &Value, item_id: &str) -> Value {
+        let call_id = deterministic_call_id("apply_patch", item_id);
+        let mut changes = Vec::new();
+        if let Some(items) = item.get("changes").and_then(Value::as_array) {
+            for change in items {
+                let kind = change
+                    .get("kind")
+                    .and_then(|kind| kind.get("type"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("update");
+                changes.push(json!({
+                    "kind": kind,
+                    "path": get_str(change, "path"),
+                }));
+            }
+        }
+        let args = json!({"changes": changes});
+        let mut assistant = tool_call_message(&call_id, "apply_patch", &python_json_sorted(&args));
+        self.attach_pending_reasoning(&mut assistant);
+        let tool = json!({
+            "role": "tool",
+            "tool_call_id": call_id,
+            "content": format!(
+                "apply_patch status={}, {} change(s)",
+                value_str_or(item.get("status"), "unknown"),
+                item.get("changes").and_then(Value::as_array).map_or(0, Vec::len)
+            ),
+        });
+        projection_result(vec![assistant, tool], true, None)
+    }
+
+    fn project_mcp_tool_call(&mut self, item: &Value, item_id: &str) -> Value {
+        let server = value_str_or(item.get("server"), "mcp");
+        let tool_name = value_str_or(item.get("tool"), "unknown");
+        let call_id = deterministic_call_id(&format!("mcp_{server}_{tool_name}"), item_id);
+        let arguments = item
+            .get("arguments")
+            .filter(|value| value.is_object())
+            .cloned()
+            .unwrap_or_else(
+                || json!({"arguments": item.get("arguments").cloned().unwrap_or(Value::Null)}),
+            );
+        let mut assistant = tool_call_message(
+            &call_id,
+            &format!("mcp.{server}.{tool_name}"),
+            &python_json_sorted(&arguments),
+        );
+        self.attach_pending_reasoning(&mut assistant);
+        let content = if let Some(error) = item.get("error").filter(|value| !value.is_null()) {
+            format!(
+                "[error] {}",
+                truncate_chars(&python_json_in_order(error), 1000)
+            )
+        } else if let Some(result) = item.get("result").filter(|value| !value.is_null()) {
+            truncate_chars(&python_json_in_order(result), 4000)
+        } else {
+            String::new()
+        };
+        let tool = json!({
+            "role": "tool",
+            "tool_call_id": call_id,
+            "content": content,
+        });
+        projection_result(vec![assistant, tool], true, None)
+    }
+
+    fn project_dynamic_tool_call(&mut self, item: &Value, item_id: &str) -> Value {
+        let tool_name = value_str_or(item.get("tool"), "unknown");
+        let call_id = deterministic_call_id(&format!("dyn_{tool_name}"), item_id);
+        let arguments = item
+            .get("arguments")
+            .filter(|value| value.is_object())
+            .cloned()
+            .unwrap_or_else(
+                || json!({"arguments": item.get("arguments").cloned().unwrap_or(Value::Null)}),
+            );
+        let mut assistant = tool_call_message(&call_id, tool_name, &python_json_sorted(&arguments));
+        self.attach_pending_reasoning(&mut assistant);
+        let content = item
+            .get("contentItems")
+            .and_then(Value::as_array)
+            .filter(|items| !items.is_empty())
+            .map(|_| truncate_chars(&python_json_in_order(&item["contentItems"]), 4000))
+            .unwrap_or_else(|| format!("success={}", python_bool(item.get("success"))));
+        let tool = json!({
+            "role": "tool",
+            "tool_call_id": call_id,
+            "content": content,
+        });
+        projection_result(vec![assistant, tool], true, None)
+    }
+
+    fn project_opaque(&mut self, item: &Value, item_type: &str) -> Value {
+        let payload = truncate_chars(&python_json_in_order(item), 1500);
+        projection_result(
+            vec![json!({
+                "role": "assistant",
+                "content": format!("[codex {item_type}] {payload}"),
+            })],
+            false,
+            None,
+        )
+    }
+
+    fn attach_pending_reasoning(&mut self, message: &mut Value) {
+        if self.pending_reasoning.is_empty() {
+            return;
+        }
+        if let Some(object) = message.as_object_mut() {
+            object.insert(
+                "reasoning".to_string(),
+                json!(self.pending_reasoning.join("\n")),
+            );
+        }
+        self.pending_reasoning.clear();
+    }
+}
+
+pub fn project_codex_event_notifications(notifications: &[Value]) -> Vec<Value> {
+    let mut projector = CodexEventProjector::new();
+    notifications
+        .iter()
+        .map(|notification| projector.project(notification))
+        .collect()
+}
+
+fn projection_result(
+    messages: Vec<Value>,
+    is_tool_iteration: bool,
+    final_text: Option<String>,
+) -> Value {
+    json!({
+        "messages": messages,
+        "is_tool_iteration": is_tool_iteration,
+        "final_text": final_text,
+    })
+}
+
+fn deterministic_call_id(item_type: &str, item_id: &str) -> String {
+    if !item_id.is_empty() {
+        format!("codex_{item_type}_{item_id}")
+    } else {
+        format!("codex_{item_type}_")
+    }
+}
+
+fn tool_call_message(call_id: &str, name: &str, arguments: &str) -> Value {
+    json!({
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+            {
+                "id": call_id,
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "arguments": arguments,
+                },
+            }
+        ],
+    })
+}
+
+fn get_str<'a>(value: &'a Value, key: &str) -> &'a str {
+    value.get(key).and_then(Value::as_str).unwrap_or("")
+}
+
+fn value_str_or<'a>(value: Option<&'a Value>, fallback: &'a str) -> &'a str {
+    value.and_then(Value::as_str).unwrap_or(fallback)
+}
+
+fn python_bool(value: Option<&Value>) -> &'static str {
+    match value.and_then(Value::as_bool) {
+        Some(true) => "True",
+        Some(false) => "False",
+        None => "None",
+    }
+}
+
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    value.chars().take(max_chars).collect()
+}
+
+fn python_json_sorted(value: &Value) -> String {
+    match value {
+        Value::Array(items) => format!(
+            "[{}]",
+            items
+                .iter()
+                .map(python_json_sorted)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Value::Object(object) => {
+            let mut keys = object.keys().collect::<Vec<_>>();
+            keys.sort();
+            format!(
+                "{{{}}}",
+                keys.into_iter()
+                    .map(|key| format!(
+                        "{}: {}",
+                        serde_json::to_string(key).unwrap(),
+                        python_json_sorted(&object[key])
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        }
+        _ => python_json_scalar(value),
+    }
+}
+
+fn python_json_in_order(value: &Value) -> String {
+    match value {
+        Value::Array(items) => format!(
+            "[{}]",
+            items
+                .iter()
+                .map(python_json_in_order)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Value::Object(object) => {
+            let keys = object.keys().collect::<Vec<_>>();
+            format!(
+                "{{{}}}",
+                keys.into_iter()
+                    .map(|key| format!(
+                        "{}: {}",
+                        serde_json::to_string(key).unwrap(),
+                        python_json_in_order(&object[key])
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        }
+        _ => python_json_scalar(value),
+    }
+}
+
+fn python_json_scalar(value: &Value) -> String {
+    match value {
+        Value::Bool(true) => "true".to_string(),
+        Value::Bool(false) => "false".to_string(),
+        Value::Null => "null".to_string(),
+        _ => serde_json::to_string(value).unwrap(),
+    }
+}
+
 const PROVIDER_PROFILES: &[ProviderProfileSummary] = &[
     ProviderProfileSummary {
         name: "ai-gateway",

@@ -1705,6 +1705,16 @@ fn provider_request_shape_matches_python_fixture() {
             "{name}"
         );
     }
+
+    let codex_projection = case(&fixture, "codex_event_projection");
+    let notifications = codex_projection["notifications"]
+        .as_array()
+        .unwrap()
+        .to_vec();
+    assert_eq!(
+        hermes_provider::project_codex_event_notifications(&notifications),
+        codex_projection["results"].as_array().unwrap().to_vec()
+    );
 }
 
 #[test]

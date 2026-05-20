@@ -22,6 +22,7 @@ def main() -> int:
             build_tool_call,
             map_finish_reason,
         )
+        from agent.transports.codex_event_projector import CodexEventProjector
         from providers.base import ProviderProfile
         from run_agent import AIAgent
 
@@ -178,6 +179,157 @@ def main() -> int:
             agent._base_url_hostname = ""
             max_tokens_routing[name] = AIAgent._max_tokens_param(agent, 321)
 
+        codex_projector_notifications = [
+            {"method": "item/agentMessage/outputDelta", "params": {"delta": "ignored"}},
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "reasoning",
+                        "id": "reason-1",
+                        "summary": ["summary one"],
+                        "content": ["detail two"],
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "agentMessage",
+                        "id": "agent-1",
+                        "text": "final answer",
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "userMessage",
+                        "id": "user-1",
+                        "content": [
+                            {"type": "text", "text": "hello"},
+                            {"type": "image", "url": "ignored"},
+                            {"text": "fallback text"},
+                        ],
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "commandExecution",
+                        "id": "cmd-1",
+                        "command": "ls -la",
+                        "cwd": "/workspace",
+                        "aggregatedOutput": "ok\n",
+                        "exitCode": 0,
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "commandExecution",
+                        "id": "cmd-2",
+                        "command": "false",
+                        "cwd": "",
+                        "aggregatedOutput": "failed",
+                        "exitCode": 2,
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "fileChange",
+                        "id": "patch-1",
+                        "status": "accepted",
+                        "changes": [
+                            {"kind": {"type": "add"}, "path": "src/new.rs"},
+                            {"kind": {"type": "delete"}, "path": "old.py"},
+                            {"path": "updated.md"},
+                        ],
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "mcpToolCall",
+                        "id": "mcp-1",
+                        "server": "github",
+                        "tool": "search",
+                        "arguments": {"query": "hermes", "limit": 2},
+                        "result": {"items": [{"name": "repo"}]},
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "mcpToolCall",
+                        "id": "mcp-2",
+                        "server": "github",
+                        "tool": "create_issue",
+                        "arguments": ["not", "a", "dict"],
+                        "error": {"message": "denied"},
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "dynamicToolCall",
+                        "id": "dyn-1",
+                        "tool": "browser_navigate",
+                        "arguments": {"url": "https://example.invalid"},
+                        "contentItems": [{"text": "loaded", "type": "text"}],
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "dynamicToolCall",
+                        "id": "dyn-2",
+                        "tool": "custom_tool",
+                        "arguments": "raw-args",
+                        "success": False,
+                    }
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "id": "plan-1",
+                        "steps": ["inspect", "edit"],
+                        "type": "plan",
+                    }
+                },
+            },
+        ]
+        codex_projector = CodexEventProjector()
+        codex_projection = []
+        for notification in codex_projector_notifications:
+            result = codex_projector.project(notification)
+            codex_projection.append(
+                {
+                    "messages": result.messages,
+                    "is_tool_iteration": result.is_tool_iteration,
+                    "final_text": result.final_text,
+                }
+            )
+
     cases = [
         {"name": "chat_completions_fake_provider", "request": kwargs},
         {"name": "chat_completions_strips_codex_leaks", "request": sanitized_chat_kwargs},
@@ -222,6 +374,11 @@ def main() -> int:
         },
         {"name": "responses_api_routing", "cases": responses_api_routing},
         {"name": "max_tokens_param_routing", "cases": max_tokens_routing},
+        {
+            "name": "codex_event_projection",
+            "notifications": codex_projector_notifications,
+            "results": codex_projection,
+        },
     ]
     write_fixture(out, fixture(SCRIPT, cases))
     return 0

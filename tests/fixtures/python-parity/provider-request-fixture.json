@@ -268,6 +268,420 @@
         }
       },
       "name": "max_tokens_param_routing"
+    },
+    {
+      "name": "codex_event_projection",
+      "notifications": [
+        {
+          "method": "item/agentMessage/outputDelta",
+          "params": {
+            "delta": "ignored"
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "content": [
+                "detail two"
+              ],
+              "id": "reason-1",
+              "summary": [
+                "summary one"
+              ],
+              "type": "reasoning"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "id": "agent-1",
+              "text": "final answer",
+              "type": "agentMessage"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "content": [
+                {
+                  "text": "hello",
+                  "type": "text"
+                },
+                {
+                  "type": "image",
+                  "url": "ignored"
+                },
+                {
+                  "text": "fallback text"
+                }
+              ],
+              "id": "user-1",
+              "type": "userMessage"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "aggregatedOutput": "ok\n",
+              "command": "ls -la",
+              "cwd": "/workspace",
+              "exitCode": 0,
+              "id": "cmd-1",
+              "type": "commandExecution"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "aggregatedOutput": "failed",
+              "command": "false",
+              "cwd": "",
+              "exitCode": 2,
+              "id": "cmd-2",
+              "type": "commandExecution"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "changes": [
+                {
+                  "kind": {
+                    "type": "add"
+                  },
+                  "path": "src/new.rs"
+                },
+                {
+                  "kind": {
+                    "type": "delete"
+                  },
+                  "path": "old.py"
+                },
+                {
+                  "path": "updated.md"
+                }
+              ],
+              "id": "patch-1",
+              "status": "accepted",
+              "type": "fileChange"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "arguments": {
+                "limit": 2,
+                "query": "hermes"
+              },
+              "id": "mcp-1",
+              "result": {
+                "items": [
+                  {
+                    "name": "repo"
+                  }
+                ]
+              },
+              "server": "github",
+              "tool": "search",
+              "type": "mcpToolCall"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "arguments": [
+                "not",
+                "a",
+                "dict"
+              ],
+              "error": {
+                "message": "denied"
+              },
+              "id": "mcp-2",
+              "server": "github",
+              "tool": "create_issue",
+              "type": "mcpToolCall"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "arguments": {
+                "url": "https://example.invalid"
+              },
+              "contentItems": [
+                {
+                  "text": "loaded",
+                  "type": "text"
+                }
+              ],
+              "id": "dyn-1",
+              "tool": "browser_navigate",
+              "type": "dynamicToolCall"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "arguments": "raw-args",
+              "id": "dyn-2",
+              "success": false,
+              "tool": "custom_tool",
+              "type": "dynamicToolCall"
+            }
+          }
+        },
+        {
+          "method": "item/completed",
+          "params": {
+            "item": {
+              "id": "plan-1",
+              "steps": [
+                "inspect",
+                "edit"
+              ],
+              "type": "plan"
+            }
+          }
+        }
+      ],
+      "results": [
+        {
+          "final_text": null,
+          "is_tool_iteration": false,
+          "messages": []
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": false,
+          "messages": []
+        },
+        {
+          "final_text": "final answer",
+          "is_tool_iteration": false,
+          "messages": [
+            {
+              "content": "final answer",
+              "reasoning": "summary one\ndetail two",
+              "role": "assistant"
+            }
+          ]
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": false,
+          "messages": [
+            {
+              "content": "hello\nfallback text",
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": true,
+          "messages": [
+            {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{\"command\": \"ls -la\", \"cwd\": \"/workspace\"}",
+                    "name": "exec_command"
+                  },
+                  "id": "codex_exec_cmd-1",
+                  "type": "function"
+                }
+              ]
+            },
+            {
+              "content": "ok\n",
+              "role": "tool",
+              "tool_call_id": "codex_exec_cmd-1"
+            }
+          ]
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": true,
+          "messages": [
+            {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{\"command\": \"false\", \"cwd\": \"\"}",
+                    "name": "exec_command"
+                  },
+                  "id": "codex_exec_cmd-2",
+                  "type": "function"
+                }
+              ]
+            },
+            {
+              "content": "[exit 2]\nfailed",
+              "role": "tool",
+              "tool_call_id": "codex_exec_cmd-2"
+            }
+          ]
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": true,
+          "messages": [
+            {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{\"changes\": [{\"kind\": \"add\", \"path\": \"src/new.rs\"}, {\"kind\": \"delete\", \"path\": \"old.py\"}, {\"kind\": \"update\", \"path\": \"updated.md\"}]}",
+                    "name": "apply_patch"
+                  },
+                  "id": "codex_apply_patch_patch-1",
+                  "type": "function"
+                }
+              ]
+            },
+            {
+              "content": "apply_patch status=accepted, 3 change(s)",
+              "role": "tool",
+              "tool_call_id": "codex_apply_patch_patch-1"
+            }
+          ]
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": true,
+          "messages": [
+            {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{\"limit\": 2, \"query\": \"hermes\"}",
+                    "name": "mcp.github.search"
+                  },
+                  "id": "codex_mcp_github_search_mcp-1",
+                  "type": "function"
+                }
+              ]
+            },
+            {
+              "content": "{\"items\": [{\"name\": \"repo\"}]}",
+              "role": "tool",
+              "tool_call_id": "codex_mcp_github_search_mcp-1"
+            }
+          ]
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": true,
+          "messages": [
+            {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{\"arguments\": [\"not\", \"a\", \"dict\"]}",
+                    "name": "mcp.github.create_issue"
+                  },
+                  "id": "codex_mcp_github_create_issue_mcp-2",
+                  "type": "function"
+                }
+              ]
+            },
+            {
+              "content": "[error] {\"message\": \"denied\"}",
+              "role": "tool",
+              "tool_call_id": "codex_mcp_github_create_issue_mcp-2"
+            }
+          ]
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": true,
+          "messages": [
+            {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{\"url\": \"https://example.invalid\"}",
+                    "name": "browser_navigate"
+                  },
+                  "id": "codex_dyn_browser_navigate_dyn-1",
+                  "type": "function"
+                }
+              ]
+            },
+            {
+              "content": "[{\"text\": \"loaded\", \"type\": \"text\"}]",
+              "role": "tool",
+              "tool_call_id": "codex_dyn_browser_navigate_dyn-1"
+            }
+          ]
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": true,
+          "messages": [
+            {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{\"arguments\": \"raw-args\"}",
+                    "name": "custom_tool"
+                  },
+                  "id": "codex_dyn_custom_tool_dyn-2",
+                  "type": "function"
+                }
+              ]
+            },
+            {
+              "content": "success=False",
+              "role": "tool",
+              "tool_call_id": "codex_dyn_custom_tool_dyn-2"
+            }
+          ]
+        },
+        {
+          "final_text": null,
+          "is_tool_iteration": false,
+          "messages": [
+            {
+              "content": "[codex plan] {\"id\": \"plan-1\", \"steps\": [\"inspect\", \"edit\"], \"type\": \"plan\"}",
+              "role": "assistant"
+            }
+          ]
+        }
+      ]
     }
   ],
   "source": {
