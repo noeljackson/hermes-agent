@@ -174,9 +174,11 @@ against those fixtures in `crates/hermes-parity`:
   resize escape parsing, dashboard event-channel validation, and loopback host
   allowlist. Higher-level TUI helpers are fixture-backed for command
   resolution, headless CLI blocking hints, `/details` completion item shapes,
-  and the `/details` slash-completion response envelope. This protects the
-  Ink/Python gateway boundary and dashboard PTY bridge contract before live TUI
-  behavior is ported.
+  and the `/details` slash-completion response envelope. Fake in-memory
+  session RPCs are fixture-backed for missing-session errors, terminal resize,
+  no-agent usage, history projection, steer validation/no-agent errors, and
+  busy prompt rejection. This protects the Ink/Python gateway boundary and
+  dashboard PTY bridge contract before live TUI behavior is ported.
 - Tool registry: built-in tool metadata for name, toolset, async flag,
   env requirements, schema parameter names, required fields, and description
   presence. Selected core tool schemas (`terminal`, `read_file`, `write_file`,

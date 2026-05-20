@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+
 from parity_common import fixture, isolated_hermes_home, parse_out_arg, write_fixture
 
 
@@ -41,6 +43,103 @@ def main() -> int:
             if match and match.end() == len(raw):
                 return {"cols": int(match.group(1)), "rows": int(match.group(2))}
             return None
+
+        session_history = [
+            {"role": "system", "content": "system prompt"},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "hello"},
+                    {"type": "image_url", "image_url": {"url": "file://image.png"}},
+                ],
+            },
+            {"role": "assistant", "content": "hi"},
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": "tc-1",
+                        "function": {"name": "terminal", "arguments": "{}"},
+                    }
+                ],
+            },
+            {"role": "unknown", "content": "ignored"},
+            {"role": "assistant", "content": None},
+        ]
+        server._sessions["rpc-sid"] = {
+            "session_key": "session-key-1",
+            "agent": None,
+            "history": session_history,
+            "history_lock": threading.Lock(),
+            "running": False,
+            "cols": 80,
+        }
+        original_get_db = server._get_db
+        server._get_db = lambda: None
+        try:
+            session_rpc = {
+                "missing_resize": server.handle_request(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": "resize-missing",
+                        "method": "terminal.resize",
+                        "params": {"session_id": "missing", "cols": 100},
+                    }
+                ),
+                "resize": server.handle_request(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": "resize-ok",
+                        "method": "terminal.resize",
+                        "params": {"session_id": "rpc-sid", "cols": 132},
+                    }
+                ),
+                "usage": server.handle_request(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": "usage",
+                        "method": "session.usage",
+                        "params": {"session_id": "rpc-sid"},
+                    }
+                ),
+                "history": server.handle_request(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": "history",
+                        "method": "session.history",
+                        "params": {"session_id": "rpc-sid"},
+                    }
+                ),
+                "steer_empty": server.handle_request(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": "steer-empty",
+                        "method": "session.steer",
+                        "params": {"session_id": "rpc-sid", "text": "   "},
+                    }
+                ),
+                "steer_no_agent": server.handle_request(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": "steer-no-agent",
+                        "method": "session.steer",
+                        "params": {"session_id": "rpc-sid", "text": "redirect"},
+                    }
+                ),
+            }
+            server._sessions["rpc-sid"]["running"] = True
+            session_rpc["prompt_busy"] = server.handle_request(
+                {
+                    "jsonrpc": "2.0",
+                    "id": "prompt-busy",
+                    "method": "prompt.submit",
+                    "params": {"session_id": "rpc-sid", "text": "hello"},
+                }
+            )
+        finally:
+            server._get_db = original_get_db
+            server._sessions.pop("rpc-sid", None)
 
         cases = [
             {
@@ -171,6 +270,11 @@ def main() -> int:
                         "params": {"text": "/details tools "},
                     }
                 ),
+            },
+            {
+                "name": "session_rpc_without_agent",
+                "history": session_history,
+                "responses": session_rpc,
             },
         ]
 

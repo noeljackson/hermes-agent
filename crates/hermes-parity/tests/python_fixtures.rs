@@ -3606,6 +3606,38 @@ fn tui_gateway_contract_matches_python_fixture() {
         .unwrap(),
         details["rpc"]
     );
+
+    let session_rpc = case(&fixture, "session_rpc_without_agent");
+    let responses = &session_rpc["responses"];
+    assert_eq!(
+        hermes_cli::tui_session_not_found(json!("resize-missing")),
+        responses["missing_resize"]
+    );
+    assert_eq!(
+        hermes_cli::tui_terminal_resize_response(json!("resize-ok"), 132),
+        responses["resize"]
+    );
+    assert_eq!(
+        hermes_cli::tui_empty_session_usage_response(json!("usage")),
+        responses["usage"]
+    );
+    let history = session_rpc["history"].as_array().unwrap();
+    assert_eq!(
+        hermes_cli::tui_session_history_response(json!("history"), history),
+        responses["history"]
+    );
+    assert_eq!(
+        hermes_cli::tui_steer_empty_response(json!("steer-empty")),
+        responses["steer_empty"]
+    );
+    assert_eq!(
+        hermes_cli::tui_steer_no_agent_response(json!("steer-no-agent")),
+        responses["steer_no_agent"]
+    );
+    assert_eq!(
+        hermes_cli::tui_prompt_busy_response(json!("prompt-busy")),
+        responses["prompt_busy"]
+    );
 }
 
 #[test]

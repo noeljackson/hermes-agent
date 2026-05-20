@@ -740,6 +740,102 @@ pub fn tui_complete_slash_details_response(id: Value, text: &str) -> Option<Valu
     ))
 }
 
+pub fn tui_session_not_found(id: Value) -> Value {
+    tui_jsonrpc_err(id, 4001, "session not found")
+}
+
+pub fn tui_terminal_resize_response(id: Value, cols: usize) -> Value {
+    tui_jsonrpc_ok(id, json!({"cols": cols}))
+}
+
+pub fn tui_empty_session_usage_response(id: Value) -> Value {
+    tui_jsonrpc_ok(id, json!({"calls": 0, "input": 0, "output": 0, "total": 0}))
+}
+
+pub fn tui_session_history_response(id: Value, history: &[Value]) -> Value {
+    let messages = tui_history_to_messages(history);
+    tui_jsonrpc_ok(id, json!({"count": history.len(), "messages": messages}))
+}
+
+pub fn tui_steer_empty_response(id: Value) -> Value {
+    tui_jsonrpc_err(id, 4002, "text is required")
+}
+
+pub fn tui_steer_no_agent_response(id: Value) -> Value {
+    tui_jsonrpc_err(id, 4010, "agent does not support steer")
+}
+
+pub fn tui_prompt_busy_response(id: Value) -> Value {
+    tui_jsonrpc_err(id, 4009, "session busy")
+}
+
+pub fn tui_history_to_messages(history: &[Value]) -> Vec<Value> {
+    let mut messages = Vec::new();
+    for message in history {
+        let Some(obj) = message.as_object() else {
+            continue;
+        };
+        let role = obj.get("role").and_then(Value::as_str).unwrap_or("");
+        if !matches!(role, "user" | "assistant" | "tool" | "system") {
+            continue;
+        }
+
+        let content_text = tui_content_display_text(obj.get("content").unwrap_or(&Value::Null));
+        if role == "assistant" && obj.get("tool_calls").is_some() && content_text.trim().is_empty()
+        {
+            continue;
+        }
+        if role == "tool" {
+            let name = obj
+                .get("tool_name")
+                .and_then(Value::as_str)
+                .unwrap_or("tool");
+            messages.push(json!({"role": "tool", "name": name, "context": ""}));
+            continue;
+        }
+        if content_text.trim().is_empty() {
+            continue;
+        }
+        messages.push(json!({"role": role, "text": content_text}));
+    }
+    messages
+}
+
+pub fn tui_content_display_text(content: &Value) -> String {
+    match content {
+        Value::Null => String::new(),
+        Value::String(text) => text.clone(),
+        Value::Number(number) => number.to_string(),
+        Value::Array(parts) => parts
+            .iter()
+            .map(tui_content_display_text)
+            .map(|text| text.trim().to_string())
+            .filter(|text| !text.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n"),
+        Value::Object(obj) => {
+            if let Some(kind) = obj.get("type").and_then(Value::as_str) {
+                match kind {
+                    "text" | "input_text" | "output_text" => obj
+                        .get("text")
+                        .or_else(|| obj.get("content"))
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                    "image_url" | "input_image" | "image" => "[image]".to_string(),
+                    "input_audio" | "audio" => "[audio]".to_string(),
+                    other => format!("[{other}]"),
+                }
+            } else if let Some(text) = obj.get("text").and_then(Value::as_str) {
+                text.to_string()
+            } else {
+                "[structured content]".to_string()
+            }
+        }
+        other => other.to_string(),
+    }
+}
+
 pub fn dashboard_loopback_hosts() -> &'static [&'static str] {
     &["127.0.0.1", "::1", "localhost", "testclient"]
 }

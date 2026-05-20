@@ -435,6 +435,127 @@
           "replace_from": 15
         }
       }
+    },
+    {
+      "history": [
+        {
+          "content": "system prompt",
+          "role": "system"
+        },
+        {
+          "content": [
+            {
+              "text": "hello",
+              "type": "text"
+            },
+            {
+              "image_url": {
+                "url": "file://image.png"
+              },
+              "type": "image_url"
+            }
+          ],
+          "role": "user"
+        },
+        {
+          "content": "hi",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{}",
+                "name": "terminal"
+              },
+              "id": "tc-1"
+            }
+          ]
+        },
+        {
+          "content": "ignored",
+          "role": "unknown"
+        },
+        {
+          "content": null,
+          "role": "assistant"
+        }
+      ],
+      "name": "session_rpc_without_agent",
+      "responses": {
+        "history": {
+          "id": "history",
+          "jsonrpc": "2.0",
+          "result": {
+            "count": 6,
+            "messages": [
+              {
+                "role": "system",
+                "text": "system prompt"
+              },
+              {
+                "role": "user",
+                "text": "hello\n[image]"
+              },
+              {
+                "role": "assistant",
+                "text": "hi"
+              }
+            ]
+          }
+        },
+        "missing_resize": {
+          "error": {
+            "code": 4001,
+            "message": "session not found"
+          },
+          "id": "resize-missing",
+          "jsonrpc": "2.0"
+        },
+        "prompt_busy": {
+          "error": {
+            "code": 4009,
+            "message": "session busy"
+          },
+          "id": "prompt-busy",
+          "jsonrpc": "2.0"
+        },
+        "resize": {
+          "id": "resize-ok",
+          "jsonrpc": "2.0",
+          "result": {
+            "cols": 132
+          }
+        },
+        "steer_empty": {
+          "error": {
+            "code": 4002,
+            "message": "text is required"
+          },
+          "id": "steer-empty",
+          "jsonrpc": "2.0"
+        },
+        "steer_no_agent": {
+          "error": {
+            "code": 4010,
+            "message": "agent does not support steer"
+          },
+          "id": "steer-no-agent",
+          "jsonrpc": "2.0"
+        },
+        "usage": {
+          "id": "usage",
+          "jsonrpc": "2.0",
+          "result": {
+            "calls": 0,
+            "input": 0,
+            "output": 0,
+            "total": 0
+          }
+        }
+      }
     }
   ],
   "source": {
