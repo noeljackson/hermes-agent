@@ -87,16 +87,24 @@ def main() -> int:
         execution_cases = []
         version_marker_names = {
             "version": ["Hermes Agent v", "Project:", "Python:", "OpenAI SDK:"],
+            "tools_list": ["Built-in toolsets (cli):", "web", "terminal", "memory", "computer_use"],
+            "mcp_list": ["No MCP servers configured.", "hermes mcp add <name>"],
+            "config_check": ["Configuration Status", "Config version:", "Optional:", "OPENROUTER_API_KEY"],
+            "sessions_list_empty": ["No sessions found."],
         }
         for argv in [
             ["--version"],
             ["version"],
             ["config", "path"],
             ["config", "env-path"],
+            ["config", "check"],
             ["config", "set", "display.skin", "mono"],
             ["config", "set", "terminal.timeout", "42"],
             ["config", "set", "OPENROUTER_API_KEY", "sk-test-parity"],
             ["cron", "list"],
+            ["mcp", "list"],
+            ["sessions", "list", "--limit", "5"],
+            ["tools", "list"],
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],
@@ -106,7 +114,17 @@ def main() -> int:
                 env=env,
             )
             normalized_stdout = normalize_output(command_result.stdout, home)
-            marker_key = "version" if argv in (["--version"], ["version"]) else None
+            marker_key = None
+            if argv in (["--version"], ["version"]):
+                marker_key = "version"
+            elif argv == ["tools", "list"]:
+                marker_key = "tools_list"
+            elif argv == ["mcp", "list"]:
+                marker_key = "mcp_list"
+            elif argv == ["config", "check"]:
+                marker_key = "config_check"
+            elif argv == ["sessions", "list", "--limit", "5"]:
+                marker_key = "sessions_list_empty"
             stdout_markers = None
             if marker_key:
                 stdout_markers = {

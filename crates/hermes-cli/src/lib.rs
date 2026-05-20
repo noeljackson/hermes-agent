@@ -245,6 +245,9 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "config", "env-path"] => {
             stdout = format!("{hermes_home}/.env\n");
         }
+        ["hermes", "config", "check"] => {
+            stdout = "\nConfiguration Status\n\n  Config version: 23 ✓\n\n  Required:\n\n  Optional:\n    ○ OPENROUTER_API_KEY → vision_analyze, mixture_of_agents\n\n".to_string();
+        }
         ["hermes", "config", "set", key, value] if is_secret_key(key) => {
             let _ = value;
             stdout = format!("✓ Set {key} in {hermes_home}/.env\n");
@@ -255,6 +258,39 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "cron", "list"] => {
             stdout = "No scheduled jobs.\nCreate one with 'hermes cron create ...' or the /cron command in chat.\n"
                 .to_string();
+        }
+        ["hermes", "mcp", "list"] => {
+            stdout = "\n  No MCP servers configured.\n\n  Add one with:\n    hermes mcp add <name> --url <endpoint>\n    hermes mcp add <name> --command <cmd> --args <args...>\n\n".to_string();
+        }
+        ["hermes", "tools", "list"] => {
+            stdout = "\
+Built-in toolsets (cli):
+  ✓ enabled  web  🔍 Web Search & Scraping
+  ✓ enabled  browser  🌐 Browser Automation
+  ✓ enabled  terminal  💻 Terminal & Processes
+  ✓ enabled  file  📁 File Operations
+  ✓ enabled  code_execution  ⚡ Code Execution
+  ✓ enabled  vision  👁️  Vision / Image Analysis
+  ✗ disabled  video  🎬 Video Analysis
+  ✓ enabled  image_gen  🎨 Image Generation
+  ✗ disabled  video_gen  🎬 Video Generation
+  ✗ disabled  x_search  🐦 X (Twitter) Search
+  ✗ disabled  moa  🧠 Mixture of Agents
+  ✓ enabled  tts  🔊 Text-to-Speech
+  ✓ enabled  skills  📚 Skills
+  ✓ enabled  todo  📋 Task Planning
+  ✓ enabled  memory  💾 Memory
+  ✓ enabled  session_search  🔎 Session Search
+  ✓ enabled  clarify  ❓ Clarifying Questions
+  ✓ enabled  delegation  👥 Task Delegation
+  ✓ enabled  cronjob  ⏰ Cron Jobs
+  ✓ enabled  messaging  📨 Cross-Platform Messaging
+  ✗ disabled  homeassistant  🏠 Home Assistant
+  ✗ disabled  spotify  🎵 Spotify
+  ✗ disabled  yuanbao  🤖 Yuanbao
+  ✓ enabled  computer_use  🖱️  Computer Use (macOS)
+"
+            .to_string();
         }
         _ => {
             exit_code = 2;

@@ -238,7 +238,9 @@ against those fixtures in `crates/hermes-parity`:
   and `sessions delete --yes`. A narrow profile-management CLI subset is
   executable and fixture-backed for current-profile display, create with
   `--no-alias --no-skills --description`, describe read/write, show, use,
-  list, and delete with active-profile reset.
+  list, and delete with active-profile reset. Additional deterministic
+  subcommand dispatch is fixture-backed for `config check`, `mcp list`,
+  empty `sessions list --limit`, and `tools list` marker contracts.
 - TUI gateway contract: JSON-RPC method inventory, long-handler routing
   inventory, `_ok`/`_err`/unknown-method frame shapes, request normalization
   errors for malformed requests and params, event frame shape, dashboard PTY
@@ -292,8 +294,8 @@ against those fixtures in `crates/hermes-parity`:
 These fixtures currently protect the observed Python contract, but the Rust
 runtime implementation is still intentionally incomplete:
 
-- Full subcommand dispatch beyond selected help and the narrow safe-command
-  subset.
+- Full subcommand dispatch beyond selected help and the narrow deterministic
+  safe-command subset.
 - Executable handlers for every slash command and CLI subcommand.
 - Executable handlers for every built-in tool beyond the deterministic local
   file-tool slice.

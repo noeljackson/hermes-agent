@@ -235,6 +235,22 @@
           "argv": [
             "hermes",
             "config",
+            "check"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Config version:": true,
+            "Configuration Status": true,
+            "OPENROUTER_API_KEY": true,
+            "Optional:": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
             "set",
             "display.skin",
             "mono"
@@ -280,6 +296,52 @@
           "stderr": "",
           "stdout": "No scheduled jobs.\nCreate one with 'hermes cron create ...' or the /cron command in chat.\n",
           "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No MCP servers configured.": true,
+            "hermes mcp add <name>": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "list",
+            "--limit",
+            "5"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No sessions found.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Built-in toolsets (cli):": true,
+            "computer_use": true,
+            "memory": true,
+            "terminal": true,
+            "web": true
+          }
         }
       ],
       "name": "safe_command_execution"
