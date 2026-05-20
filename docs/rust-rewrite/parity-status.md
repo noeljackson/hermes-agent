@@ -77,6 +77,8 @@ against those fixtures in `crates/hermes-parity`:
   backdoors, and invisible Unicode. The memory tool dispatcher is also
   fixture-backed for invalid targets, unknown actions, and missing required
   fields for add/replace/remove.
+  Rust-only concurrency coverage verifies shared file-backed memory writes do
+  not lose entries under parallel callers.
 - Gateway messages: slash command detection, bot mention stripping, argument
   extraction, source serialization, iOS dash normalization, path-like slash
   rejection, narrow DM plaintext restart coercion, session source
@@ -121,6 +123,8 @@ against those fixtures in `crates/hermes-parity`:
   cleanup, and child-session orphaning instead of cascade deletion. Session DB
   unavailable error formatting is fixture-backed, including custom prefixes and
   WAL-incompatible filesystem hints for NFS/SMB/FUSE cases.
+  Rust-only concurrency coverage verifies multiple SQLite writers can append to
+  the same session without message loss.
 - Session search: selected FTS5 query sanitizer behavior, empty query handling,
   compact SQLite-backed search results, source filters, role filters,
   hyphenated-term matching, snippets, neighboring context shape, and search

@@ -1046,6 +1046,8 @@ const SESSION_SCHEMA_VERSION: i64 = 11;
 #[cfg(test)]
 mod sqlite_tests {
     use super::*;
+    use std::thread;
+    use std::time::Duration;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -1160,5 +1162,68 @@ mod sqlite_tests {
 
         SqliteSessionStore::open(&path).unwrap();
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn concurrent_session_writes_preserve_messages() {
+        let path = std::env::temp_dir().join(format!(
+            "hermes-session-concurrent-{}-{}.db",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let session_id = "concurrent-session";
+        {
+            let db = SqliteSessionStore::open(&path).unwrap();
+            db.create_session(
+                session_id,
+                "cli",
+                "user-concurrent",
+                "fake/model",
+                "{\"provider\":\"fake\"}",
+                "system prompt",
+            )
+            .unwrap();
+        }
+
+        let mut handles = Vec::new();
+        for worker in 0..4 {
+            let path = path.clone();
+            handles.push(thread::spawn(move || {
+                let db = SqliteSessionStore::open(&path).unwrap();
+                for idx in 0..10 {
+                    let content = format!("worker {worker} message {idx}");
+                    let mut attempts = 0;
+                    loop {
+                        match db
+                            .append_message(session_id, "user", &content, None, None, None, None)
+                        {
+                            Ok(_) => break,
+                            Err(err) if attempts < 20 => {
+                                attempts += 1;
+                                eprintln!("sqlite append retry after {err}");
+                                thread::sleep(Duration::from_millis(5));
+                            }
+                            Err(err) => panic!("append failed after retries: {err}"),
+                        }
+                    }
+                }
+            }));
+        }
+        for handle in handles {
+            handle.join().unwrap();
+        }
+
+        let db = SqliteSessionStore::open(&path).unwrap();
+        assert_eq!(db.message_count(Some(session_id)).unwrap(), 40);
+        let exported = db.export_session(session_id).unwrap().unwrap();
+        assert_eq!(exported["message_count"], 40);
+        assert_eq!(exported["messages"].as_array().unwrap().len(), 40);
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path.with_extension("db-wal"));
+        let _ = std::fs::remove_file(path.with_extension("db-shm"));
     }
 }
