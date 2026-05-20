@@ -53,6 +53,163 @@
           "webhook"
         ]
       }
+    },
+    {
+      "audio_routing": {
+        "slack_wav": true,
+        "telegram_mp3": true,
+        "telegram_ogg_attachment": false,
+        "telegram_ogg_voice": true,
+        "unknown_txt": false
+      },
+      "message_types": [
+        "text",
+        "location",
+        "photo",
+        "video",
+        "audio",
+        "voice",
+        "document",
+        "sticker",
+        "command"
+      ],
+      "name": "adapter_base_contracts",
+      "processing_outcomes": [
+        "success",
+        "failure",
+        "cancelled"
+      ],
+      "safe_urls": {
+        "none": "",
+        "secret_query": "https://example.com/.../file.txt",
+        "short_limit": "https://e..."
+      },
+      "utf16": {
+        "ascii": 3,
+        "cjk_ext": 2,
+        "emoji": 4
+      }
+    },
+    {
+      "feishu_thread": {
+        "metadata": {
+          "thread_id": "thread-1"
+        },
+        "reply_anchor": "reply-3"
+      },
+      "name": "adapter_thread_contracts",
+      "telegram_dm": {
+        "metadata": {
+          "direct_messages_topic_id": "42",
+          "telegram_dm_topic_reply_fallback": true,
+          "telegram_reply_to_message_id": "reply-msg",
+          "thread_id": "42"
+        },
+        "reply_anchor": "msg-1"
+      },
+      "telegram_group_topic": {
+        "metadata": {
+          "thread_id": "topic-1"
+        },
+        "reply_anchor": null
+      }
+    },
+    {
+      "chat_content": {
+        "none": "",
+        "parts": "one\ntwo\nnested\nthree",
+        "scalar": "123",
+        "string": "hello"
+      },
+      "loopback": {
+        "empty": false,
+        "ipv6_bracket": true,
+        "localhost": true,
+        "public": false
+      },
+      "name": "webhook_api_server_helpers",
+      "ports": {
+        "bad": 1234,
+        "none": 8642,
+        "string": 9000
+      },
+      "request_bools": {
+        "false_string": false,
+        "int_zero": false,
+        "true_string": true,
+        "unknown_default": true
+      }
+    },
+    {
+      "blocks": [
+        {
+          "elements": [
+            {
+              "elements": [
+                {
+                  "text": "Hello ",
+                  "type": "text"
+                },
+                {
+                  "type": "user",
+                  "user_id": "U123"
+                },
+                {
+                  "name": "wave",
+                  "type": "emoji"
+                }
+              ],
+              "type": "rich_text_section"
+            },
+            {
+              "elements": [
+                {
+                  "elements": [
+                    {
+                      "text": "quoted",
+                      "type": "text"
+                    },
+                    {
+                      "text": "site",
+                      "type": "link",
+                      "url": "https://example.com"
+                    }
+                  ],
+                  "type": "rich_text_section"
+                }
+              ],
+              "type": "rich_text_quote"
+            },
+            {
+              "elements": [
+                {
+                  "elements": [
+                    {
+                      "text": "first",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "rich_text_section"
+                },
+                {
+                  "elements": [
+                    {
+                      "text": "second",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "rich_text_section"
+                }
+              ],
+              "style": "ordered",
+              "type": "rich_text_list"
+            }
+          ],
+          "type": "rich_text"
+        }
+      ],
+      "name": "slack_rich_text_blocks",
+      "text": "Hello <@U123>:wave:\n> quotedsite (https://example.com)\n1. first\n2. second"
     }
   ],
   "source": {

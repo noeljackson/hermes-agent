@@ -120,7 +120,12 @@ against those fixtures in `crates/hermes-parity`:
   detection for groups and threads.
 - Gateway platform abstractions: built-in platform inventory, platform parsing,
   default platform config shape, session reset policy defaults, and home-channel
-  serialization. Platform adapters themselves are deliberately not ported yet.
+  serialization. Shared adapter helper parity now covers message/processing
+  enums, media-as-audio routing, UTF-16 length accounting, safe URL logging,
+  Telegram/Feishu thread metadata and reply-anchor behavior, webhook loopback
+  validation, API-server port/bool/content normalization, and Slack rich-text
+  block extraction. Live platform adapters themselves remain opt-in/future
+  work until deterministic adapter fixtures cover each platform boundary.
 - MCP filtering: server/tool name sanitization, include/exclude filtering
   including include precedence, string filters, invalid filter fallback,
   bool-ish resource/prompt utility gates, and capability-gated utility

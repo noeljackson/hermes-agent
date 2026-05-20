@@ -43,6 +43,167 @@ pub fn home_channel(platform: &str, chat_id: &str, name: &str, thread_id: Option
     value
 }
 
+pub fn message_types() -> &'static [&'static str] {
+    &[
+        "text", "location", "photo", "video", "audio", "voice", "document", "sticker", "command",
+    ]
+}
+
+pub fn processing_outcomes() -> &'static [&'static str] {
+    &["success", "failure", "cancelled"]
+}
+
+pub fn should_send_media_as_audio(platform: &str, ext: &str, is_voice: bool) -> bool {
+    let ext = ext.to_ascii_lowercase();
+    let audio_exts = [".ogg", ".opus", ".mp3", ".wav", ".m4a", ".flac"];
+    if !audio_exts.contains(&ext.as_str()) {
+        return false;
+    }
+    if platform.eq_ignore_ascii_case("telegram") {
+        return match ext.as_str() {
+            ".ogg" | ".opus" => is_voice,
+            ".mp3" | ".m4a" => true,
+            _ => false,
+        };
+    }
+    true
+}
+
+pub fn utf16_len(text: &str) -> usize {
+    text.encode_utf16().count()
+}
+
+pub fn safe_url_for_log(url: Option<&str>, max_len: usize) -> String {
+    if max_len == 0 {
+        return String::new();
+    }
+    let Some(raw) = url else {
+        return String::new();
+    };
+    if raw.is_empty() {
+        return String::new();
+    }
+
+    let safe = if let Some((scheme, rest)) = raw.split_once("://") {
+        let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+        let netloc = authority
+            .rsplit_once('@')
+            .map(|(_, host)| host)
+            .unwrap_or(authority);
+        if path.is_empty() {
+            format!("{scheme}://{netloc}")
+        } else {
+            let path_without_query = path.split_once('?').map(|(path, _)| path).unwrap_or(path);
+            let path_without_query = path_without_query
+                .split_once('#')
+                .map(|(path, _)| path)
+                .unwrap_or(path_without_query);
+            let basename = path_without_query.rsplit('/').next().unwrap_or("");
+            if basename.is_empty() {
+                format!("{scheme}://{netloc}/...")
+            } else {
+                format!("{scheme}://{netloc}/.../{basename}")
+            }
+        }
+    } else {
+        raw.to_string()
+    };
+
+    if safe.len() <= max_len {
+        return safe;
+    }
+    if max_len <= 3 {
+        return ".".repeat(max_len);
+    }
+    format!("{}...", &safe[..max_len - 3])
+}
+
+pub fn thread_metadata_for_source(
+    source: &SessionSource,
+    reply_to_message_id: Option<&str>,
+) -> Value {
+    let Some(thread_id) = &source.thread_id else {
+        return Value::Null;
+    };
+    let mut metadata = json!({"thread_id": thread_id});
+    if source.platform == "telegram" && source.chat_type == "dm" {
+        metadata["telegram_dm_topic_reply_fallback"] = json!(true);
+        if !thread_id.is_empty() && thread_id != "1" {
+            metadata["direct_messages_topic_id"] = json!(thread_id);
+        }
+        let anchor = reply_to_message_id.or(source.message_id.as_deref());
+        if let Some(anchor) = anchor {
+            metadata["telegram_reply_to_message_id"] = json!(anchor);
+        }
+    }
+    metadata
+}
+
+pub fn reply_anchor_for_event(
+    source: &SessionSource,
+    message_id: Option<&str>,
+    reply_to_message_id: Option<&str>,
+) -> Option<String> {
+    if source.platform == "telegram" && source.thread_id.is_some() && source.chat_type == "dm" {
+        return message_id.or(reply_to_message_id).map(str::to_string);
+    }
+    if source.platform == "telegram" && source.thread_id.is_some() {
+        return None;
+    }
+    if source.platform == "feishu" && source.thread_id.is_some() && reply_to_message_id.is_some() {
+        return reply_to_message_id.map(str::to_string);
+    }
+    message_id.map(str::to_string)
+}
+
+pub fn webhook_is_loopback_host(host: &str) -> bool {
+    matches!(
+        host.trim().to_ascii_lowercase().as_str(),
+        "127.0.0.1" | "localhost" | "::1" | "ip6-localhost" | "ip6-loopback"
+    )
+}
+
+pub fn api_coerce_port(value: &Value, default: i64) -> i64 {
+    match value {
+        Value::Number(number) => number.as_i64().unwrap_or(default),
+        Value::String(text) => text.parse::<i64>().unwrap_or(default),
+        _ => default,
+    }
+}
+
+pub fn api_coerce_request_bool(value: &Value, default: bool) -> bool {
+    match value {
+        Value::Bool(flag) => *flag,
+        Value::Null => default,
+        Value::String(text) => match text.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "yes" | "on" => true,
+            "0" | "false" | "no" | "off" => false,
+            _ => default,
+        },
+        Value::Number(number) => number.as_i64().unwrap_or(0) != 0,
+        _ => default,
+    }
+}
+
+pub fn api_normalize_chat_content(content: &Value) -> String {
+    normalize_chat_content_inner(content, 0)
+}
+
+pub fn slack_extract_text_from_blocks(blocks: &Value) -> String {
+    let mut parts = Vec::new();
+    for block in blocks.as_array().into_iter().flatten() {
+        if block.get("type").and_then(Value::as_str) == Some("rich_text") {
+            walk_slack_elements(
+                block.get("elements").and_then(Value::as_array),
+                0,
+                "",
+                &mut parts,
+            );
+        }
+    }
+    parts.join("\n")
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionSource {
     pub platform: String,
@@ -58,6 +219,196 @@ pub struct SessionSource {
     pub guild_id: Option<String>,
     pub parent_chat_id: Option<String>,
     pub message_id: Option<String>,
+}
+
+fn normalize_chat_content_inner(content: &Value, depth: usize) -> String {
+    if depth > 10 {
+        return String::new();
+    }
+    match content {
+        Value::Null => String::new(),
+        Value::String(text) => truncate_chars(text, 65_536),
+        Value::Array(items) => {
+            let mut parts = Vec::new();
+            let mut total = 0usize;
+            for item in items.iter().take(1_000) {
+                let part = match item {
+                    Value::String(text) => truncate_chars(text, 65_536),
+                    Value::Object(obj) => match obj
+                        .get("type")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .trim()
+                        .to_ascii_lowercase()
+                        .as_str()
+                    {
+                        "text" | "input_text" | "output_text" => obj
+                            .get("text")
+                            .map(|value| match value {
+                                Value::String(text) => text.clone(),
+                                other => other.to_string(),
+                            })
+                            .unwrap_or_default(),
+                        _ => String::new(),
+                    },
+                    Value::Array(_) => normalize_chat_content_inner(item, depth + 1),
+                    _ => String::new(),
+                };
+                if !part.is_empty() {
+                    total += part.len();
+                    parts.push(truncate_chars(&part, 65_536));
+                }
+                if total >= 65_536 {
+                    break;
+                }
+            }
+            truncate_chars(&parts.join("\n"), 65_536)
+        }
+        other => truncate_chars(
+            &match other {
+                Value::Number(number) => number.to_string(),
+                Value::Bool(flag) => flag.to_string(),
+                _ => other.to_string(),
+            },
+            65_536,
+        ),
+    }
+}
+
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    text.chars().take(max_chars).collect()
+}
+
+fn walk_slack_elements(
+    elements: Option<&Vec<Value>>,
+    quote_depth: usize,
+    bullet: &str,
+    out: &mut Vec<String>,
+) {
+    let Some(elements) = elements else {
+        return;
+    };
+    for element in elements {
+        let element_type = element.get("type").and_then(Value::as_str).unwrap_or("");
+        match element_type {
+            "rich_text_section" => append_slack_line(
+                &render_slack_inline_elements(element.get("elements").and_then(Value::as_array)),
+                quote_depth,
+                bullet,
+                out,
+            ),
+            "rich_text_quote" => walk_slack_elements(
+                element.get("elements").and_then(Value::as_array),
+                quote_depth + 1,
+                "",
+                out,
+            ),
+            "rich_text_list" => {
+                let ordered = element.get("style").and_then(Value::as_str) == Some("ordered");
+                if let Some(items) = element.get("elements").and_then(Value::as_array) {
+                    for (index, item) in items.iter().enumerate() {
+                        let item_bullet = if ordered {
+                            format!("{}. ", index + 1)
+                        } else {
+                            "\u{2022} ".to_string()
+                        };
+                        walk_slack_elements(
+                            Some(&vec![item.clone()]),
+                            quote_depth,
+                            &item_bullet,
+                            out,
+                        );
+                    }
+                }
+            }
+            "rich_text_preformatted" => {
+                let code =
+                    render_slack_inline_elements(element.get("elements").and_then(Value::as_array));
+                if !code.is_empty() {
+                    let lang = element
+                        .get("language")
+                        .and_then(Value::as_str)
+                        .unwrap_or("");
+                    append_slack_line(&format!("```{lang}\n{code}\n```"), quote_depth, bullet, out);
+                }
+            }
+            _ => {
+                let rendered = render_slack_inline_elements(Some(&vec![element.clone()]));
+                append_slack_line(&rendered, quote_depth, bullet, out);
+            }
+        }
+    }
+}
+
+fn render_slack_inline_elements(elements: Option<&Vec<Value>>) -> String {
+    let mut pieces = Vec::new();
+    for element in elements.into_iter().flatten() {
+        let element_type = element.get("type").and_then(Value::as_str).unwrap_or("");
+        let text = match element_type {
+            "text" => element
+                .get("text")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string(),
+            "link" => {
+                let url = element.get("url").and_then(Value::as_str).unwrap_or("");
+                let label = element.get("text").and_then(Value::as_str).unwrap_or(url);
+                format!("{label} ({url})")
+            }
+            "channel" => format!(
+                "<#{}>",
+                element
+                    .get("channel_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+            ),
+            "user" => format!(
+                "<@{}>",
+                element.get("user_id").and_then(Value::as_str).unwrap_or("")
+            ),
+            "usergroup" => format!(
+                "<!subteam^{}>",
+                element
+                    .get("usergroup_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+            ),
+            "emoji" => format!(
+                ":{}:",
+                element.get("name").and_then(Value::as_str).unwrap_or("")
+            ),
+            "broadcast" => format!(
+                "<!{}>",
+                element
+                    .get("range")
+                    .and_then(Value::as_str)
+                    .unwrap_or("here")
+            ),
+            "date" => element
+                .get("fallback")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string(),
+            "rich_text_section" => {
+                render_slack_inline_elements(element.get("elements").and_then(Value::as_array))
+            }
+            _ => String::new(),
+        };
+        pieces.push(text);
+    }
+    pieces.join("")
+}
+
+fn append_slack_line(text: &str, quote_depth: usize, bullet: &str, out: &mut Vec<String>) {
+    if text.trim().is_empty() {
+        return;
+    }
+    let prefix = if quote_depth > 0 {
+        format!("{} ", ">".repeat(quote_depth))
+    } else {
+        String::new()
+    };
+    out.push(format!("{prefix}{bullet}{}", text.trim_end()));
 }
 
 const BUILTIN_PLATFORMS: &[&str] = &[

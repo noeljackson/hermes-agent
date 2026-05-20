@@ -3039,6 +3039,188 @@ fn gateway_platforms_match_python_fixture() {
         hermes_gateway::home_channel("telegram", "chat-1", "Parity Chat", Some("topic-1")),
         defaults["home_channel"]
     );
+
+    let base = case(&fixture, "adapter_base_contracts");
+    let message_types = base["message_types"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(hermes_gateway::message_types(), message_types.as_slice());
+    let processing_outcomes = base["processing_outcomes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        hermes_gateway::processing_outcomes(),
+        processing_outcomes.as_slice()
+    );
+    assert_eq!(
+        hermes_gateway::should_send_media_as_audio("telegram", ".mp3", false),
+        base["audio_routing"]["telegram_mp3"]
+    );
+    assert_eq!(
+        hermes_gateway::should_send_media_as_audio("telegram", ".ogg", false),
+        base["audio_routing"]["telegram_ogg_attachment"]
+    );
+    assert_eq!(
+        hermes_gateway::should_send_media_as_audio("telegram", ".ogg", true),
+        base["audio_routing"]["telegram_ogg_voice"]
+    );
+    assert_eq!(
+        hermes_gateway::should_send_media_as_audio("slack", ".wav", false),
+        base["audio_routing"]["slack_wav"]
+    );
+    assert_eq!(
+        hermes_gateway::should_send_media_as_audio("slack", ".txt", false),
+        base["audio_routing"]["unknown_txt"]
+    );
+    assert_eq!(hermes_gateway::utf16_len("abc"), base["utf16"]["ascii"]);
+    assert_eq!(hermes_gateway::utf16_len("a😀b"), base["utf16"]["emoji"]);
+    assert_eq!(hermes_gateway::utf16_len("𠀋"), base["utf16"]["cjk_ext"]);
+    assert_eq!(
+        hermes_gateway::safe_url_for_log(
+            Some("https://user:pass@example.com/path/to/file.txt?token=secret#frag"),
+            80,
+        ),
+        base["safe_urls"]["secret_query"]
+    );
+    assert_eq!(
+        hermes_gateway::safe_url_for_log(Some("https://example.com/very/long/path"), 12),
+        base["safe_urls"]["short_limit"]
+    );
+    assert_eq!(
+        hermes_gateway::safe_url_for_log(None, 80),
+        base["safe_urls"]["none"]
+    );
+
+    let threads = case(&fixture, "adapter_thread_contracts");
+    let telegram_dm_source = hermes_gateway::SessionSource::from_json(&json!({
+        "platform": "telegram",
+        "chat_id": "chat-1",
+        "chat_type": "dm",
+        "thread_id": "42",
+        "message_id": "source-msg",
+    }))
+    .unwrap();
+    assert_eq!(
+        hermes_gateway::thread_metadata_for_source(&telegram_dm_source, Some("reply-msg")),
+        threads["telegram_dm"]["metadata"]
+    );
+    assert_eq!(
+        hermes_gateway::reply_anchor_for_event(&telegram_dm_source, Some("msg-1"), Some("reply-1")),
+        threads["telegram_dm"]["reply_anchor"]
+            .as_str()
+            .map(str::to_string)
+    );
+    let telegram_group_source = hermes_gateway::SessionSource::from_json(&json!({
+        "platform": "telegram",
+        "chat_id": "group-1",
+        "chat_type": "group",
+        "thread_id": "topic-1",
+    }))
+    .unwrap();
+    assert_eq!(
+        hermes_gateway::thread_metadata_for_source(&telegram_group_source, Some("reply-msg")),
+        threads["telegram_group_topic"]["metadata"]
+    );
+    assert_eq!(
+        hermes_gateway::reply_anchor_for_event(
+            &telegram_group_source,
+            Some("msg-2"),
+            Some("reply-2")
+        ),
+        None
+    );
+    let feishu_source = hermes_gateway::SessionSource::from_json(&json!({
+        "platform": "feishu",
+        "chat_id": "chat-1",
+        "chat_type": "group",
+        "thread_id": "thread-1",
+    }))
+    .unwrap();
+    assert_eq!(
+        hermes_gateway::thread_metadata_for_source(&feishu_source, Some("reply-msg")),
+        threads["feishu_thread"]["metadata"]
+    );
+    assert_eq!(
+        hermes_gateway::reply_anchor_for_event(&feishu_source, Some("msg-3"), Some("reply-3")),
+        threads["feishu_thread"]["reply_anchor"]
+            .as_str()
+            .map(str::to_string)
+    );
+
+    let helpers = case(&fixture, "webhook_api_server_helpers");
+    for (host, expected_key) in [
+        ("localhost", "localhost"),
+        ("::1", "ipv6_bracket"),
+        ("0.0.0.0", "public"),
+        ("", "empty"),
+    ] {
+        assert_eq!(
+            hermes_gateway::webhook_is_loopback_host(host),
+            helpers["loopback"][expected_key]
+        );
+    }
+    assert_eq!(
+        hermes_gateway::api_coerce_port(&Value::Null, 8642),
+        helpers["ports"]["none"]
+    );
+    assert_eq!(
+        hermes_gateway::api_coerce_port(&json!("9000"), 8642),
+        helpers["ports"]["string"]
+    );
+    assert_eq!(
+        hermes_gateway::api_coerce_port(&json!("bad"), 1234),
+        helpers["ports"]["bad"]
+    );
+    assert_eq!(
+        hermes_gateway::api_coerce_request_bool(&json!(" yes "), false),
+        helpers["request_bools"]["true_string"]
+    );
+    assert_eq!(
+        hermes_gateway::api_coerce_request_bool(&json!("off"), true),
+        helpers["request_bools"]["false_string"]
+    );
+    assert_eq!(
+        hermes_gateway::api_coerce_request_bool(&json!(0), true),
+        helpers["request_bools"]["int_zero"]
+    );
+    assert_eq!(
+        hermes_gateway::api_coerce_request_bool(&json!("maybe"), true),
+        helpers["request_bools"]["unknown_default"]
+    );
+    assert_eq!(
+        hermes_gateway::api_normalize_chat_content(&json!("hello")),
+        helpers["chat_content"]["string"]
+    );
+    assert_eq!(
+        hermes_gateway::api_normalize_chat_content(&json!([
+            {"type": "text", "text": "one"},
+            {"type": "input_text", "text": "two"},
+            {"type": "image_url", "image_url": {"url": "https://example.com/i.png"}},
+            ["nested", {"type": "output_text", "text": "three"}],
+            7,
+        ])),
+        helpers["chat_content"]["parts"]
+    );
+    assert_eq!(
+        hermes_gateway::api_normalize_chat_content(&Value::Null),
+        helpers["chat_content"]["none"]
+    );
+    assert_eq!(
+        hermes_gateway::api_normalize_chat_content(&json!(123)),
+        helpers["chat_content"]["scalar"]
+    );
+
+    let slack = case(&fixture, "slack_rich_text_blocks");
+    assert_eq!(
+        hermes_gateway::slack_extract_text_from_blocks(&slack["blocks"]),
+        slack["text"]
+    );
 }
 
 #[test]
