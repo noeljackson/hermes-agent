@@ -168,6 +168,12 @@ against those fixtures in `crates/hermes-parity`:
   `sessions list --limit`, `sessions stats`,
   `sessions export -`, `sessions export - --session-id`, `sessions rename`,
   and `sessions delete --yes`.
+- TUI gateway contract: JSON-RPC method inventory, long-handler routing
+  inventory, `_ok`/`_err`/unknown-method frame shapes, request normalization
+  errors for malformed requests and params, event frame shape, dashboard PTY
+  resize escape parsing, dashboard event-channel validation, and loopback host
+  allowlist. This protects the Ink/Python gateway boundary and dashboard PTY
+  bridge contract before live TUI behavior is ported.
 - Tool registry: built-in tool metadata for name, toolset, async flag,
   env requirements, schema parameter names, required fields, and description
   presence. Selected core tool schemas (`terminal`, `read_file`, `write_file`,

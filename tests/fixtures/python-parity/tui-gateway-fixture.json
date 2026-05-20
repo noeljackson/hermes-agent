@@ -1,0 +1,285 @@
+{
+  "cases": [
+    {
+      "long_handlers": [
+        "browser.manage",
+        "cli.exec",
+        "session.branch",
+        "session.compress",
+        "session.resume",
+        "shell.exec",
+        "skills.manage",
+        "slash.exec"
+      ],
+      "methods": [
+        "agents.list",
+        "approval.respond",
+        "browser.manage",
+        "clarify.respond",
+        "cli.exec",
+        "clipboard.paste",
+        "command.dispatch",
+        "command.resolve",
+        "commands.catalog",
+        "complete.path",
+        "complete.slash",
+        "config.get",
+        "config.set",
+        "config.show",
+        "cron.manage",
+        "delegation.pause",
+        "delegation.status",
+        "image.attach",
+        "input.detect_drop",
+        "insights.get",
+        "model.disconnect",
+        "model.options",
+        "model.save_key",
+        "paste.collapse",
+        "plugins.list",
+        "process.stop",
+        "prompt.background",
+        "prompt.submit",
+        "reload.env",
+        "reload.mcp",
+        "rollback.diff",
+        "rollback.list",
+        "rollback.restore",
+        "secret.respond",
+        "session.branch",
+        "session.close",
+        "session.compress",
+        "session.create",
+        "session.delete",
+        "session.history",
+        "session.interrupt",
+        "session.list",
+        "session.most_recent",
+        "session.resume",
+        "session.save",
+        "session.status",
+        "session.steer",
+        "session.title",
+        "session.undo",
+        "session.usage",
+        "setup.status",
+        "shell.exec",
+        "skills.manage",
+        "skills.reload",
+        "slash.exec",
+        "spawn_tree.list",
+        "spawn_tree.load",
+        "spawn_tree.save",
+        "subagent.interrupt",
+        "sudo.respond",
+        "terminal.resize",
+        "tools.configure",
+        "tools.list",
+        "tools.show",
+        "toolsets.list",
+        "voice.record",
+        "voice.toggle",
+        "voice.tts"
+      ],
+      "name": "method_inventory"
+    },
+    {
+      "err": {
+        "error": {
+          "code": -32000,
+          "message": "handler error"
+        },
+        "id": "rpc-2",
+        "jsonrpc": "2.0"
+      },
+      "name": "jsonrpc_frame_helpers",
+      "ok": {
+        "id": "rpc-1",
+        "jsonrpc": "2.0",
+        "result": {
+          "status": "ok"
+        }
+      },
+      "unknown_method": {
+        "error": {
+          "code": -32601,
+          "message": "unknown method: missing.method"
+        },
+        "id": "rpc-3",
+        "jsonrpc": "2.0"
+      }
+    },
+    {
+      "cases": [
+        {
+          "name": "non_object",
+          "normalized": {
+            "ok": false,
+            "response": {
+              "error": {
+                "code": -32600,
+                "message": "invalid request: expected an object"
+              },
+              "id": null,
+              "jsonrpc": "2.0"
+            }
+          },
+          "request": [
+            "not",
+            "an",
+            "object"
+          ]
+        },
+        {
+          "name": "missing_method",
+          "normalized": {
+            "ok": false,
+            "response": {
+              "error": {
+                "code": -32600,
+                "message": "invalid request: method must be a non-empty string"
+              },
+              "id": "rpc-4",
+              "jsonrpc": "2.0"
+            }
+          },
+          "request": {
+            "id": "rpc-4",
+            "jsonrpc": "2.0"
+          }
+        },
+        {
+          "name": "empty_method",
+          "normalized": {
+            "ok": false,
+            "response": {
+              "error": {
+                "code": -32600,
+                "message": "invalid request: method must be a non-empty string"
+              },
+              "id": "rpc-5",
+              "jsonrpc": "2.0"
+            }
+          },
+          "request": {
+            "id": "rpc-5",
+            "jsonrpc": "2.0",
+            "method": ""
+          }
+        },
+        {
+          "name": "non_object_params",
+          "normalized": {
+            "ok": false,
+            "response": {
+              "error": {
+                "code": -32602,
+                "message": "invalid params: expected an object"
+              },
+              "id": "rpc-6",
+              "jsonrpc": "2.0"
+            }
+          },
+          "request": {
+            "id": "rpc-6",
+            "jsonrpc": "2.0",
+            "method": "session.status",
+            "params": [
+              "bad"
+            ]
+          }
+        },
+        {
+          "name": "null_params",
+          "normalized": {
+            "id": "rpc-7",
+            "method": "session.status",
+            "ok": true,
+            "params": {}
+          },
+          "request": {
+            "id": "rpc-7",
+            "jsonrpc": "2.0",
+            "method": "session.status",
+            "params": null
+          }
+        },
+        {
+          "name": "object_params",
+          "normalized": {
+            "id": "rpc-8",
+            "method": "terminal.resize",
+            "ok": true,
+            "params": {
+              "cols": 120
+            }
+          },
+          "request": {
+            "id": "rpc-8",
+            "jsonrpc": "2.0",
+            "method": "terminal.resize",
+            "params": {
+              "cols": 120
+            }
+          }
+        }
+      ],
+      "name": "request_normalization"
+    },
+    {
+      "frames": [
+        {
+          "jsonrpc": "2.0",
+          "method": "event",
+          "params": {
+            "payload": {
+              "id": "req-1",
+              "prompt": "Allow?"
+            },
+            "session_id": "sid-1",
+            "type": "approval.request"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "method": "event",
+          "params": {
+            "session_id": "sid-1",
+            "type": "message.start"
+          }
+        }
+      ],
+      "name": "event_frames"
+    },
+    {
+      "loopback_hosts": [
+        "127.0.0.1",
+        "::1",
+        "localhost",
+        "testclient"
+      ],
+      "name": "pty_bridge_contract",
+      "resize_frames": {
+        "missing_rows_rejected": null,
+        "non_numeric_rejected": null,
+        "trailing_bytes_rejected": null,
+        "valid": {
+          "cols": 120,
+          "rows": 40
+        }
+      },
+      "valid_channels": {
+        "dot_dash": true,
+        "empty": false,
+        "simple": true,
+        "space": false,
+        "too_long": false
+      }
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/tui-gateway-fixture.py"
+  }
+}

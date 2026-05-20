@@ -518,6 +518,106 @@ fn is_secret_key(key: &str) -> bool {
         || upper.starts_with("TERMINAL_SSH")
 }
 
+pub fn tui_gateway_method_names() -> &'static [&'static str] {
+    TUI_GATEWAY_METHODS
+}
+
+pub fn tui_gateway_long_handlers() -> &'static [&'static str] {
+    TUI_GATEWAY_LONG_HANDLERS
+}
+
+pub fn tui_jsonrpc_ok(id: Value, result: Value) -> Value {
+    json!({"jsonrpc": "2.0", "id": id, "result": result})
+}
+
+pub fn tui_jsonrpc_err(id: Value, code: i64, message: &str) -> Value {
+    json!({"jsonrpc": "2.0", "id": id, "error": {"code": code, "message": message}})
+}
+
+pub fn tui_unknown_method_response(id: Value, method: &str) -> Value {
+    tui_jsonrpc_err(id, -32601, &format!("unknown method: {method}"))
+}
+
+pub fn tui_normalize_request(req: &Value) -> Value {
+    let Some(obj) = req.as_object() else {
+        return json!({
+            "ok": false,
+            "response": tui_jsonrpc_err(Value::Null, -32600, "invalid request: expected an object"),
+        });
+    };
+
+    let id = obj.get("id").cloned().unwrap_or(Value::Null);
+    let method = obj.get("method").and_then(Value::as_str).unwrap_or("");
+    if method.is_empty() {
+        return json!({
+            "ok": false,
+            "response": tui_jsonrpc_err(id, -32600, "invalid request: method must be a non-empty string"),
+        });
+    }
+
+    let params = match obj.get("params") {
+        None | Some(Value::Null) => json!({}),
+        Some(Value::Object(_)) => obj["params"].clone(),
+        Some(_) => {
+            return json!({
+                "ok": false,
+                "response": tui_jsonrpc_err(id, -32602, "invalid params: expected an object"),
+            });
+        }
+    };
+
+    json!({"ok": true, "id": id, "method": method, "params": params})
+}
+
+pub fn tui_event_frame(event: &str, session_id: &str, payload: Option<Value>) -> Value {
+    let mut params = serde_json::Map::new();
+    params.insert("type".to_string(), json!(event));
+    params.insert("session_id".to_string(), json!(session_id));
+    if let Some(payload) = payload {
+        params.insert("payload".to_string(), payload);
+    }
+    json!({"jsonrpc": "2.0", "method": "event", "params": Value::Object(params)})
+}
+
+pub fn parse_dashboard_pty_resize_frame(raw: &[u8]) -> Option<(usize, usize)> {
+    const PREFIX: &[u8] = b"\x1b[RESIZE:";
+    if !raw.starts_with(PREFIX) || !raw.ends_with(b"]") {
+        return None;
+    }
+    let body = &raw[PREFIX.len()..raw.len() - 1];
+    let (cols, rows) = split_once_byte(body, b';')?;
+    if cols.is_empty() || rows.is_empty() {
+        return None;
+    }
+    let cols = parse_ascii_usize(cols)?;
+    let rows = parse_ascii_usize(rows)?;
+    Some((cols, rows))
+}
+
+pub fn valid_dashboard_event_channel(channel: &str) -> bool {
+    !channel.is_empty()
+        && channel.len() <= 128
+        && channel
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+}
+
+pub fn dashboard_loopback_hosts() -> &'static [&'static str] {
+    &["127.0.0.1", "::1", "localhost", "testclient"]
+}
+
+fn split_once_byte(bytes: &[u8], needle: u8) -> Option<(&[u8], &[u8])> {
+    let index = bytes.iter().position(|byte| *byte == needle)?;
+    Some((&bytes[..index], &bytes[index + 1..]))
+}
+
+fn parse_ascii_usize(bytes: &[u8]) -> Option<usize> {
+    if !bytes.iter().all(u8::is_ascii_digit) {
+        return None;
+    }
+    std::str::from_utf8(bytes).ok()?.parse().ok()
+}
+
 const BUILTIN_SUBCOMMANDS: &[&str] = &[
     "acp",
     "auth",
@@ -566,6 +666,88 @@ const BUILTIN_SUBCOMMANDS: &[&str] = &[
     "version",
     "webhook",
     "whatsapp",
+];
+
+const TUI_GATEWAY_LONG_HANDLERS: &[&str] = &[
+    "browser.manage",
+    "cli.exec",
+    "session.branch",
+    "session.compress",
+    "session.resume",
+    "shell.exec",
+    "skills.manage",
+    "slash.exec",
+];
+
+const TUI_GATEWAY_METHODS: &[&str] = &[
+    "agents.list",
+    "approval.respond",
+    "browser.manage",
+    "clarify.respond",
+    "cli.exec",
+    "clipboard.paste",
+    "command.dispatch",
+    "command.resolve",
+    "commands.catalog",
+    "complete.path",
+    "complete.slash",
+    "config.get",
+    "config.set",
+    "config.show",
+    "cron.manage",
+    "delegation.pause",
+    "delegation.status",
+    "image.attach",
+    "input.detect_drop",
+    "insights.get",
+    "model.disconnect",
+    "model.options",
+    "model.save_key",
+    "paste.collapse",
+    "plugins.list",
+    "process.stop",
+    "prompt.background",
+    "prompt.submit",
+    "reload.env",
+    "reload.mcp",
+    "rollback.diff",
+    "rollback.list",
+    "rollback.restore",
+    "secret.respond",
+    "session.branch",
+    "session.close",
+    "session.compress",
+    "session.create",
+    "session.delete",
+    "session.history",
+    "session.interrupt",
+    "session.list",
+    "session.most_recent",
+    "session.resume",
+    "session.save",
+    "session.status",
+    "session.steer",
+    "session.title",
+    "session.undo",
+    "session.usage",
+    "setup.status",
+    "shell.exec",
+    "skills.manage",
+    "skills.reload",
+    "slash.exec",
+    "spawn_tree.list",
+    "spawn_tree.load",
+    "spawn_tree.save",
+    "subagent.interrupt",
+    "sudo.respond",
+    "terminal.resize",
+    "tools.configure",
+    "tools.list",
+    "tools.show",
+    "toolsets.list",
+    "voice.record",
+    "voice.toggle",
+    "voice.tts",
 ];
 
 #[cfg(test)]

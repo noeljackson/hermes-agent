@@ -29,6 +29,7 @@ const FIXTURES: &[&str] = &[
     "tool-execution-fixture.json",
     "tool-registry-fixture.json",
     "toolset-resolution-fixture.json",
+    "tui-gateway-fixture.json",
 ];
 
 fn names(values: &[Value]) -> Vec<&str> {
@@ -3407,6 +3408,120 @@ fn terminal_execution_matches_python_fixture() {
     assert_eq!(
         hermes_terminal::terminal_tool_value(&json!("printf no-run"), Some(999999)),
         case(&fixture, "foreground_timeout_too_large")["result"]
+    );
+}
+
+#[test]
+fn tui_gateway_contract_matches_python_fixture() {
+    let fixture = load_fixture("tui-gateway-fixture.json");
+
+    let inventory = case(&fixture, "method_inventory");
+    let methods = inventory["methods"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(hermes_cli::tui_gateway_method_names(), methods.as_slice());
+
+    let long_handlers = inventory["long_handlers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        hermes_cli::tui_gateway_long_handlers(),
+        long_handlers.as_slice()
+    );
+
+    let frames = case(&fixture, "jsonrpc_frame_helpers");
+    assert_eq!(
+        hermes_cli::tui_jsonrpc_ok(json!("rpc-1"), json!({"status": "ok"})),
+        frames["ok"]
+    );
+    assert_eq!(
+        hermes_cli::tui_jsonrpc_err(json!("rpc-2"), -32000, "handler error"),
+        frames["err"]
+    );
+    assert_eq!(
+        hermes_cli::tui_unknown_method_response(json!("rpc-3"), "missing.method"),
+        frames["unknown_method"]
+    );
+
+    for request_case in case(&fixture, "request_normalization")["cases"]
+        .as_array()
+        .unwrap()
+    {
+        assert_eq!(
+            hermes_cli::tui_normalize_request(&request_case["request"]),
+            request_case["normalized"],
+            "{}",
+            request_case["name"].as_str().unwrap()
+        );
+    }
+
+    let event_frames = case(&fixture, "event_frames")["frames"].as_array().unwrap();
+    assert_eq!(
+        hermes_cli::tui_event_frame(
+            "approval.request",
+            "sid-1",
+            Some(json!({"prompt": "Allow?", "id": "req-1"}))
+        ),
+        event_frames[0]
+    );
+    assert_eq!(
+        hermes_cli::tui_event_frame("message.start", "sid-1", None),
+        event_frames[1]
+    );
+
+    let pty = case(&fixture, "pty_bridge_contract");
+    let valid = hermes_cli::parse_dashboard_pty_resize_frame(b"\x1b[RESIZE:120;40]")
+        .map(|(cols, rows)| json!({"cols": cols, "rows": rows}));
+    assert_eq!(valid, Some(pty["resize_frames"]["valid"].clone()));
+    assert_eq!(
+        hermes_cli::parse_dashboard_pty_resize_frame(b"\x1b[RESIZE:120;40]x"),
+        None
+    );
+    assert_eq!(
+        hermes_cli::parse_dashboard_pty_resize_frame(b"\x1b[RESIZE:cols;40]"),
+        None
+    );
+    assert_eq!(
+        hermes_cli::parse_dashboard_pty_resize_frame(b"\x1b[RESIZE:120]"),
+        None
+    );
+
+    let channels = &pty["valid_channels"];
+    assert_eq!(
+        hermes_cli::valid_dashboard_event_channel("chat_1"),
+        channels["simple"].as_bool().unwrap()
+    );
+    assert_eq!(
+        hermes_cli::valid_dashboard_event_channel("chat.1-side"),
+        channels["dot_dash"].as_bool().unwrap()
+    );
+    assert_eq!(
+        hermes_cli::valid_dashboard_event_channel(""),
+        channels["empty"].as_bool().unwrap()
+    );
+    assert_eq!(
+        hermes_cli::valid_dashboard_event_channel("chat 1"),
+        channels["space"].as_bool().unwrap()
+    );
+    assert_eq!(
+        hermes_cli::valid_dashboard_event_channel(&"x".repeat(129)),
+        channels["too_long"].as_bool().unwrap()
+    );
+    assert_eq!(
+        hermes_cli::dashboard_loopback_hosts(),
+        pty["loopback_hosts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>()
+            .as_slice()
     );
 }
 
