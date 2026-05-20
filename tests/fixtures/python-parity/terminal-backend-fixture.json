@@ -262,6 +262,141 @@
         "error": "Invalid value for TERMINAL_CONTAINER_CPU: 'large' (expected number). Check ~/.hermes/.env or environment variables.",
         "ok": false
       }
+    },
+    {
+      "docker": {
+        "env_dict": {
+          "CI": "1",
+          "COUNT": "3",
+          "FLAG": "True"
+        },
+        "forward_env": [
+          "SSH_AUTH_SOCK",
+          "CI"
+        ],
+        "security_args_host_user": [
+          "--cap-drop",
+          "ALL",
+          "--cap-add",
+          "DAC_OVERRIDE",
+          "--cap-add",
+          "CHOWN",
+          "--cap-add",
+          "FOWNER",
+          "--security-opt",
+          "no-new-privileges",
+          "--pids-limit",
+          "256",
+          "--tmpfs",
+          "/tmp:rw,nosuid,size=512m",
+          "--tmpfs",
+          "/var/tmp:rw,noexec,nosuid,size=256m",
+          "--tmpfs",
+          "/run:rw,noexec,nosuid,size=64m"
+        ],
+        "security_args_root": [
+          "--cap-drop",
+          "ALL",
+          "--cap-add",
+          "DAC_OVERRIDE",
+          "--cap-add",
+          "CHOWN",
+          "--cap-add",
+          "FOWNER",
+          "--security-opt",
+          "no-new-privileges",
+          "--pids-limit",
+          "256",
+          "--tmpfs",
+          "/tmp:rw,nosuid,size=512m",
+          "--tmpfs",
+          "/var/tmp:rw,noexec,nosuid,size=256m",
+          "--tmpfs",
+          "/run:rw,noexec,nosuid,size=64m",
+          "--cap-add",
+          "SETUID",
+          "--cap-add",
+          "SETGID"
+        ]
+      },
+      "file_sync": {
+        "quoted_mkdir": "mkdir -p /home/hermes/.hermes '/tmp/path with spaces'",
+        "quoted_rm": "rm -f /home/hermes/.hermes/a.txt '/tmp/path with spaces/b.txt'",
+        "unique_parent_dirs": [
+          "/remote/one",
+          "/remote/two"
+        ]
+      },
+      "modal_snapshots": {
+        "after_delete_specific": {
+          "direct:task-a": "snap-direct",
+          "task-b": "snap-legacy",
+          "task-c": "snap-old"
+        },
+        "after_store_direct": {
+          "direct:task-a": "snap-direct",
+          "direct:task-d": "snap-new",
+          "task-b": "snap-legacy",
+          "task-c": "snap-old"
+        },
+        "direct_key": "direct:task-a",
+        "restore_direct": [
+          "snap-direct",
+          false
+        ],
+        "restore_legacy": [
+          "snap-legacy",
+          true
+        ],
+        "restore_missing": [
+          null,
+          false
+        ]
+      },
+      "name": "remote_backend_contracts",
+      "ssh": {
+        "base_command": [
+          "ssh",
+          "-o",
+          "ControlPath=/tmp/hermes-ssh/fixture.sock",
+          "-o",
+          "ControlMaster=auto",
+          "-o",
+          "ControlPersist=300",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "StrictHostKeyChecking=accept-new",
+          "-o",
+          "ConnectTimeout=10",
+          "-p",
+          "2222",
+          "-i",
+          "/tmp/fake key",
+          "hermes@ssh.example.invalid"
+        ],
+        "extra_args_command": [
+          "ssh",
+          "-o",
+          "ControlPath=/tmp/hermes-ssh/fixture.sock",
+          "-o",
+          "ControlMaster=auto",
+          "-o",
+          "ControlPersist=300",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "StrictHostKeyChecking=accept-new",
+          "-o",
+          "ConnectTimeout=10",
+          "-p",
+          "2222",
+          "-i",
+          "/tmp/fake key",
+          "-tt",
+          "hermes@ssh.example.invalid"
+        ]
+      }
     }
   ],
   "source": {

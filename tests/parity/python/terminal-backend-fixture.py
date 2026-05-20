@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from parity_common import fixture, isolated_hermes_home, parse_out_arg, write_fixture
 
@@ -80,9 +81,92 @@ def error_with_env(values):
         return {"ok": False, "error": str(exc)}
 
 
+def remote_backend_contracts(home: Path):
+    from tools.environments import docker as docker_env
+    from tools.environments.file_sync import (
+        quoted_mkdir_command,
+        quoted_rm_command,
+        unique_parent_dirs,
+    )
+    from tools.environments.ssh import SSHEnvironment
+    from tools.environments import modal as modal_env
+
+    ssh = SSHEnvironment.__new__(SSHEnvironment)
+    ssh.host = "ssh.example.invalid"
+    ssh.user = "hermes"
+    ssh.port = 2222
+    ssh.key_path = "/tmp/fake key"
+    ssh.control_socket = Path("/tmp/hermes-ssh/fixture.sock")
+
+    modal_store = home / "modal_snapshots.json"
+    original_snapshot_store = modal_env._SNAPSHOT_STORE
+    try:
+        modal_env._SNAPSHOT_STORE = modal_store
+        modal_env._save_snapshots(
+            {
+                "direct:task-a": "snap-direct",
+                "task-b": "snap-legacy",
+                "direct:task-c": "snap-current",
+                "task-c": "snap-old",
+            }
+        )
+        modal_snapshot_cases = {
+            "direct_key": modal_env._direct_snapshot_key("task-a"),
+            "restore_direct": modal_env._get_snapshot_restore_candidate("task-a"),
+            "restore_legacy": modal_env._get_snapshot_restore_candidate("task-b"),
+            "restore_missing": modal_env._get_snapshot_restore_candidate("missing"),
+        }
+        modal_env._delete_direct_snapshot("task-c", "snap-current")
+        modal_snapshot_cases["after_delete_specific"] = modal_env._load_snapshots()
+        modal_env._store_direct_snapshot("task-d", "snap-new")
+        modal_snapshot_cases["after_store_direct"] = modal_env._load_snapshots()
+    finally:
+        modal_env._SNAPSHOT_STORE = original_snapshot_store
+
+    return {
+        "name": "remote_backend_contracts",
+        "docker": {
+            "forward_env": docker_env._normalize_forward_env_names(
+                [" SSH_AUTH_SOCK ", "bad-name!", "", "SSH_AUTH_SOCK", 7, "CI"]
+            ),
+            "env_dict": docker_env._normalize_env_dict(
+                {
+                    " CI ": "1",
+                    "COUNT": 3,
+                    "FLAG": True,
+                    "bad-name!": "drop",
+                    "COMPLEX": {"drop": True},
+                }
+            ),
+            "security_args_root": docker_env._build_security_args(False),
+            "security_args_host_user": docker_env._build_security_args(True),
+        },
+        "ssh": {
+            "base_command": ssh._build_ssh_command(),
+            "extra_args_command": ssh._build_ssh_command(["-tt"]),
+        },
+        "file_sync": {
+            "quoted_mkdir": quoted_mkdir_command(
+                ["/home/hermes/.hermes", "/tmp/path with spaces"]
+            ),
+            "quoted_rm": quoted_rm_command(
+                ["/home/hermes/.hermes/a.txt", "/tmp/path with spaces/b.txt"]
+            ),
+            "unique_parent_dirs": unique_parent_dirs(
+                [
+                    ("/host/a", "/remote/one/a.txt"),
+                    ("/host/b", "/remote/two/b.txt"),
+                    ("/host/c", "/remote/one/c.txt"),
+                ]
+            ),
+        },
+        "modal_snapshots": modal_snapshot_cases,
+    }
+
+
 def main() -> int:
     out = parse_out_arg()
-    with isolated_hermes_home():
+    with isolated_hermes_home() as home:
         cases = [
             {
                 "name": "local_defaults",
@@ -189,6 +273,7 @@ def main() -> int:
                 "name": "invalid_container_cpu_error",
                 "result": error_with_env({"TERMINAL_CONTAINER_CPU": "large"}),
             },
+            remote_backend_contracts(home),
         ]
 
     write_fixture(out, fixture(SCRIPT, cases))

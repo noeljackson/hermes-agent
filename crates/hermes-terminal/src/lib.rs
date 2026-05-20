@@ -1,5 +1,5 @@
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::process::Command;
 
 const DEFAULT_IMAGE: &str = "nikolaik/python-nodejs:python3.11-nodejs20";
@@ -116,6 +116,212 @@ pub fn resolve_env_config_result(
         "ssh_user": env.get("TERMINAL_SSH_USER").map(String::as_str).unwrap_or(""),
         "timeout": int_env(env, "TERMINAL_TIMEOUT", 180)?,
     }))
+}
+
+pub fn normalize_forward_env_names(value: &Value) -> Value {
+    let mut seen = BTreeSet::new();
+    let mut out = Vec::new();
+    for item in value.as_array().into_iter().flatten() {
+        let Some(raw) = item.as_str() else {
+            continue;
+        };
+        let key = raw.trim();
+        if key.is_empty() || !is_valid_env_name(key) || !seen.insert(key.to_string()) {
+            continue;
+        }
+        out.push(json!(key));
+    }
+    Value::Array(out)
+}
+
+pub fn normalize_docker_env_dict(value: &Value) -> Value {
+    let mut out = serde_json::Map::new();
+    let Some(input) = value.as_object() else {
+        return Value::Object(out);
+    };
+    for (key, value) in input {
+        let key = key.trim();
+        if !is_valid_env_name(key) {
+            continue;
+        }
+        let normalized = match value {
+            Value::String(text) => Some(text.clone()),
+            Value::Number(number) => Some(number.to_string()),
+            Value::Bool(flag) => Some(if *flag { "True" } else { "False" }.to_string()),
+            _ => None,
+        };
+        if let Some(normalized) = normalized {
+            out.insert(key.to_string(), json!(normalized));
+        }
+    }
+    Value::Object(out)
+}
+
+pub fn docker_security_args(run_as_host_user: bool) -> Vec<String> {
+    let mut args = vec![
+        "--cap-drop",
+        "ALL",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "FOWNER",
+        "--security-opt",
+        "no-new-privileges",
+        "--pids-limit",
+        "256",
+        "--tmpfs",
+        "/tmp:rw,nosuid,size=512m",
+        "--tmpfs",
+        "/var/tmp:rw,noexec,nosuid,size=256m",
+        "--tmpfs",
+        "/run:rw,noexec,nosuid,size=64m",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect::<Vec<_>>();
+    if !run_as_host_user {
+        args.extend(
+            ["--cap-add", "SETUID", "--cap-add", "SETGID"]
+                .into_iter()
+                .map(str::to_string),
+        );
+    }
+    args
+}
+
+pub fn ssh_command(
+    control_path: &str,
+    host: &str,
+    user: &str,
+    port: i64,
+    key_path: &str,
+    extra_args: &[&str],
+) -> Vec<String> {
+    let mut cmd = vec![
+        "ssh".to_string(),
+        "-o".to_string(),
+        format!("ControlPath={control_path}"),
+        "-o".to_string(),
+        "ControlMaster=auto".to_string(),
+        "-o".to_string(),
+        "ControlPersist=300".to_string(),
+        "-o".to_string(),
+        "BatchMode=yes".to_string(),
+        "-o".to_string(),
+        "StrictHostKeyChecking=accept-new".to_string(),
+        "-o".to_string(),
+        "ConnectTimeout=10".to_string(),
+    ];
+    if port != 22 {
+        cmd.extend(["-p".to_string(), port.to_string()]);
+    }
+    if !key_path.is_empty() {
+        cmd.extend(["-i".to_string(), key_path.to_string()]);
+    }
+    cmd.extend(extra_args.iter().map(|arg| (*arg).to_string()));
+    cmd.push(format!("{user}@{host}"));
+    cmd
+}
+
+pub fn quoted_mkdir_command(dirs: &[&str]) -> String {
+    format!(
+        "mkdir -p {}",
+        dirs.iter()
+            .map(|dir| shell_quote(dir))
+            .collect::<Vec<_>>()
+            .join(" ")
+    )
+}
+
+pub fn quoted_rm_command(paths: &[&str]) -> String {
+    format!(
+        "rm -f {}",
+        paths
+            .iter()
+            .map(|path| shell_quote(path))
+            .collect::<Vec<_>>()
+            .join(" ")
+    )
+}
+
+pub fn unique_parent_dirs(files: &[(&str, &str)]) -> Vec<String> {
+    files
+        .iter()
+        .filter_map(|(_, remote)| {
+            remote
+                .rsplit_once('/')
+                .map(|(parent, _)| parent.to_string())
+        })
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+pub fn modal_direct_snapshot_key(task_id: &str) -> String {
+    format!("direct:{task_id}")
+}
+
+pub fn modal_restore_candidate(snapshots: &Value, task_id: &str) -> Value {
+    let Some(map) = snapshots.as_object() else {
+        return json!([null, false]);
+    };
+    let direct_key = modal_direct_snapshot_key(task_id);
+    if let Some(value) = map.get(&direct_key).and_then(Value::as_str) {
+        if !value.is_empty() {
+            return json!([value, false]);
+        }
+    }
+    if let Some(value) = map.get(task_id).and_then(Value::as_str) {
+        if !value.is_empty() {
+            return json!([value, true]);
+        }
+    }
+    json!([null, false])
+}
+
+pub fn modal_delete_direct_snapshot(
+    snapshots: &Value,
+    task_id: &str,
+    snapshot_id: Option<&str>,
+) -> Value {
+    let mut map = snapshots.as_object().cloned().unwrap_or_default();
+    for key in [modal_direct_snapshot_key(task_id), task_id.to_string()] {
+        let should_remove = map.get(&key).is_some_and(|value| {
+            snapshot_id.is_none_or(|expected| value.as_str() == Some(expected))
+        });
+        if should_remove {
+            map.remove(&key);
+        }
+    }
+    Value::Object(map)
+}
+
+pub fn modal_store_direct_snapshot(snapshots: &Value, task_id: &str, snapshot_id: &str) -> Value {
+    let mut map = snapshots.as_object().cloned().unwrap_or_default();
+    map.insert(modal_direct_snapshot_key(task_id), json!(snapshot_id));
+    map.remove(task_id);
+    Value::Object(map)
+}
+
+fn is_valid_env_name(key: &str) -> bool {
+    let mut chars = key.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+}
+
+fn shell_quote(value: &str) -> String {
+    if value
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.' | '/'))
+    {
+        return value.to_string();
+    }
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
 
 fn is_host_path(path: &str) -> bool {

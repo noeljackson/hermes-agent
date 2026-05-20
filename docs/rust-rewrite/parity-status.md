@@ -141,7 +141,10 @@ against those fixtures in `crates/hermes-parity`:
   Singularity, and Vercel sandbox environment config, including host-cwd
   safety normalization, container resource defaults, persistent-shell boolean
   coercion, Modal mode coercion, and fail-closed errors for malformed timeout,
-  container CPU, and Docker JSON environment values.
+  container CPU, and Docker JSON environment values. Remote backend support
+  has deterministic fixture coverage for Docker env/security argument
+  normalization, SSH command construction, file-sync shell quoting and parent
+  directory discovery, and Modal direct/legacy snapshot key handling.
 - Terminal execution: deterministic local foreground command execution for
   success and non-zero exits, invalid command-type rejection, and foreground
   timeout ceiling errors. Container/SSH/Modal execution remains outside this

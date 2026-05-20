@@ -3640,6 +3640,135 @@ fn terminal_backend_matches_python_fixture() {
             };
         assert_eq!(actual, *expected, "{name}");
     }
+
+    let remote = case(&fixture, "remote_backend_contracts");
+    assert_eq!(
+        hermes_terminal::normalize_forward_env_names(&json!([
+            " SSH_AUTH_SOCK ",
+            "bad-name!",
+            "",
+            "SSH_AUTH_SOCK",
+            7,
+            "CI"
+        ])),
+        remote["docker"]["forward_env"]
+    );
+    assert_eq!(
+        hermes_terminal::normalize_docker_env_dict(&json!({
+            " CI ": "1",
+            "COUNT": 3,
+            "FLAG": true,
+            "bad-name!": "drop",
+            "COMPLEX": {"drop": true},
+        })),
+        remote["docker"]["env_dict"]
+    );
+    assert_eq!(
+        Value::Array(
+            hermes_terminal::docker_security_args(false)
+                .into_iter()
+                .map(Value::String)
+                .collect()
+        ),
+        remote["docker"]["security_args_root"]
+    );
+    assert_eq!(
+        Value::Array(
+            hermes_terminal::docker_security_args(true)
+                .into_iter()
+                .map(Value::String)
+                .collect()
+        ),
+        remote["docker"]["security_args_host_user"]
+    );
+    assert_eq!(
+        Value::Array(
+            hermes_terminal::ssh_command(
+                "/tmp/hermes-ssh/fixture.sock",
+                "ssh.example.invalid",
+                "hermes",
+                2222,
+                "/tmp/fake key",
+                &[],
+            )
+            .into_iter()
+            .map(Value::String)
+            .collect()
+        ),
+        remote["ssh"]["base_command"]
+    );
+    assert_eq!(
+        Value::Array(
+            hermes_terminal::ssh_command(
+                "/tmp/hermes-ssh/fixture.sock",
+                "ssh.example.invalid",
+                "hermes",
+                2222,
+                "/tmp/fake key",
+                &["-tt"],
+            )
+            .into_iter()
+            .map(Value::String)
+            .collect()
+        ),
+        remote["ssh"]["extra_args_command"]
+    );
+    assert_eq!(
+        hermes_terminal::quoted_mkdir_command(&["/home/hermes/.hermes", "/tmp/path with spaces"]),
+        remote["file_sync"]["quoted_mkdir"]
+    );
+    assert_eq!(
+        hermes_terminal::quoted_rm_command(&[
+            "/home/hermes/.hermes/a.txt",
+            "/tmp/path with spaces/b.txt"
+        ]),
+        remote["file_sync"]["quoted_rm"]
+    );
+    assert_eq!(
+        Value::Array(
+            hermes_terminal::unique_parent_dirs(&[
+                ("/host/a", "/remote/one/a.txt"),
+                ("/host/b", "/remote/two/b.txt"),
+                ("/host/c", "/remote/one/c.txt"),
+            ])
+            .into_iter()
+            .map(Value::String)
+            .collect()
+        ),
+        remote["file_sync"]["unique_parent_dirs"]
+    );
+    assert_eq!(
+        hermes_terminal::modal_direct_snapshot_key("task-a"),
+        remote["modal_snapshots"]["direct_key"]
+    );
+    let snapshots = json!({
+        "direct:task-a": "snap-direct",
+        "task-b": "snap-legacy",
+        "direct:task-c": "snap-current",
+        "task-c": "snap-old",
+    });
+    assert_eq!(
+        hermes_terminal::modal_restore_candidate(&snapshots, "task-a"),
+        remote["modal_snapshots"]["restore_direct"]
+    );
+    assert_eq!(
+        hermes_terminal::modal_restore_candidate(&snapshots, "task-b"),
+        remote["modal_snapshots"]["restore_legacy"]
+    );
+    assert_eq!(
+        hermes_terminal::modal_restore_candidate(&snapshots, "missing"),
+        remote["modal_snapshots"]["restore_missing"]
+    );
+    let after_delete =
+        hermes_terminal::modal_delete_direct_snapshot(&snapshots, "task-c", Some("snap-current"));
+    assert_eq!(
+        after_delete,
+        remote["modal_snapshots"]["after_delete_specific"]
+    );
+    assert_eq!(
+        hermes_terminal::modal_store_direct_snapshot(&after_delete, "task-d", "snap-new"),
+        remote["modal_snapshots"]["after_store_direct"]
+    );
 }
 
 #[test]
