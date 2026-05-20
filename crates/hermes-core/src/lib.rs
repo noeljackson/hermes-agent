@@ -1,6 +1,7 @@
 use hermes_provider::{ChatProvider, ToolCall};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Mutex;
 
 pub type ToolHandler = Box<dyn Fn(&Value) -> Value + Send + Sync>;
 
@@ -16,6 +17,45 @@ pub struct AgentRuntime<P> {
     provider: P,
     max_iterations: usize,
     tools: BTreeMap<String, ToolHandler>,
+}
+
+#[derive(Debug)]
+pub struct IterationBudget {
+    max_total: usize,
+    used: Mutex<usize>,
+}
+
+impl IterationBudget {
+    pub fn new(max_total: usize) -> Self {
+        Self {
+            max_total,
+            used: Mutex::new(0),
+        }
+    }
+
+    pub fn consume(&self) -> bool {
+        let mut used = self.used.lock().unwrap();
+        if *used >= self.max_total {
+            return false;
+        }
+        *used += 1;
+        true
+    }
+
+    pub fn refund(&self) {
+        let mut used = self.used.lock().unwrap();
+        if *used > 0 {
+            *used -= 1;
+        }
+    }
+
+    pub fn used(&self) -> usize {
+        *self.used.lock().unwrap()
+    }
+
+    pub fn remaining(&self) -> usize {
+        self.max_total.saturating_sub(self.used())
+    }
 }
 
 impl<P: ChatProvider> AgentRuntime<P> {
@@ -177,10 +217,125 @@ pub fn sanitize_tool_calls_for_strict_api(mut message: Value) -> Value {
     message
 }
 
+pub fn iteration_budget_events() -> Vec<Value> {
+    let budget = IterationBudget::new(3);
+    let mut events = vec![json!({
+        "op": "initial",
+        "used": budget.used(),
+        "remaining": budget.remaining(),
+    })];
+    for idx in 0..4 {
+        let allowed = budget.consume();
+        events.push(json!({
+            "op": format!("consume_{}", idx + 1),
+            "allowed": allowed,
+            "used": budget.used(),
+            "remaining": budget.remaining(),
+        }));
+    }
+    for idx in 0..2 {
+        budget.refund();
+        events.push(json!({
+            "op": format!("refund_{}", idx + 1),
+            "used": budget.used(),
+            "remaining": budget.remaining(),
+        }));
+    }
+    let allowed = budget.consume();
+    events.push(json!({
+        "op": "consume_after_refund",
+        "allowed": allowed,
+        "used": budget.used(),
+        "remaining": budget.remaining(),
+    }));
+    events
+}
+
+#[derive(Debug, Default)]
+pub struct PendingSteer {
+    pending: Mutex<Option<String>>,
+}
+
+impl PendingSteer {
+    pub fn steer(&self, text: &str) -> bool {
+        if text.trim().is_empty() {
+            return false;
+        }
+        let cleaned = text.trim();
+        let mut pending = self.pending.lock().unwrap();
+        *pending = Some(match pending.as_ref() {
+            Some(existing) => format!("{existing}\n{cleaned}"),
+            None => cleaned.to_string(),
+        });
+        true
+    }
+
+    pub fn drain(&self) -> Option<String> {
+        self.pending.lock().unwrap().take()
+    }
+
+    pub fn pending(&self) -> Option<String> {
+        self.pending.lock().unwrap().clone()
+    }
+}
+
+pub fn steer_state_fixture() -> Value {
+    let steer = PendingSteer::default();
+    let accepted_empty = steer.steer("  ");
+    let accepted_first = steer.steer(" first ");
+    let accepted_second = steer.steer("second");
+    let pending_before_drain = steer.pending();
+    let drained = steer.drain();
+    let pending_after_drain = steer.pending();
+    let drained_again = steer.drain();
+    json!({
+        "accepted_empty": accepted_empty,
+        "accepted_first": accepted_first,
+        "accepted_second": accepted_second,
+        "pending_before_drain": pending_before_drain,
+        "drained": drained,
+        "pending_after_drain": pending_after_drain,
+        "drained_again": drained_again,
+    })
+}
+
+pub fn interrupt_state_fixture() -> Value {
+    let mut interrupted_threads = BTreeSet::new();
+    let execution_thread_id = 111;
+    let worker_threads = [222, 333];
+    let interrupt_message = "x".repeat(45);
+
+    interrupted_threads.insert(execution_thread_id);
+    for worker in worker_threads {
+        interrupted_threads.insert(worker);
+    }
+    let after_request = json!({
+        "requested": true,
+        "message": interrupt_message,
+        "thread_signal_pending": false,
+        "interrupted_threads": interrupted_threads.iter().copied().collect::<Vec<_>>(),
+    });
+
+    interrupted_threads.clear();
+    let after_clear = json!({
+        "requested": false,
+        "message": null,
+        "thread_signal_pending": false,
+        "pending_steer": null,
+        "interrupted_threads": interrupted_threads.iter().copied().collect::<Vec<i32>>(),
+    });
+
+    json!({
+        "after_request": after_request,
+        "after_clear": after_clear,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use hermes_provider::{FakeProvider, ProviderResponse, ToolCall};
+    use std::sync::Arc;
 
     #[test]
     fn runs_tool_loop_until_final_response() {
@@ -271,5 +426,25 @@ mod tests {
         assert_eq!(tool_messages.len(), 2);
         assert_eq!(tool_messages[0]["tool_call_id"], "call-1");
         assert_eq!(tool_messages[1]["tool_call_id"], "call-2");
+    }
+
+    #[test]
+    fn iteration_budget_is_thread_safe() {
+        let budget = Arc::new(IterationBudget::new(50));
+        let mut handles = Vec::new();
+        for _ in 0..10 {
+            let budget = Arc::clone(&budget);
+            handles.push(std::thread::spawn(move || {
+                for _ in 0..10 {
+                    let _ = budget.consume();
+                }
+            }));
+        }
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        assert_eq!(budget.used(), 50);
+        assert_eq!(budget.remaining(), 0);
+        assert!(!budget.consume());
     }
 }

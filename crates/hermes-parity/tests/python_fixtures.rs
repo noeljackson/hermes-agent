@@ -2061,6 +2061,23 @@ fn agent_loop_guardrails_match_python_fixture() {
         strict_case["message"]
     );
     assert_eq!(strict, strict_case["original"]);
+
+    assert_eq!(
+        Value::Array(hermes_core::iteration_budget_events()),
+        case(&fixture, "iteration_budget")["events"]
+    );
+    assert_eq!(
+        hermes_core::steer_state_fixture(),
+        case(&fixture, "steer_state")["state"]
+    );
+    assert_eq!(
+        hermes_core::interrupt_state_fixture()["after_request"],
+        case(&fixture, "interrupt_state")["after_request"]
+    );
+    assert_eq!(
+        hermes_core::interrupt_state_fixture()["after_clear"],
+        case(&fixture, "interrupt_state")["after_clear"]
+    );
 }
 
 #[test]

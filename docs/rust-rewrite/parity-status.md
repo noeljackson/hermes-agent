@@ -66,7 +66,10 @@ against those fixtures in `crates/hermes-parity`:
   message appends, final response return, unknown-tool errors, and iteration
   limit stop behavior. Python fixture coverage now protects core agent-loop
   guardrails for duplicate tool-call removal, delegate-task call caps, and
-  strict OpenAI-compatible API tool-call sanitization.
+  strict OpenAI-compatible API tool-call sanitization. Long-running state
+  helpers are fixture-backed for iteration-budget consume/refund/exhaustion,
+  pending `/steer` accumulation and drain behavior, and interrupt/clear state
+  propagation to execution and worker thread IDs.
 - Local memory: add, duplicate, replace, remove, ambiguous-match errors, char
   limit errors, file-backed `MEMORY.md`/`USER.md` persistence, frozen
   system-prompt snapshot behavior across mid-session writes, and selected

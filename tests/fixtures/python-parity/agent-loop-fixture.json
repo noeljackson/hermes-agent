@@ -79,6 +79,88 @@
           "non-dict-tool-call"
         ]
       }
+    },
+    {
+      "events": [
+        {
+          "op": "initial",
+          "remaining": 3,
+          "used": 0
+        },
+        {
+          "allowed": true,
+          "op": "consume_1",
+          "remaining": 2,
+          "used": 1
+        },
+        {
+          "allowed": true,
+          "op": "consume_2",
+          "remaining": 1,
+          "used": 2
+        },
+        {
+          "allowed": true,
+          "op": "consume_3",
+          "remaining": 0,
+          "used": 3
+        },
+        {
+          "allowed": false,
+          "op": "consume_4",
+          "remaining": 0,
+          "used": 3
+        },
+        {
+          "op": "refund_1",
+          "remaining": 1,
+          "used": 2
+        },
+        {
+          "op": "refund_2",
+          "remaining": 2,
+          "used": 1
+        },
+        {
+          "allowed": true,
+          "op": "consume_after_refund",
+          "remaining": 1,
+          "used": 2
+        }
+      ],
+      "name": "iteration_budget"
+    },
+    {
+      "name": "steer_state",
+      "state": {
+        "accepted_empty": false,
+        "accepted_first": true,
+        "accepted_second": true,
+        "drained": "first\nsecond",
+        "drained_again": null,
+        "pending_after_drain": null,
+        "pending_before_drain": "first\nsecond"
+      }
+    },
+    {
+      "after_clear": {
+        "interrupted_threads": [],
+        "message": null,
+        "pending_steer": null,
+        "requested": false,
+        "thread_signal_pending": false
+      },
+      "after_request": {
+        "interrupted_threads": [
+          111,
+          222,
+          333
+        ],
+        "message": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "requested": true,
+        "thread_signal_pending": false
+      },
+      "name": "interrupt_state"
     }
   ],
   "source": {
