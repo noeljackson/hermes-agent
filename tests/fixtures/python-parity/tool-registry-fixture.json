@@ -1203,6 +1203,64 @@
     {
       "name": "selected_core_schemas",
       "schemas": {
+        "browser_navigate": {
+          "name": "browser_navigate",
+          "parameters": {
+            "properties": {
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          }
+        },
+        "clarify": {
+          "name": "clarify",
+          "parameters": {
+            "properties": {
+              "choices": {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 4,
+                "type": "array"
+              },
+              "question": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "question"
+            ],
+            "type": "object"
+          }
+        },
+        "image_generate": {
+          "name": "image_generate",
+          "parameters": {
+            "properties": {
+              "aspect_ratio": {
+                "default": "landscape",
+                "enum": [
+                  "landscape",
+                  "square",
+                  "portrait"
+                ],
+                "type": "string"
+              },
+              "prompt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "prompt"
+            ],
+            "type": "object"
+          }
+        },
         "memory": {
           "name": "memory",
           "parameters": {
@@ -1431,6 +1489,23 @@
             "type": "object"
           }
         },
+        "skill_view": {
+          "name": "skill_view",
+          "parameters": {
+            "properties": {
+              "file_path": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          }
+        },
         "skills_list": {
           "name": "skills_list",
           "parameters": {
@@ -1478,6 +1553,102 @@
             },
             "required": [
               "command"
+            ],
+            "type": "object"
+          }
+        },
+        "text_to_speech": {
+          "name": "text_to_speech",
+          "parameters": {
+            "properties": {
+              "output_path": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "type": "object"
+          }
+        },
+        "todo": {
+          "name": "todo",
+          "parameters": {
+            "properties": {
+              "merge": {
+                "default": false,
+                "type": "boolean"
+              },
+              "todos": {
+                "items": {
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "in_progress",
+                        "completed",
+                        "cancelled"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "content",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [],
+            "type": "object"
+          }
+        },
+        "web_extract": {
+          "name": "web_extract",
+          "parameters": {
+            "properties": {
+              "urls": {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 5,
+                "type": "array"
+              }
+            },
+            "required": [
+              "urls"
+            ],
+            "type": "object"
+          }
+        },
+        "web_search": {
+          "name": "web_search",
+          "parameters": {
+            "properties": {
+              "limit": {
+                "default": 5,
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "query": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
             ],
             "type": "object"
           }

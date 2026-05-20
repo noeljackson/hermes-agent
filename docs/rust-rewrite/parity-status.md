@@ -258,11 +258,13 @@ against those fixtures in `crates/hermes-parity`:
   terminal rendering of deterministic CLI output.
 - Tool registry: built-in tool metadata for name, toolset, async flag,
   env requirements, schema parameter names, required fields, and description
-  presence. Selected core tool schemas (`terminal`, `read_file`, `write_file`,
-  `patch`, `search_files`, `memory`, `session_search`, `skill_manage`, and
-  `skills_list`) check full stripped JSON Schema payload parity plus semantic
-  schema contracts for required args, types, defaults, enum values, and numeric
-  bounds.
+  presence. Selected deterministic tool schemas (`terminal`, `read_file`,
+  `write_file`, `patch`, `search_files`, `memory`, `session_search`,
+  `skill_manage`, `skills_list`, `skill_view`, `todo`, `clarify`,
+  `browser_navigate`, `web_search`, `web_extract`, `image_generate`, and
+  `text_to_speech`) check full stripped JSON Schema payload parity plus
+  semantic schema contracts for required args, types, defaults, enum values,
+  and numeric bounds.
 - File-tool helpers: read/search pagination clamps, protected write-path
   detection, binary/image classification, line-number rendering with long-line
   truncation, and selected fuzzy replace behavior including exact,
@@ -300,7 +302,7 @@ runtime implementation is still intentionally incomplete:
 - Executable handlers for every built-in tool beyond the deterministic local
   file-tool slice.
 - Full JSON Schema payload parity for every built-in tool beyond the selected
-  core schema set.
+  deterministic schema set.
 - Full historical SQLite migration coverage for every legacy schema version;
   the current fixtures prove a representative old row schema and the v11 FTS
   reindex path that Python still opens successfully.

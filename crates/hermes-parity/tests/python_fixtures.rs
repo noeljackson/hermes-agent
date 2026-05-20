@@ -903,14 +903,22 @@ fn tool_registry_matches_python_fixture() {
     assert_eq!(
         selected_names,
         BTreeSet::from([
+            "browser_navigate",
+            "clarify",
+            "image_generate",
             "memory",
             "patch",
             "read_file",
             "search_files",
             "session_search",
             "skill_manage",
+            "skill_view",
             "skills_list",
             "terminal",
+            "text_to_speech",
+            "todo",
+            "web_extract",
+            "web_search",
             "write_file",
         ])
     );
@@ -932,13 +940,21 @@ fn tool_registry_matches_python_fixture() {
     let core_schemas = hermes_tools::selected_core_tool_schemas_without_descriptions();
     for name in [
         "memory",
+        "browser_navigate",
+        "clarify",
+        "image_generate",
         "patch",
         "read_file",
         "search_files",
         "session_search",
         "skill_manage",
+        "skill_view",
         "skills_list",
         "terminal",
+        "text_to_speech",
+        "todo",
+        "web_extract",
+        "web_search",
         "write_file",
     ] {
         assert_eq!(core_schemas[name], selected[name], "{name} full schema");

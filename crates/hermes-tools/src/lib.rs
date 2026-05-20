@@ -1911,6 +1911,15 @@ pub const BUILTIN_TOOLS: &[ToolSummary] = &[
 
 const SELECTED_TOOL_PARAM_CONTRACTS: &[ToolParamContract] = &[
     ToolParamContract {
+        tool: "image_generate",
+        parameter: "aspect_ratio",
+        json_type: "string",
+        default_json: Some("\"landscape\""),
+        enum_values: &["landscape", "square", "portrait"],
+        minimum: None,
+        maximum: None,
+    },
+    ToolParamContract {
         tool: "memory",
         parameter: "action",
         json_type: "string",
@@ -2124,6 +2133,24 @@ const SELECTED_TOOL_PARAM_CONTRACTS: &[ToolParamContract] = &[
         minimum: None,
         maximum: None,
     },
+    ToolParamContract {
+        tool: "todo",
+        parameter: "merge",
+        json_type: "boolean",
+        default_json: Some("false"),
+        enum_values: &[],
+        minimum: None,
+        maximum: None,
+    },
+    ToolParamContract {
+        tool: "web_search",
+        parameter: "limit",
+        json_type: "integer",
+        default_json: Some("5"),
+        enum_values: &[],
+        minimum: Some(1),
+        maximum: Some(100),
+    },
 ];
 
 pub fn builtin_tools() -> &'static [ToolSummary] {
@@ -2146,6 +2173,46 @@ pub fn file_tool_schemas_without_descriptions() -> Value {
 
 pub fn selected_core_tool_schemas_without_descriptions() -> Value {
     json!({
+        "browser_navigate": {
+            "name": "browser_navigate",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string"},
+                },
+                "required": ["url"],
+            },
+        },
+        "clarify": {
+            "name": "clarify",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {"type": "string"},
+                    "choices": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "maxItems": 4,
+                    },
+                },
+                "required": ["question"],
+            },
+        },
+        "image_generate": {
+            "name": "image_generate",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string"},
+                    "aspect_ratio": {
+                        "type": "string",
+                        "enum": ["landscape", "square", "portrait"],
+                        "default": "landscape",
+                    },
+                },
+                "required": ["prompt"],
+            },
+        },
         "memory": {
             "name": "memory",
             "parameters": {
@@ -2283,6 +2350,17 @@ pub fn selected_core_tool_schemas_without_descriptions() -> Value {
                 "required": ["action", "name"],
             },
         },
+        "skill_view": {
+            "name": "skill_view",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "file_path": {"type": "string"},
+                },
+                "required": ["name"],
+            },
+        },
         "skills_list": {
             "name": "skills_list",
             "parameters": {
@@ -2307,6 +2385,77 @@ pub fn selected_core_tool_schemas_without_descriptions() -> Value {
                     "workdir": {"type": "string"},
                 },
                 "required": ["command"],
+            },
+        },
+        "text_to_speech": {
+            "name": "text_to_speech",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "output_path": {"type": "string"},
+                },
+                "required": ["text"],
+            },
+        },
+        "todo": {
+            "name": "todo",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "todos": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "content": {"type": "string"},
+                                "status": {
+                                    "type": "string",
+                                    "enum": [
+                                        "pending",
+                                        "in_progress",
+                                        "completed",
+                                        "cancelled",
+                                    ],
+                                },
+                            },
+                            "required": ["id", "content", "status"],
+                        },
+                    },
+                    "merge": {"type": "boolean", "default": false},
+                },
+                "required": [],
+            },
+        },
+        "web_extract": {
+            "name": "web_extract",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "urls": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "maxItems": 5,
+                    },
+                },
+                "required": ["urls"],
+            },
+        },
+        "web_search": {
+            "name": "web_search",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "limit": {
+                        "type": "integer",
+                        "default": 5,
+                        "minimum": 1,
+                        "maximum": 100,
+                    },
+                },
+                "required": ["query"],
             },
         },
         "write_file": {

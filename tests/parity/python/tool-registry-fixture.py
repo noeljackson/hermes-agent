@@ -34,14 +34,22 @@ def main() -> int:
         from tools.registry import discover_builtin_tools, registry
 
         selected_schema_names = {
+            "browser_navigate",
+            "clarify",
+            "image_generate",
             "memory",
             "patch",
             "read_file",
             "search_files",
             "session_search",
             "skill_manage",
+            "skill_view",
             "skills_list",
             "terminal",
+            "text_to_speech",
+            "todo",
+            "web_extract",
+            "web_search",
             "write_file",
         }
         imported_modules = discover_builtin_tools()
