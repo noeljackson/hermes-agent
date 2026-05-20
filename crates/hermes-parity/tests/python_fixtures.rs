@@ -1690,6 +1690,38 @@ fn tool_execution_matches_python_fixture() {
         case(&fixture, "tool_error_with_extra")["result"]
     );
 
+    let mut todo_store = hermes_tools::TodoStore::default();
+    assert_eq!(
+        hermes_tools::todo_tool_handler(
+            &json!({
+                "todos": [
+                    {"id": "plan", "content": "Write parity fixture", "status": "in_progress"},
+                    {"id": "verify", "content": "Run checks", "status": "pending"},
+                    {"id": "verify", "content": "Run full checks", "status": "bad-status"},
+                ],
+            }),
+            &mut todo_store,
+        ),
+        case(&fixture, "todo_handler_replace")["result"]
+    );
+    assert_eq!(
+        hermes_tools::todo_tool_handler(
+            &json!({
+                "merge": true,
+                "todos": [
+                    {"id": "plan", "status": "completed"},
+                    {"id": "commit", "content": "Commit result", "status": "pending"},
+                ],
+            }),
+            &mut todo_store,
+        ),
+        case(&fixture, "todo_handler_merge")["result"]
+    );
+    assert_eq!(
+        hermes_tools::todo_tool_handler(&json!({}), &mut todo_store),
+        case(&fixture, "todo_handler_read")["result"]
+    );
+
     let memory_dir = rust_temp_workspace("hermes-rust-memory-tool");
     fs::create_dir_all(&memory_dir).unwrap();
     assert_eq!(

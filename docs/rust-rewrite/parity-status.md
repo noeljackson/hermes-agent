@@ -146,12 +146,14 @@ against those fixtures in `crates/hermes-parity`:
   Unicode-normalized matching.
 - Tool execution: selected pure dispatcher behavior for clarify validation,
   missing clarify callback errors, agent-loop-only tool blocking, unknown-tool
-  errors, and shared `tool_error` JSON shape. The direct `memory` tool handler
-  path is fixture-backed for add, replace, and missing-remove behavior through
-  durable local memory files. The `skills_list` handler is fixture-backed for
-  all-skills and category-filtered listings from a controlled local skills
-  root. The `skill_view` handler is fixture-backed for main `SKILL.md` loading,
-  linked reference/script discovery, and linked reference-file reads.
+  errors, and shared `tool_error` JSON shape. The `todo` handler is
+  fixture-backed for replace, merge, read, duplicate-id, and status
+  normalization behavior. The direct `memory` tool handler path is
+  fixture-backed for add, replace, and missing-remove behavior through durable
+  local memory files. The `skills_list` handler is fixture-backed for all-skills
+  and category-filtered listings from a controlled local skills root. The
+  `skill_view` handler is fixture-backed for main `SKILL.md` loading, linked
+  reference/script discovery, and linked reference-file reads.
   Deterministic local file-tool handlers are also fixture-backed for `read_file`,
   `write_file` validation, `write_file`, replace-mode `patch`, and
   `search_files` with `target=files`.

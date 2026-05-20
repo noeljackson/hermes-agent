@@ -56,6 +56,7 @@ def main() -> int:
         from tools.memory_tool import MemoryStore, memory_tool
         from tools.registry import tool_error
         from tools.skills_tool import skill_view, skills_list
+        from tools.todo_tool import TodoStore, todo_tool
 
         cases = [
             {
@@ -89,6 +90,58 @@ def main() -> int:
                 "result": parsed(tool_error("bad input", success=False, code=400)),
             },
         ]
+
+        todo_store = TodoStore()
+        cases.extend(
+            [
+                {
+                    "name": "todo_handler_replace",
+                    "result": parsed(
+                        todo_tool(
+                            todos=[
+                                {
+                                    "id": "plan",
+                                    "content": "Write parity fixture",
+                                    "status": "in_progress",
+                                },
+                                {
+                                    "id": "verify",
+                                    "content": "Run checks",
+                                    "status": "pending",
+                                },
+                                {
+                                    "id": "verify",
+                                    "content": "Run full checks",
+                                    "status": "bad-status",
+                                },
+                            ],
+                            store=todo_store,
+                        )
+                    ),
+                },
+                {
+                    "name": "todo_handler_merge",
+                    "result": parsed(
+                        todo_tool(
+                            todos=[
+                                {"id": "plan", "status": "completed"},
+                                {
+                                    "id": "commit",
+                                    "content": "Commit result",
+                                    "status": "pending",
+                                },
+                            ],
+                            merge=True,
+                            store=todo_store,
+                        )
+                    ),
+                },
+                {
+                    "name": "todo_handler_read",
+                    "result": parsed(todo_tool(store=todo_store)),
+                },
+            ]
+        )
 
         memory_store = MemoryStore(memory_char_limit=500, user_char_limit=500)
         memory_store.load_from_disk()

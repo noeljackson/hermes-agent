@@ -33,6 +33,88 @@
       }
     },
     {
+      "name": "todo_handler_replace",
+      "result": {
+        "summary": {
+          "cancelled": 0,
+          "completed": 0,
+          "in_progress": 1,
+          "pending": 1,
+          "total": 2
+        },
+        "todos": [
+          {
+            "content": "Write parity fixture",
+            "id": "plan",
+            "status": "in_progress"
+          },
+          {
+            "content": "Run full checks",
+            "id": "verify",
+            "status": "pending"
+          }
+        ]
+      }
+    },
+    {
+      "name": "todo_handler_merge",
+      "result": {
+        "summary": {
+          "cancelled": 0,
+          "completed": 1,
+          "in_progress": 0,
+          "pending": 2,
+          "total": 3
+        },
+        "todos": [
+          {
+            "content": "Write parity fixture",
+            "id": "plan",
+            "status": "completed"
+          },
+          {
+            "content": "Run full checks",
+            "id": "verify",
+            "status": "pending"
+          },
+          {
+            "content": "Commit result",
+            "id": "commit",
+            "status": "pending"
+          }
+        ]
+      }
+    },
+    {
+      "name": "todo_handler_read",
+      "result": {
+        "summary": {
+          "cancelled": 0,
+          "completed": 1,
+          "in_progress": 0,
+          "pending": 2,
+          "total": 3
+        },
+        "todos": [
+          {
+            "content": "Write parity fixture",
+            "id": "plan",
+            "status": "completed"
+          },
+          {
+            "content": "Run full checks",
+            "id": "verify",
+            "status": "pending"
+          },
+          {
+            "content": "Commit result",
+            "id": "commit",
+            "status": "pending"
+          }
+        ]
+      }
+    },
+    {
       "name": "memory_handler_add",
       "result": {
         "entries": [

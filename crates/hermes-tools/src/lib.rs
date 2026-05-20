@@ -45,6 +45,18 @@ pub struct FuzzyReplaceResult {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct TodoStore {
+    items: Vec<TodoItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TodoItem {
+    id: String,
+    content: String,
+    status: String,
+}
+
 pub fn tool_error(message: &str, extra: &[(&str, Value)]) -> Value {
     let mut result = serde_json::Map::new();
     result.insert("error".to_string(), json!(message));
@@ -91,6 +103,183 @@ pub fn handle_function_call_selected(function_name: &str, _args: &Value) -> Valu
         "clarify" => clarify_tool("", None, false),
         _ => json!({"error": format!("Unknown tool: {function_name}")}),
     }
+}
+
+pub fn todo_tool_handler(args: &Value, store: &mut TodoStore) -> Value {
+    let merge = args.get("merge").and_then(Value::as_bool).unwrap_or(false);
+    if let Some(todos) = args.get("todos").and_then(Value::as_array) {
+        store.write(todos, merge);
+    }
+    store.response()
+}
+
+impl TodoStore {
+    fn write(&mut self, todos: &[Value], merge: bool) {
+        if !merge {
+            self.items = dedupe_todos(todos)
+                .into_iter()
+                .map(validate_todo_item)
+                .collect();
+            return;
+        }
+
+        let mut existing = self
+            .items
+            .iter()
+            .cloned()
+            .map(|item| (item.id.clone(), item))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        for todo in dedupe_todos(todos) {
+            let item_id = todo
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .trim()
+                .to_string();
+            if item_id.is_empty() {
+                continue;
+            }
+            if let Some(item) = existing.get_mut(&item_id) {
+                if let Some(content) = todo.get("content").and_then(Value::as_str) {
+                    let content = content.trim();
+                    if !content.is_empty() {
+                        item.content = content.to_string();
+                    }
+                }
+                if let Some(status) = todo.get("status").and_then(Value::as_str) {
+                    let status = normalize_todo_status(status);
+                    if is_valid_todo_status(&status) {
+                        item.status = status;
+                    }
+                }
+            } else {
+                let item = validate_todo_item(todo);
+                existing.insert(item.id.clone(), item.clone());
+                self.items.push(item);
+            }
+        }
+
+        let mut seen = BTreeSet::new();
+        let mut rebuilt = Vec::new();
+        for item in &self.items {
+            if let Some(current) = existing.get(&item.id) {
+                if seen.insert(current.id.clone()) {
+                    rebuilt.push(current.clone());
+                }
+            }
+        }
+        self.items = rebuilt;
+    }
+
+    fn response(&self) -> Value {
+        let todos = self
+            .items
+            .iter()
+            .map(|item| {
+                json!({
+                    "content": item.content,
+                    "id": item.id,
+                    "status": item.status,
+                })
+            })
+            .collect::<Vec<_>>();
+        let pending = self
+            .items
+            .iter()
+            .filter(|item| item.status == "pending")
+            .count();
+        let in_progress = self
+            .items
+            .iter()
+            .filter(|item| item.status == "in_progress")
+            .count();
+        let completed = self
+            .items
+            .iter()
+            .filter(|item| item.status == "completed")
+            .count();
+        let cancelled = self
+            .items
+            .iter()
+            .filter(|item| item.status == "cancelled")
+            .count();
+        json!({
+            "summary": {
+                "cancelled": cancelled,
+                "completed": completed,
+                "in_progress": in_progress,
+                "pending": pending,
+                "total": self.items.len(),
+            },
+            "todos": todos,
+        })
+    }
+}
+
+fn dedupe_todos(todos: &[Value]) -> Vec<&Value> {
+    let mut last_index = std::collections::BTreeMap::new();
+    for (index, todo) in todos.iter().enumerate() {
+        let item_id = todo
+            .get("id")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        last_index.insert(
+            if item_id.is_empty() {
+                "?".to_string()
+            } else {
+                item_id
+            },
+            index,
+        );
+    }
+    last_index
+        .values()
+        .copied()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .map(|index| &todos[index])
+        .collect()
+}
+
+fn validate_todo_item(todo: &Value) -> TodoItem {
+    let id = todo.get("id").and_then(Value::as_str).unwrap_or("").trim();
+    let content = todo
+        .get("content")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .trim();
+    let status = normalize_todo_status(
+        todo.get("status")
+            .and_then(Value::as_str)
+            .unwrap_or("pending"),
+    );
+    TodoItem {
+        id: if id.is_empty() { "?" } else { id }.to_string(),
+        content: if content.is_empty() {
+            "(no description)"
+        } else {
+            content
+        }
+        .to_string(),
+        status: if is_valid_todo_status(&status) {
+            status
+        } else {
+            "pending".to_string()
+        },
+    }
+}
+
+fn normalize_todo_status(status: &str) -> String {
+    status.trim().to_ascii_lowercase()
+}
+
+fn is_valid_todo_status(status: &str) -> bool {
+    matches!(
+        status,
+        "pending" | "in_progress" | "completed" | "cancelled"
+    )
 }
 
 pub fn normalize_read_pagination(offset: impl ToString, limit: impl ToString) -> (i64, i64) {
