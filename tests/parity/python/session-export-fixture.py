@@ -236,6 +236,79 @@ def main() -> int:
         }
         legacy_columns_conn.close()
 
+        legacy_fts_path = home / "legacy-fts-state.db"
+        legacy_fts_conn = sqlite3.connect(legacy_fts_path)
+        legacy_fts_conn.executescript(
+            """
+            CREATE TABLE schema_version (version INTEGER NOT NULL);
+            INSERT INTO schema_version (version) VALUES (10);
+            CREATE TABLE sessions (
+                id TEXT PRIMARY KEY,
+                source TEXT,
+                user_id TEXT,
+                model TEXT,
+                model_config TEXT,
+                system_prompt TEXT,
+                parent_session_id TEXT,
+                started_at REAL NOT NULL
+            );
+            CREATE TABLE messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL REFERENCES sessions(id),
+                role TEXT NOT NULL,
+                content TEXT,
+                tool_name TEXT,
+                tool_calls TEXT,
+                timestamp REAL NOT NULL
+            );
+            CREATE VIRTUAL TABLE messages_fts USING fts5(content);
+            CREATE VIRTUAL TABLE messages_fts_trigram USING fts5(content, tokenize='trigram');
+            INSERT INTO sessions (
+                id, source, user_id, model, model_config, system_prompt, started_at
+            ) VALUES (
+                'legacy-fts-session', 'cli', 'user-legacy', 'fake/model',
+                '{"provider":"fake"}', 'system prompt', 1710000000.0
+            );
+            INSERT INTO messages (
+                session_id, role, content, tool_name, tool_calls, timestamp
+            ) VALUES (
+                'legacy-fts-session', 'assistant', 'plain response', 'terminal',
+                '{"cmd":"demo_arg"}', 1710000001.0
+            );
+            INSERT INTO messages_fts(rowid, content) VALUES (1, 'plain response');
+            INSERT INTO messages_fts_trigram(rowid, content) VALUES (1, 'plain response');
+            """
+        )
+        legacy_fts_conn.commit()
+        legacy_fts_conn.close()
+        legacy_fts_db = SessionDB(legacy_fts_path)
+        legacy_fts_db.close()
+        legacy_fts_check = sqlite3.connect(legacy_fts_path)
+
+        def fts_rows(table: str, term: str):
+            return [
+                {"rowid": row[0], "content": row[1]}
+                for row in legacy_fts_check.execute(
+                    f"SELECT rowid, content FROM {table} WHERE {table} MATCH ? ORDER BY rowid",
+                    (term,),
+                )
+            ]
+
+        legacy_fts_reindex = {
+            "schema_version": legacy_fts_check.execute(
+                "SELECT version FROM schema_version LIMIT 1"
+            ).fetchone()[0],
+            "messages_fts_terminal": fts_rows("messages_fts", "terminal"),
+            "messages_fts_argument": fts_rows("messages_fts", "demo_arg"),
+            "messages_fts_trigram_terminal": fts_rows(
+                "messages_fts_trigram", "terminal"
+            ),
+            "messages_fts_trigram_argument": fts_rows(
+                "messages_fts_trigram", "demo_arg"
+            ),
+        }
+        legacy_fts_check.close()
+
         _set_last_init_error(None)
         unavailable_messages = {
             "no_cause": format_session_db_unavailable(),
@@ -255,6 +328,7 @@ def main() -> int:
         {"name": "export_all_shape", "sessions": exported_all},
         {"name": "session_state_operations", "state": state_ops},
         {"name": "legacy_schema_migration", "migration": legacy_migration},
+        {"name": "legacy_fts_reindex_migration", "migration": legacy_fts_reindex},
         {"name": "db_unavailable_error_format", "messages": unavailable_messages},
     ]
     write_fixture(out, fixture(SCRIPT, cases))

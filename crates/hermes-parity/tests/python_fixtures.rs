@@ -1253,6 +1253,7 @@ fn session_export_matches_python_fixture() {
             "export_all_shape",
             "session_state_operations",
             "legacy_schema_migration",
+            "legacy_fts_reindex_migration",
             "db_unavailable_error_format"
         ]
     );
@@ -1600,6 +1601,88 @@ fn session_export_matches_python_fixture() {
         legacy["conversation"]
     );
     let _ = fs::remove_file(legacy_path);
+
+    let legacy_fts = &case(&fixture, "legacy_fts_reindex_migration")["migration"];
+    let legacy_fts_path = std::env::temp_dir().join(format!(
+        "hermes-parity-legacy-fts-session-{}.db",
+        std::process::id()
+    ));
+    let _ = fs::remove_file(&legacy_fts_path);
+    {
+        let conn = rusqlite::Connection::open(&legacy_fts_path).unwrap();
+        conn.execute_batch(
+            r#"
+            CREATE TABLE schema_version (version INTEGER NOT NULL);
+            INSERT INTO schema_version (version) VALUES (10);
+            CREATE TABLE sessions (
+                id TEXT PRIMARY KEY,
+                source TEXT,
+                user_id TEXT,
+                model TEXT,
+                model_config TEXT,
+                system_prompt TEXT,
+                parent_session_id TEXT,
+                started_at TEXT
+            );
+            CREATE TABLE messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT,
+                role TEXT,
+                content TEXT,
+                tool_name TEXT,
+                tool_calls TEXT,
+                timestamp TEXT
+            );
+            CREATE VIRTUAL TABLE messages_fts USING fts5(content);
+            CREATE VIRTUAL TABLE messages_fts_trigram USING fts5(content, tokenize='trigram');
+            INSERT INTO sessions (
+                id, source, user_id, model, model_config, system_prompt, started_at
+            ) VALUES (
+                'legacy-fts-session', 'cli', 'user-legacy', 'fake/model',
+                '{"provider":"fake"}', 'system prompt', '<timestamp>'
+            );
+            INSERT INTO messages (
+                session_id, role, content, tool_name, tool_calls, timestamp
+            ) VALUES (
+                'legacy-fts-session', 'assistant', 'plain response', 'terminal',
+                '{"cmd":"demo_arg"}', '<timestamp>'
+            );
+            INSERT INTO messages_fts(rowid, content) VALUES (1, 'plain response');
+            INSERT INTO messages_fts_trigram(rowid, content) VALUES (1, 'plain response');
+            "#,
+        )
+        .unwrap();
+    }
+    let legacy_fts_db = hermes_session::SqliteSessionStore::open(&legacy_fts_path).unwrap();
+    assert_eq!(
+        legacy_fts_db.schema_version().unwrap(),
+        legacy_fts["schema_version"]
+    );
+    assert_eq!(
+        legacy_fts_db
+            .fts_match_rows("messages_fts", "terminal")
+            .unwrap(),
+        legacy_fts["messages_fts_terminal"]
+    );
+    assert_eq!(
+        legacy_fts_db
+            .fts_match_rows("messages_fts", "demo_arg")
+            .unwrap(),
+        legacy_fts["messages_fts_argument"]
+    );
+    assert_eq!(
+        legacy_fts_db
+            .fts_match_rows("messages_fts_trigram", "terminal")
+            .unwrap(),
+        legacy_fts["messages_fts_trigram_terminal"]
+    );
+    assert_eq!(
+        legacy_fts_db
+            .fts_match_rows("messages_fts_trigram", "demo_arg")
+            .unwrap(),
+        legacy_fts["messages_fts_trigram_argument"]
+    );
+    let _ = fs::remove_file(legacy_fts_path);
 
     let unavailable = &case(&fixture, "db_unavailable_error_format")["messages"];
     assert_eq!(

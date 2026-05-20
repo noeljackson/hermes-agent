@@ -196,7 +196,9 @@ against those fixtures in `crates/hermes-parity`:
   session/message persistence, resume message shape, export-all shape, and
   idempotent migration of an older SQLite session/message schema, including
   schema-version bumping, declarative column reconciliation, FTS table creation,
-  and preservation of existing rows. Session state operations now also cover
+  preservation of existing rows, and v11 FTS reindexing that backfills
+  `content`, `tool_name`, and `tool_calls` into both standard and trigram FTS
+  tables. Session state operations now also cover
   title sanitization, title uniqueness, title lookup, exact/unique/ambiguous
   prefix resolution, session/message counts, delete behavior, transcript-file
   cleanup, and child-session orphaning instead of cascade deletion. Session DB
@@ -298,8 +300,8 @@ runtime implementation is still intentionally incomplete:
 - Full JSON Schema payload parity for every built-in tool beyond the selected
   core schema set.
 - Full historical SQLite migration coverage for every legacy schema version;
-  the current fixture proves one representative old schema that Python still
-  opens successfully.
+  the current fixtures prove a representative old row schema and the v11 FTS
+  reindex path that Python still opens successfully.
 
 ## Explicit Non-Goals For This Stage
 

@@ -551,6 +551,24 @@ impl SqliteSessionStore {
         Ok(names)
     }
 
+    pub fn fts_match_rows(&self, table: &str, term: &str) -> SqlResult<Value> {
+        if !matches!(table, "messages_fts" | "messages_fts_trigram") {
+            return Ok(Value::Array(Vec::new()));
+        }
+        let mut stmt = self.conn.prepare(&format!(
+            "SELECT rowid, content FROM {table} WHERE {table} MATCH ?1 ORDER BY rowid"
+        ))?;
+        let rows = stmt
+            .query_map(params![term], |row| {
+                Ok(json!({
+                    "content": row.get::<_, String>(1)?,
+                    "rowid": row.get::<_, i64>(0)?,
+                }))
+            })?
+            .collect::<SqlResult<Vec<_>>>()?;
+        Ok(Value::Array(rows))
+    }
+
     pub fn sanitize_fts5_query(query: &str) -> String {
         let trimmed = query.trim();
         if trimmed.is_empty() || trimmed.chars().all(|ch| ch == '*') {
@@ -726,18 +744,21 @@ impl SqliteSessionStore {
             ",
         )?;
         self.ensure_schema_columns()?;
-        self.ensure_schema_version()?;
-        self.ensure_fts_tables()?;
+        let previous_schema_version = self.current_schema_version()?;
+        self.ensure_fts_tables(previous_schema_version)?;
+        self.ensure_schema_version(previous_schema_version)?;
         Ok(())
     }
 
-    fn ensure_schema_version(&self) -> SqlResult<()> {
-        let current = self
-            .conn
+    fn current_schema_version(&self) -> SqlResult<Option<i64>> {
+        self.conn
             .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| {
                 row.get::<_, i64>(0)
             })
-            .optional()?;
+            .optional()
+    }
+
+    fn ensure_schema_version(&self, current: Option<i64>) -> SqlResult<()> {
         match current {
             Some(version) if version < SESSION_SCHEMA_VERSION => {
                 self.conn.execute(
@@ -756,13 +777,50 @@ impl SqliteSessionStore {
         Ok(())
     }
 
-    fn ensure_fts_tables(&self) -> SqlResult<()> {
+    fn ensure_fts_tables(&self, previous_schema_version: Option<i64>) -> SqlResult<()> {
+        if previous_schema_version.is_some_and(|version| version < 11) {
+            for trigger in [
+                "messages_fts_insert",
+                "messages_fts_delete",
+                "messages_fts_update",
+                "messages_fts_trigram_insert",
+                "messages_fts_trigram_delete",
+                "messages_fts_trigram_update",
+            ] {
+                self.conn
+                    .execute(&format!("DROP TRIGGER IF EXISTS {trigger}"), [])?;
+            }
+            for table in ["messages_fts", "messages_fts_trigram"] {
+                self.conn
+                    .execute(&format!("DROP TABLE IF EXISTS {table}"), [])?;
+            }
+        }
         self.conn.execute_batch(
             "
             CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(content);
             CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_trigram USING fts5(content, tokenize='trigram');
             ",
         )?;
+        if previous_schema_version.is_some_and(|version| version < 11) {
+            self.conn.execute(
+                "INSERT INTO messages_fts(rowid, content)
+                 SELECT id,
+                        COALESCE(content, '') || ' ' ||
+                        COALESCE(tool_name, '') || ' ' ||
+                        COALESCE(tool_calls, '')
+                 FROM messages",
+                [],
+            )?;
+            self.conn.execute(
+                "INSERT INTO messages_fts_trigram(rowid, content)
+                 SELECT id,
+                        COALESCE(content, '') || ' ' ||
+                        COALESCE(tool_name, '') || ' ' ||
+                        COALESCE(tool_calls, '')
+                 FROM messages",
+                [],
+            )?;
+        }
         Ok(())
     }
 

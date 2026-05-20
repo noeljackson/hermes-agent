@@ -471,6 +471,36 @@
       "name": "legacy_schema_migration"
     },
     {
+      "migration": {
+        "messages_fts_argument": [
+          {
+            "content": "plain response terminal {\"cmd\":\"demo_arg\"}",
+            "rowid": 1
+          }
+        ],
+        "messages_fts_terminal": [
+          {
+            "content": "plain response terminal {\"cmd\":\"demo_arg\"}",
+            "rowid": 1
+          }
+        ],
+        "messages_fts_trigram_argument": [
+          {
+            "content": "plain response terminal {\"cmd\":\"demo_arg\"}",
+            "rowid": 1
+          }
+        ],
+        "messages_fts_trigram_terminal": [
+          {
+            "content": "plain response terminal {\"cmd\":\"demo_arg\"}",
+            "rowid": 1
+          }
+        ],
+        "schema_version": 11
+      },
+      "name": "legacy_fts_reindex_migration"
+    },
+    {
       "messages": {
         "custom_prefix": "Resume unavailable: OperationalError: locking protocol (state.db may be on NFS/SMB/FUSE \u2014 see https://www.sqlite.org/wal.html).",
         "no_cause": "Session database not available.",
