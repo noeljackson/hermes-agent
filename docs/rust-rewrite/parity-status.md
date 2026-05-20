@@ -171,7 +171,11 @@ against those fixtures in `crates/hermes-parity`:
   container CPU, and Docker JSON environment values. Remote backend support
   has deterministic fixture coverage for Docker env/security argument
   normalization, SSH command construction, file-sync shell quoting and parent
-  directory discovery, and Modal direct/legacy snapshot key handling.
+  directory discovery, and Modal direct/legacy snapshot key handling. Shared
+  backend command wrapping is fixture-backed for CWD marker names, `cd`
+  quoting with `~` preservation, snapshot-aware command wrappers, stdin
+  heredocs, Modal stdin heredocs with delimiter collision avoidance, and Modal
+  sudo password piping.
 - Terminal execution: deterministic local foreground command execution for
   success and non-zero exits, invalid command-type rejection, and foreground
   timeout ceiling errors. Container/SSH/Modal execution remains outside this

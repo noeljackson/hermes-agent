@@ -4159,6 +4159,10 @@ fn terminal_backend_matches_python_fixture() {
         hermes_terminal::modal_store_direct_snapshot(&after_delete, "task-d", "snap-new"),
         remote["modal_snapshots"]["after_store_direct"]
     );
+    assert_eq!(
+        hermes_terminal::base_modal_contracts_fixture(&remote["base_modal"]),
+        remote["base_modal"]
+    );
 }
 
 #[test]

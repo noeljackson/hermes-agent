@@ -264,6 +264,35 @@
       }
     },
     {
+      "base_modal": {
+        "cwd_marker": "__HERMES_CWD_abc123__",
+        "embedded_stdin": "cat << 'HERMES_STDIN_deadbeef'\nhello\nworld\nHERMES_STDIN_deadbeef",
+        "modal_stdin": "cat << 'HERMES_EOF_cafebabe'\nfirst HERMES_EOF_deadbeef marker\nHERMES_EOF_cafebabe",
+        "modal_sudo": "printf '%s\\n' 'pa ss' | sudo -S true",
+        "quote_cwd": [
+          {
+            "cwd": "~",
+            "quoted": "~"
+          },
+          {
+            "cwd": "~/",
+            "quoted": "$HOME"
+          },
+          {
+            "cwd": "~/project dir",
+            "quoted": "$HOME/'project dir'"
+          },
+          {
+            "cwd": "/tmp/path with spaces",
+            "quoted": "'/tmp/path with spaces'"
+          },
+          {
+            "cwd": "-dash",
+            "quoted": "-dash"
+          }
+        ],
+        "wrapped_snapshot_ready": "source '/tmp/snap path.sh' >/dev/null 2>&1 || true\nbuiltin cd -- $HOME/'work dir' || exit 126\neval 'printf '\\''hi'\\'''\n__hermes_ec=$?\nexport -p > '/tmp/snap path.sh' 2>/dev/null || true\npwd -P > '/tmp/cwd path.txt' 2>/dev/null || true\nprintf '\\n__HERMES_CWD_abc123def456__%s__HERMES_CWD_abc123def456__\\n' \"$(pwd -P)\"\nexit $__hermes_ec"
+      },
       "docker": {
         "env_dict": {
           "CI": "1",

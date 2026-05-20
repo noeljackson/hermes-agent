@@ -82,6 +82,7 @@ def error_with_env(values):
 
 
 def remote_backend_contracts(home: Path):
+    from tools.environments import base as base_env
     from tools.environments import docker as docker_env
     from tools.environments.file_sync import (
         quoted_mkdir_command,
@@ -90,6 +91,72 @@ def remote_backend_contracts(home: Path):
     )
     from tools.environments.ssh import SSHEnvironment
     from tools.environments import modal as modal_env
+    from tools.environments import modal_utils
+
+    class FakeUuid:
+        def __init__(self, hex_value: str):
+            self.hex = hex_value
+
+    class FixtureEnvironment(base_env.BaseEnvironment):
+        def _run_bash(self, *args, **kwargs):
+            raise NotImplementedError
+
+        def cleanup(self):
+            pass
+
+    base = FixtureEnvironment.__new__(FixtureEnvironment)
+    base.cwd = "/tmp/start"
+    base.timeout = 30
+    base.env = {}
+    base._session_id = "abc123def456"
+    base._snapshot_path = "/tmp/snap path.sh"
+    base._cwd_file = "/tmp/cwd path.txt"
+    base._cwd_marker = base_env._cwd_marker(base._session_id)
+    base._snapshot_ready = True
+
+    original_base_uuid = base_env.uuid.uuid4
+    original_modal_uuid = modal_utils.uuid.uuid4
+    try:
+        base_env.uuid.uuid4 = lambda: FakeUuid("feedface1234567890")
+        modal_values = iter(
+            [
+                FakeUuid("deadbeef"),
+                FakeUuid("cafebabe"),
+            ]
+        )
+        modal_utils.uuid.uuid4 = lambda: next(modal_values)
+        base_modal_contracts = {
+            "cwd_marker": base_env._cwd_marker("abc123"),
+            "quote_cwd": [
+                {"cwd": "~", "quoted": base_env.BaseEnvironment._quote_cwd_for_cd("~")},
+                {"cwd": "~/", "quoted": base_env.BaseEnvironment._quote_cwd_for_cd("~/")},
+                {
+                    "cwd": "~/project dir",
+                    "quoted": base_env.BaseEnvironment._quote_cwd_for_cd("~/project dir"),
+                },
+                {
+                    "cwd": "/tmp/path with spaces",
+                    "quoted": base_env.BaseEnvironment._quote_cwd_for_cd("/tmp/path with spaces"),
+                },
+                {
+                    "cwd": "-dash",
+                    "quoted": base_env.BaseEnvironment._quote_cwd_for_cd("-dash"),
+                },
+            ],
+            "wrapped_snapshot_ready": base._wrap_command("printf 'hi'", "~/work dir"),
+            "embedded_stdin": base_env.BaseEnvironment._embed_stdin_heredoc(
+                "cat", "hello\nworld"
+            ),
+            "modal_stdin": modal_utils.wrap_modal_stdin_heredoc(
+                "cat", "first HERMES_EOF_deadbeef marker"
+            ),
+            "modal_sudo": modal_utils.wrap_modal_sudo_pipe(
+                "sudo -S true", "pa ss\n"
+            ),
+        }
+    finally:
+        base_env.uuid.uuid4 = original_base_uuid
+        modal_utils.uuid.uuid4 = original_modal_uuid
 
     ssh = SSHEnvironment.__new__(SSHEnvironment)
     ssh.host = "ssh.example.invalid"
@@ -161,6 +228,7 @@ def remote_backend_contracts(home: Path):
             ),
         },
         "modal_snapshots": modal_snapshot_cases,
+        "base_modal": base_modal_contracts,
     }
 
 

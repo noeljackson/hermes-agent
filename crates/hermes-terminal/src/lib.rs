@@ -305,6 +305,102 @@ pub fn modal_store_direct_snapshot(snapshots: &Value, task_id: &str, snapshot_id
     Value::Object(map)
 }
 
+pub fn base_modal_contracts_fixture(case: &Value) -> Value {
+    json!({
+        "cwd_marker": cwd_marker("abc123"),
+        "embedded_stdin": embed_stdin_heredoc("cat", "hello\nworld", "deadbeef"),
+        "modal_stdin": wrap_modal_stdin_heredoc(
+            "cat",
+            "first HERMES_EOF_deadbeef marker",
+            &["deadbeef", "cafebabe"],
+        ),
+        "modal_sudo": wrap_modal_sudo_pipe("sudo -S true", "pa ss\n"),
+        "quote_cwd": case["quote_cwd"].as_array().unwrap().iter().map(|item| {
+            let cwd = item["cwd"].as_str().unwrap_or("");
+            json!({"cwd": cwd, "quoted": quote_cwd_for_cd(cwd)})
+        }).collect::<Vec<_>>(),
+        "wrapped_snapshot_ready": wrap_environment_command(
+            "printf 'hi'",
+            "~/work dir",
+            "/tmp/snap path.sh",
+            "/tmp/cwd path.txt",
+            "abc123def456",
+            true,
+        ),
+    })
+}
+
+fn cwd_marker(session_id: &str) -> String {
+    format!("__HERMES_CWD_{session_id}__")
+}
+
+fn quote_cwd_for_cd(cwd: &str) -> String {
+    if cwd == "~" {
+        return cwd.to_string();
+    }
+    if cwd == "~/" {
+        return "$HOME".to_string();
+    }
+    if let Some(suffix) = cwd.strip_prefix("~/") {
+        return format!("$HOME/{}", shell_quote(suffix));
+    }
+    shell_quote(cwd)
+}
+
+fn wrap_environment_command(
+    command: &str,
+    cwd: &str,
+    snapshot_path: &str,
+    cwd_file: &str,
+    session_id: &str,
+    snapshot_ready: bool,
+) -> String {
+    let marker = cwd_marker(session_id);
+    let escaped = command.replace('\'', "'\\''");
+    let quoted_snap = shell_quote(snapshot_path);
+    let quoted_cwd_file = shell_quote(cwd_file);
+    let mut parts = Vec::new();
+    if snapshot_ready {
+        parts.push(format!("source {quoted_snap} >/dev/null 2>&1 || true"));
+    }
+    parts.push(format!(
+        "builtin cd -- {} || exit 126",
+        quote_cwd_for_cd(cwd)
+    ));
+    parts.push(format!("eval '{escaped}'"));
+    parts.push("__hermes_ec=$?".to_string());
+    if snapshot_ready {
+        parts.push(format!("export -p > {quoted_snap} 2>/dev/null || true"));
+    }
+    parts.push(format!("pwd -P > {quoted_cwd_file} 2>/dev/null || true"));
+    parts.push(format!("printf '\\n{marker}%s{marker}\\n' \"$(pwd -P)\""));
+    parts.push("exit $__hermes_ec".to_string());
+    parts.join("\n")
+}
+
+fn embed_stdin_heredoc(command: &str, stdin_data: &str, uuid_hex: &str) -> String {
+    let delimiter = format!("HERMES_STDIN_{}", &uuid_hex[..12.min(uuid_hex.len())]);
+    format!("{command} << '{delimiter}'\n{stdin_data}\n{delimiter}")
+}
+
+fn wrap_modal_stdin_heredoc(command: &str, stdin_data: &str, uuid_hexes: &[&str]) -> String {
+    let mut marker = String::new();
+    for uuid_hex in uuid_hexes {
+        marker = format!("HERMES_EOF_{}", &uuid_hex[..8.min(uuid_hex.len())]);
+        if !stdin_data.contains(&marker) {
+            break;
+        }
+    }
+    format!("{command} << '{marker}'\n{stdin_data}\n{marker}")
+}
+
+fn wrap_modal_sudo_pipe(command: &str, sudo_stdin: &str) -> String {
+    format!(
+        "printf '%s\\n' {} | {command}",
+        shell_quote(sudo_stdin.trim_end())
+    )
+}
+
 fn is_valid_env_name(key: &str) -> bool {
     let mut chars = key.chars();
     let Some(first) = chars.next() else {
