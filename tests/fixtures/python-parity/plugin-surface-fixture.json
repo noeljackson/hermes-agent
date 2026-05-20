@@ -228,6 +228,59 @@
         "post_llm_call",
         "post_tool_call"
       ]
+    },
+    {
+      "files": {
+        "bundled/.hidden/__init__.py": "class HiddenMemoryProvider: pass\n",
+        "bundled/_private/__init__.py": "class PrivateMemoryProvider: pass\n",
+        "bundled/alpha/__init__.py": "class AlphaMemoryProvider: pass\n",
+        "bundled/alpha/plugin.yaml": "name: alpha\ndescription: Bundled alpha provider.\n",
+        "bundled/collision/__init__.py": "class CollisionMemoryProvider: pass\n",
+        "bundled/collision/plugin.yaml": "name: collision\ndescription: Bundled collision wins.\n",
+        "bundled/no_init/plugin.yaml": "name: no_init\ndescription: Missing init is ignored.\n",
+        "home/plugins/collision/__init__.py": "from agent.memory_provider import MemoryProvider\n",
+        "home/plugins/collision/plugin.yaml": "name: collision\ndescription: User collision loses.\n",
+        "home/plugins/no-init/plugin.yaml": "name: no-init\ndescription: Missing init is ignored.\n",
+        "home/plugins/not-memory/__init__.py": "def register(ctx): pass\n",
+        "home/plugins/not-memory/plugin.yaml": "name: not-memory\ndescription: Not a memory provider.\n",
+        "home/plugins/register-memory/__init__.py": "def register_memory_provider(ctx): pass\n",
+        "home/plugins/register-memory/plugin.yaml": "name: register-memory\ndescription: Register memory provider.\n",
+        "home/plugins/user-memory/__init__.py": "from agent.memory_provider import MemoryProvider\n",
+        "home/plugins/user-memory/plugin.yaml": "name: user-memory\ndescription: User memory provider.\n"
+      },
+      "find_provider_dir": {
+        "alpha": "bundled/alpha",
+        "collision": "bundled/collision",
+        "missing": null,
+        "not-memory": null,
+        "register-memory": "home/plugins/register-memory",
+        "user-memory": "home/plugins/user-memory"
+      },
+      "heuristics": {
+        "no-init": false,
+        "not-memory": false,
+        "register-memory": true,
+        "user-memory": true
+      },
+      "name": "memory_provider_discovery",
+      "provider_dirs": [
+        {
+          "name": "alpha",
+          "path": "bundled/alpha"
+        },
+        {
+          "name": "collision",
+          "path": "bundled/collision"
+        },
+        {
+          "name": "register-memory",
+          "path": "home/plugins/register-memory"
+        },
+        {
+          "name": "user-memory",
+          "path": "home/plugins/user-memory"
+        }
+      ]
     }
   ],
   "source": {

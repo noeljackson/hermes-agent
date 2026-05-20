@@ -2267,6 +2267,68 @@ fn plugin_surfaces_match_python_fixture() {
         policy["registered_commands"]
     );
     let _ = fs::remove_dir_all(policy_root);
+
+    let memory = case(&fixture, "memory_provider_discovery");
+    let memory_root = std::env::temp_dir().join(format!(
+        "hermes-parity-memory-plugins-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&memory_root);
+    fs::create_dir_all(&memory_root).unwrap();
+    for (relative, contents) in memory["files"].as_object().unwrap() {
+        let path = memory_root.join(relative);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, contents.as_str().unwrap()).unwrap();
+    }
+    let names_to_find = memory["find_provider_dir"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+    let heuristic_names = memory["heuristics"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+    let mut actual_memory = hermes_cli::memory_provider_discovery(
+        &memory_root.join("bundled"),
+        &memory_root.join("home").join("plugins"),
+        &names_to_find,
+        &heuristic_names,
+    )
+    .unwrap();
+    for provider in actual_memory["provider_dirs"].as_array_mut().unwrap() {
+        let path = provider["path"].as_str().unwrap();
+        let relative = PathBuf::from(path)
+            .strip_prefix(&memory_root)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        provider["path"] = json!(relative);
+    }
+    for value in actual_memory["find_provider_dir"]
+        .as_object_mut()
+        .unwrap()
+        .values_mut()
+    {
+        if let Some(path) = value.as_str() {
+            let relative = PathBuf::from(path)
+                .strip_prefix(&memory_root)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/");
+            *value = json!(relative);
+        }
+    }
+    assert_eq!(actual_memory["provider_dirs"], memory["provider_dirs"]);
+    assert_eq!(
+        actual_memory["find_provider_dir"],
+        memory["find_provider_dir"]
+    );
+    assert_eq!(actual_memory["heuristics"], memory["heuristics"]);
+    let _ = fs::remove_dir_all(memory_root);
 }
 
 #[test]

@@ -103,6 +103,25 @@ description: Project plugin overrides user plugin when project plugins are enabl
     "project/.hermes/plugins/enabled-user/__init__.py": "def register(ctx): ctx.register_command('project-user-cmd', lambda raw: 'ok')\n",
 }
 
+MEMORY_FILES = {
+    "bundled/alpha/plugin.yaml": "name: alpha\ndescription: Bundled alpha provider.\n",
+    "bundled/alpha/__init__.py": "class AlphaMemoryProvider: pass\n",
+    "bundled/collision/plugin.yaml": "name: collision\ndescription: Bundled collision wins.\n",
+    "bundled/collision/__init__.py": "class CollisionMemoryProvider: pass\n",
+    "bundled/no_init/plugin.yaml": "name: no_init\ndescription: Missing init is ignored.\n",
+    "bundled/_private/__init__.py": "class PrivateMemoryProvider: pass\n",
+    "bundled/.hidden/__init__.py": "class HiddenMemoryProvider: pass\n",
+    "home/plugins/collision/plugin.yaml": "name: collision\ndescription: User collision loses.\n",
+    "home/plugins/collision/__init__.py": "from agent.memory_provider import MemoryProvider\n",
+    "home/plugins/user-memory/plugin.yaml": "name: user-memory\ndescription: User memory provider.\n",
+    "home/plugins/user-memory/__init__.py": "from agent.memory_provider import MemoryProvider\n",
+    "home/plugins/register-memory/plugin.yaml": "name: register-memory\ndescription: Register memory provider.\n",
+    "home/plugins/register-memory/__init__.py": "def register_memory_provider(ctx): pass\n",
+    "home/plugins/not-memory/plugin.yaml": "name: not-memory\ndescription: Not a memory provider.\n",
+    "home/plugins/not-memory/__init__.py": "def register(ctx): pass\n",
+    "home/plugins/no-init/plugin.yaml": "name: no-init\ndescription: Missing init is ignored.\n",
+}
+
 
 def write_files(root: Path, files: dict[str, str]) -> None:
     for rel, content in files.items():
@@ -139,6 +158,13 @@ def loaded_plugin_dict(key: str, loaded) -> dict:
         "hooks_registered": sorted(loaded.hooks_registered),
         "commands_registered": sorted(loaded.commands_registered),
     }
+
+
+def memory_provider_dirs(memory_module, root: Path) -> list[dict]:
+    return [
+        {"name": name, "path": str(path.relative_to(root))}
+        for name, path in memory_module._iter_provider_dirs()
+    ]
 
 
 def main() -> int:
@@ -189,6 +215,41 @@ def main() -> int:
             plugins._get_disabled_plugins = original_disabled
             plugins._env_enabled = original_env_enabled
 
+        from plugins import memory as memory_plugins
+
+        memory_root = home / "memory-fixture"
+        write_files(memory_root, MEMORY_FILES)
+        original_memory_plugins_dir = memory_plugins._MEMORY_PLUGINS_DIR
+        original_memory_user_dir = memory_plugins._get_user_plugins_dir
+        try:
+            memory_plugins._MEMORY_PLUGINS_DIR = memory_root / "bundled"
+            memory_plugins._get_user_plugins_dir = lambda: memory_root / "home" / "plugins"
+            memory_dirs = memory_provider_dirs(memory_plugins, memory_root)
+            find_results = {
+                name: (
+                    str(found.relative_to(memory_root))
+                    if (found := memory_plugins.find_provider_dir(name))
+                    else None
+                )
+                for name in [
+                    "alpha",
+                    "collision",
+                    "user-memory",
+                    "register-memory",
+                    "not-memory",
+                    "missing",
+                ]
+            }
+            heuristics = {
+                name: memory_plugins._is_memory_provider_dir(
+                    memory_root / "home" / "plugins" / name
+                )
+                for name in ["user-memory", "register-memory", "not-memory", "no-init"]
+            }
+        finally:
+            memory_plugins._MEMORY_PLUGINS_DIR = original_memory_plugins_dir
+            memory_plugins._get_user_plugins_dir = original_memory_user_dir
+
         cases = [
             {
                 "name": "plugin_boundary_constants",
@@ -210,6 +271,13 @@ def main() -> int:
                 "plugins": loaded_plugins,
                 "registered_hooks": registered_hooks,
                 "registered_commands": registered_commands,
+            },
+            {
+                "name": "memory_provider_discovery",
+                "files": MEMORY_FILES,
+                "provider_dirs": memory_dirs,
+                "find_provider_dir": find_results,
+                "heuristics": heuristics,
             },
         ]
 

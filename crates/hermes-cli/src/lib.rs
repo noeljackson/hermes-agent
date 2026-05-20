@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
 
@@ -880,6 +880,112 @@ pub fn plugin_load_policy_with_project(
         enabled,
         disabled,
     )
+}
+
+pub fn memory_provider_discovery(
+    bundled_root: &Path,
+    user_root: &Path,
+    names_to_find: &[&str],
+    heuristic_names: &[&str],
+) -> io::Result<Value> {
+    let provider_dirs = memory_provider_dirs(bundled_root, user_root)?;
+    let mut find_provider_dir = serde_json::Map::new();
+    for name in names_to_find {
+        let found = find_memory_provider_dir(bundled_root, user_root, name)?;
+        find_provider_dir.insert(
+            (*name).to_string(),
+            found.map_or(Value::Null, |path| json!(path.to_string_lossy())),
+        );
+    }
+
+    let mut heuristics = serde_json::Map::new();
+    for name in heuristic_names {
+        heuristics.insert(
+            (*name).to_string(),
+            json!(is_memory_provider_dir(&user_root.join(name))),
+        );
+    }
+
+    Ok(json!({
+        "provider_dirs": provider_dirs
+            .into_iter()
+            .map(|(name, path)| json!({"name": name, "path": path.to_string_lossy()}))
+            .collect::<Vec<_>>(),
+        "find_provider_dir": Value::Object(find_provider_dir),
+        "heuristics": Value::Object(heuristics),
+    }))
+}
+
+fn memory_provider_dirs(
+    bundled_root: &Path,
+    user_root: &Path,
+) -> io::Result<Vec<(String, PathBuf)>> {
+    let mut seen = BTreeSet::new();
+    let mut dirs = Vec::new();
+
+    if bundled_root.is_dir() {
+        let mut children = fs::read_dir(bundled_root)?
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().is_dir())
+            .collect::<Vec<_>>();
+        children.sort_by_key(|entry| entry.file_name());
+        for child in children {
+            let name = child.file_name().to_string_lossy().to_string();
+            if name.starts_with('_') || name.starts_with('.') {
+                continue;
+            }
+            if !child.path().join("__init__.py").exists() {
+                continue;
+            }
+            seen.insert(name.clone());
+            dirs.push((name, child.path()));
+        }
+    }
+
+    if user_root.is_dir() {
+        let mut children = fs::read_dir(user_root)?
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().is_dir())
+            .collect::<Vec<_>>();
+        children.sort_by_key(|entry| entry.file_name());
+        for child in children {
+            let name = child.file_name().to_string_lossy().to_string();
+            if name.starts_with('_') || name.starts_with('.') || seen.contains(&name) {
+                continue;
+            }
+            if !is_memory_provider_dir(&child.path()) {
+                continue;
+            }
+            dirs.push((name, child.path()));
+        }
+    }
+
+    Ok(dirs)
+}
+
+fn find_memory_provider_dir(
+    bundled_root: &Path,
+    user_root: &Path,
+    name: &str,
+) -> io::Result<Option<PathBuf>> {
+    let bundled = bundled_root.join(name);
+    if bundled.is_dir() && bundled.join("__init__.py").exists() {
+        return Ok(Some(bundled));
+    }
+    let user = user_root.join(name);
+    if user.is_dir() && is_memory_provider_dir(&user) {
+        return Ok(Some(user));
+    }
+    Ok(None)
+}
+
+fn is_memory_provider_dir(path: &Path) -> bool {
+    let init_file = path.join("__init__.py");
+    let Ok(source) = fs::read_to_string(init_file) else {
+        return false;
+    };
+    let source = truncate_chars(&source, 8192);
+    source.contains("register_memory_provider") || source.contains("MemoryProvider")
 }
 
 fn plugin_load_policy_inner(

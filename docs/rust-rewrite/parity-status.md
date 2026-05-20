@@ -86,6 +86,11 @@ against those fixtures in `crates/hermes-parity`:
   user standalone opt-in, user backend opt-in, hook/command registration
   metadata, project-plugin opt-in precedence over same-key user plugins, and
   the general PluginManager skip of model-provider directories.
+- Memory-provider plugin boundary: bundled memory-provider directory discovery,
+  user memory-provider source-text heuristics, hidden/private/missing-init
+  filtering, bundled-over-user collision precedence, `find_provider_dir`
+  resolution, and non-memory user plugin exclusion are fixture-backed without
+  requiring Rust to import or execute provider plugin code.
 - Core runtime: fake provider-driven tool loop, OpenAI-style assistant/tool
   message appends, final response return, unknown-tool errors, and iteration
   limit stop behavior. Python fixture coverage now protects core agent-loop
