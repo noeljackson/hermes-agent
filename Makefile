@@ -3,7 +3,7 @@ REFERENCE_REF ?= main
 PARITY_FIXTURES_DIR ?= tests/fixtures/python-parity
 PARITY_IMAGE ?= hermes-python-parity
 
-.PHONY: check coverage coverage-html coverage-lcov python-parity-build python-parity-fixtures python-parity-update python-parity-drift python-parity-agent real-provider-smoke real-gateway-smoke
+.PHONY: check coverage coverage-html coverage-lcov python-parity-build python-parity-fixtures python-parity-update python-parity-drift python-parity-agent tty-smoke real-provider-smoke real-gateway-smoke
 
 check:
 	@if [ -f Cargo.toml ]; then cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace; else echo "No Rust workspace yet; skipping cargo test."; fi
@@ -54,6 +54,9 @@ python-parity-agent: python-parity-build
 		-v "$(CURDIR)/$(PARITY_FIXTURES_DIR):/fixtures" \
 		--entrypoint /bin/bash \
 		$(PARITY_IMAGE)
+
+tty-smoke:
+	bash scripts/tty-smoke.sh
 
 real-provider-smoke:
 	bash scripts/real-provider-smoke.sh

@@ -46,10 +46,11 @@ is copied into a profile, later updates must preserve user edits.
 
 1. `make check`
 2. `make python-parity-drift`
-3. Migration dry-run against a copied real profile directory.
-4. Rollback dry-run proving the copied profile can still be opened by the
+3. `make tty-smoke` on an operator machine with tmux available.
+4. Migration dry-run against a copied real profile directory.
+5. Rollback dry-run proving the copied profile can still be opened by the
    Python runtime after Rust has inspected it.
-5. Secret redaction audit over generated migration reports.
+6. Secret redaction audit over generated migration reports.
 
 No normal test may require live provider credentials or platform tokens.
 
@@ -116,6 +117,7 @@ place and report it.
 ```bash
 make check
 make python-parity-drift
+make tty-smoke
 git diff --check
 cargo test -p hermes-config migration_dry_run_classifies_profile_without_touching_user_data
 cargo test -p hermes-parity profile_migration_matches_python_fixture

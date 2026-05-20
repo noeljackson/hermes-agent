@@ -21,6 +21,8 @@ the behavioral oracle and is not a substitute for Python parity fixtures.
 - `make coverage` prints a workspace Rust coverage summary.
 - `make coverage-html` writes an HTML report to `target/coverage/html`.
 - `make coverage-lcov` writes `target/coverage/lcov.info` for CI upload.
+- `make tty-smoke` runs a tmux-backed Rust CLI terminal smoke test when `tmux`
+  is installed and skips cleanly otherwise.
 
 These targets require `cargo-llvm-cov` and fail with an install hint when it is
 missing. They do not install tools automatically, do not run host Python, and
@@ -245,7 +247,9 @@ against those fixtures in `crates/hermes-parity`:
   session RPCs are fixture-backed for missing-session errors, terminal resize,
   no-agent usage, history projection, steer validation/no-agent errors, and
   busy prompt rejection. This protects the Ink/Python gateway boundary and
-  dashboard PTY bridge contract before live TUI behavior is ported.
+  dashboard PTY bridge contract before live TUI behavior is ported. The Rust
+  validation harness also includes an explicit tmux-backed TTY smoke target for
+  terminal rendering of deterministic CLI output.
 - Tool registry: built-in tool metadata for name, toolset, async flag,
   env requirements, schema parameter names, required fields, and description
   presence. Selected core tool schemas (`terminal`, `read_file`, `write_file`,
