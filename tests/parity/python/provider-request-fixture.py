@@ -23,6 +23,7 @@ def main() -> int:
             map_finish_reason,
         )
         from providers.base import ProviderProfile
+        from run_agent import AIAgent
 
         chat_transport = ChatCompletionsTransport()
         profile = ProviderProfile(
@@ -145,6 +146,25 @@ def main() -> int:
             "stop_sequence": "stop",
             "refusal": "content_filter",
         }
+        responses_api_routing = {
+            "gpt5_plain": AIAgent._model_requires_responses_api("gpt-5.4"),
+            "gpt5_vendor_prefixed": AIAgent._model_requires_responses_api(
+                "openai/gpt-5.4"
+            ),
+            "gpt4o_plain": AIAgent._model_requires_responses_api("gpt-4o"),
+            "nous_gpt5": AIAgent._provider_model_requires_responses_api(
+                "gpt-5.4", provider="nous"
+            ),
+            "openrouter_gpt5": AIAgent._provider_model_requires_responses_api(
+                "openai/gpt-5.4", provider="openrouter"
+            ),
+            "blank_provider_gpt5": AIAgent._provider_model_requires_responses_api(
+                "gpt-5.4", provider=""
+            ),
+            "copilot_gpt4o": AIAgent._provider_model_requires_responses_api(
+                "gpt-4o", provider="copilot"
+            ),
+        }
 
     cases = [
         {"name": "chat_completions_fake_provider", "request": kwargs},
@@ -188,6 +208,7 @@ def main() -> int:
                 "none": map_finish_reason(None, finish_mapping),
             },
         },
+        {"name": "responses_api_routing", "cases": responses_api_routing},
     ]
     write_fixture(out, fixture(SCRIPT, cases))
     return 0

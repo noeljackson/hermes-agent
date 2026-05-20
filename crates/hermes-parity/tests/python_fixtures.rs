@@ -1654,6 +1654,39 @@ fn provider_request_shape_matches_python_fixture() {
     assert_eq!(normalized["tool_call"]["type"], "function");
     assert_eq!(normalized["tool_call"]["function_is_self"], true);
     assert_eq!(normalized["finish_reason_map"]["unknown"], "stop");
+
+    let routing = &case(&fixture, "responses_api_routing")["cases"];
+    assert_eq!(
+        hermes_provider::model_requires_responses_api("gpt-5.4"),
+        routing["gpt5_plain"]
+    );
+    assert_eq!(
+        hermes_provider::model_requires_responses_api("openai/gpt-5.4"),
+        routing["gpt5_vendor_prefixed"]
+    );
+    assert_eq!(
+        hermes_provider::model_requires_responses_api("gpt-4o"),
+        routing["gpt4o_plain"]
+    );
+    assert_eq!(
+        hermes_provider::provider_model_requires_responses_api("gpt-5.4", Some("nous")),
+        routing["nous_gpt5"]
+    );
+    assert_eq!(
+        hermes_provider::provider_model_requires_responses_api(
+            "openai/gpt-5.4",
+            Some("openrouter")
+        ),
+        routing["openrouter_gpt5"]
+    );
+    assert_eq!(
+        hermes_provider::provider_model_requires_responses_api("gpt-5.4", Some("")),
+        routing["blank_provider_gpt5"]
+    );
+    assert_eq!(
+        hermes_provider::provider_model_requires_responses_api("gpt-4o", Some("copilot")),
+        routing["copilot_gpt4o"]
+    );
 }
 
 #[test]

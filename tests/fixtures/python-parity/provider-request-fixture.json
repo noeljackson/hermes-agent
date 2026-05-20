@@ -236,6 +236,18 @@
         "prompt_tokens": 0,
         "total_tokens": 0
       }
+    },
+    {
+      "cases": {
+        "blank_provider_gpt5": true,
+        "copilot_gpt4o": false,
+        "gpt4o_plain": false,
+        "gpt5_plain": true,
+        "gpt5_vendor_prefixed": true,
+        "nous_gpt5": false,
+        "openrouter_gpt5": true
+      },
+      "name": "responses_api_routing"
     }
   ],
   "source": {

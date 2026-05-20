@@ -41,7 +41,10 @@ against those fixtures in `crates/hermes-parity`:
   Anthropic Messages kwargs for tools, tool choice, and adaptive thinking.
   Shared transport normalization is fixture-backed for tool-call construction,
   backward-compatible tool-call accessors, usage defaults, provider-data
-  accessors, and finish-reason mapping.
+  accessors, and finish-reason mapping. Provider/model Responses API routing is
+  fixture-backed for GPT-5 vendor-prefix stripping, the Nous GPT-5
+  chat-completions exception, OpenRouter GPT-5 routing, blank-provider fallback,
+  and Copilot non-GPT-5 behavior.
 - Provider profiles: built-in provider inventory, aliases, API modes, auth
   types, environment key discovery metadata, base URLs, fallback counts,
   max-token defaults, fixed-temperature sentinels, and default header keys.

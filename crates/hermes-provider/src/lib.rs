@@ -280,6 +280,30 @@ pub fn map_finish_reason(reason: Option<&str>) -> &'static str {
     }
 }
 
+pub fn model_requires_responses_api(model: &str) -> bool {
+    let normalized = model
+        .to_ascii_lowercase()
+        .rsplit_once('/')
+        .map(|(_, model)| model.to_string())
+        .unwrap_or_else(|| model.to_ascii_lowercase());
+    normalized.starts_with("gpt-5")
+}
+
+pub fn provider_model_requires_responses_api(model: &str, provider: Option<&str>) -> bool {
+    let normalized_provider = provider.unwrap_or_default().trim().to_ascii_lowercase();
+    if normalized_provider == "nous" {
+        return false;
+    }
+    if normalized_provider == "copilot" {
+        return copilot_model_requires_responses_api(model);
+    }
+    model_requires_responses_api(model)
+}
+
+fn copilot_model_requires_responses_api(model: &str) -> bool {
+    model_requires_responses_api(model)
+}
+
 const PROVIDER_PROFILES: &[ProviderProfileSummary] = &[
     ProviderProfileSummary {
         name: "ai-gateway",
