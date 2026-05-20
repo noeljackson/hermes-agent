@@ -118,6 +118,7 @@ place and report it.
 make check
 make python-parity-drift
 make tty-smoke
+make cutover-check
 git diff --check
 cargo test -p hermes-config migration_dry_run_classifies_profile_without_touching_user_data
 cargo test -p hermes-parity profile_migration_matches_python_fixture

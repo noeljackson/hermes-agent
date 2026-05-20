@@ -23,6 +23,8 @@ the behavioral oracle and is not a substitute for Python parity fixtures.
 - `make coverage-lcov` writes `target/coverage/lcov.info` for CI upload.
 - `make tty-smoke` runs a tmux-backed Rust CLI terminal smoke test when `tmux`
   is installed and skips cleanly otherwise.
+- `make cutover-check` chains `make check`, Docker parity drift, TTY smoke, and
+  the opt-in real-provider/real-gateway smoke gates.
 
 These targets require `cargo-llvm-cov` and fail with an install hint when it is
 missing. They do not install tools automatically, do not run host Python, and
