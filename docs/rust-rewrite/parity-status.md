@@ -84,7 +84,8 @@ against those fixtures in `crates/hermes-parity`:
   plugin modules. Controlled load-policy fixtures cover disabled-plugin
   precedence, bundled backend/platform auto-enable, bundled standalone opt-in,
   user standalone opt-in, user backend opt-in, hook/command registration
-  metadata, and the general PluginManager skip of model-provider directories.
+  metadata, project-plugin opt-in precedence over same-key user plugins, and
+  the general PluginManager skip of model-provider directories.
 - Core runtime: fake provider-driven tool loop, OpenAI-style assistant/tool
   message appends, final response return, unknown-tool errors, and iteration
   limit stop behavior. Python fixture coverage now protects core agent-loop

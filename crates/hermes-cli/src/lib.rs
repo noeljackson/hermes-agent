@@ -863,6 +863,32 @@ pub fn plugin_load_policy(
     enabled: &[&str],
     disabled: &[&str],
 ) -> io::Result<Value> {
+    plugin_load_policy_inner(bundled_root, user_root, None, enabled, disabled)
+}
+
+pub fn plugin_load_policy_with_project(
+    bundled_root: &Path,
+    user_root: &Path,
+    project_root: &Path,
+    enabled: &[&str],
+    disabled: &[&str],
+) -> io::Result<Value> {
+    plugin_load_policy_inner(
+        bundled_root,
+        user_root,
+        Some(project_root),
+        enabled,
+        disabled,
+    )
+}
+
+fn plugin_load_policy_inner(
+    bundled_root: &Path,
+    user_root: &Path,
+    project_root: Option<&Path>,
+    enabled: &[&str],
+    disabled: &[&str],
+) -> io::Result<Value> {
     let mut manifests = Vec::new();
     manifests.extend(scan_plugin_manifests(
         bundled_root,
@@ -875,6 +901,9 @@ pub fn plugin_load_policy(
         &[],
     )?);
     manifests.extend(scan_plugin_manifests(user_root, "user", &[])?);
+    if let Some(project_root) = project_root {
+        manifests.extend(scan_plugin_manifests(project_root, "project", &[])?);
+    }
 
     let mut winners = BTreeMap::<String, Value>::new();
     for manifest in manifests {

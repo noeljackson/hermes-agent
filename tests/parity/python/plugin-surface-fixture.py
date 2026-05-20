@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from parity_common import fixture, isolated_hermes_home, parse_out_arg, write_fixture
@@ -94,6 +95,12 @@ kind: backend
 description: User backend remains opt-in.
 """.lstrip(),
     "home/plugins/user-backend/__init__.py": "raise RuntimeError('user backend should not auto-load')\n",
+    "project/.hermes/plugins/enabled-user/plugin.yaml": """
+name: enabled-user
+kind: standalone
+description: Project plugin overrides user plugin when project plugins are enabled.
+""".lstrip(),
+    "project/.hermes/plugins/enabled-user/__init__.py": "def register(ctx): ctx.register_command('project-user-cmd', lambda raw: 'ok')\n",
 }
 
 
@@ -155,11 +162,17 @@ def main() -> int:
         original_home = plugins.get_hermes_home
         original_enabled = plugins._get_enabled_plugins
         original_disabled = plugins._get_disabled_plugins
+        original_env_enabled = plugins._env_enabled
+        original_cwd = Path.cwd()
         try:
             plugins.get_bundled_plugins_dir = lambda: policy_root / "bundled"
             plugins.get_hermes_home = lambda: policy_root / "home"
             plugins._get_enabled_plugins = lambda: {"enabled-user"}
             plugins._get_disabled_plugins = lambda: {"disabled-user"}
+            plugins._env_enabled = lambda name: name == "HERMES_ENABLE_PROJECT_PLUGINS"
+            (policy_root / "project").mkdir(parents=True, exist_ok=True)
+
+            os.chdir(policy_root / "project")
             policy_manager = plugins.PluginManager()
             policy_manager.discover_and_load(force=True)
             loaded_plugins = [
@@ -169,10 +182,12 @@ def main() -> int:
             registered_hooks = sorted(policy_manager._hooks.keys())
             registered_commands = sorted(policy_manager._plugin_commands.keys())
         finally:
+            os.chdir(original_cwd)
             plugins.get_bundled_plugins_dir = original_bundled_dir
             plugins.get_hermes_home = original_home
             plugins._get_enabled_plugins = original_enabled
             plugins._get_disabled_plugins = original_disabled
+            plugins._env_enabled = original_env_enabled
 
         cases = [
             {

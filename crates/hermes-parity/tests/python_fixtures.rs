@@ -2249,9 +2249,10 @@ fn plugin_surfaces_match_python_fixture() {
         .iter()
         .map(|value| value.as_str().unwrap())
         .collect::<Vec<_>>();
-    let actual_policy = hermes_cli::plugin_load_policy(
+    let actual_policy = hermes_cli::plugin_load_policy_with_project(
         &policy_root.join("bundled"),
         &policy_root.join("home").join("plugins"),
+        &policy_root.join("project").join(".hermes").join("plugins"),
         &enabled,
         &disabled,
     )

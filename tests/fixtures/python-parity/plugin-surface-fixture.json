@@ -148,7 +148,9 @@
         "home/plugins/enabled-user/__init__.py": "def register(ctx): ctx.register_command('enabled-user-cmd', lambda raw: 'ok')\n",
         "home/plugins/enabled-user/plugin.yaml": "name: enabled-user\nkind: standalone\ndescription: Explicitly enabled user plugin.\n",
         "home/plugins/user-backend/__init__.py": "raise RuntimeError('user backend should not auto-load')\n",
-        "home/plugins/user-backend/plugin.yaml": "name: user-backend\nkind: backend\ndescription: User backend remains opt-in.\n"
+        "home/plugins/user-backend/plugin.yaml": "name: user-backend\nkind: backend\ndescription: User backend remains opt-in.\n",
+        "project/.hermes/plugins/enabled-user/__init__.py": "def register(ctx): ctx.register_command('project-user-cmd', lambda raw: 'ok')\n",
+        "project/.hermes/plugins/enabled-user/plugin.yaml": "name: enabled-user\nkind: standalone\ndescription: Project plugin overrides user plugin when project plugins are enabled.\n"
       },
       "name": "load_policy",
       "plugins": [
@@ -186,7 +188,7 @@
         },
         {
           "commands_registered": [
-            "enabled-user-cmd"
+            "project-user-cmd"
           ],
           "enabled": true,
           "error": null,
@@ -194,7 +196,7 @@
           "key": "enabled-user",
           "kind": "standalone",
           "name": "enabled-user",
-          "source": "user"
+          "source": "project"
         },
         {
           "commands_registered": [],
@@ -220,7 +222,7 @@
         }
       ],
       "registered_commands": [
-        "enabled-user-cmd"
+        "project-user-cmd"
       ],
       "registered_hooks": [
         "post_llm_call",
