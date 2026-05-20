@@ -145,6 +145,14 @@ against those fixtures in `crates/hermes-parity`:
 - MCP schema normalization: draft-07 `definitions` to `$defs` rewriting,
   local `$ref` rewriting, nullable-union collapse, object-shape repair,
   dangling `required` pruning, and empty-schema defaults.
+- Voice/TTS/STT helpers: CLI/TUI voice record-key config lookup,
+  prompt-toolkit shortcut normalization, `/voice status` display strings,
+  TTS provider selection, command-provider config lookup, command-provider
+  timeouts/output formats/voice compatibility, provider-specific text length
+  caps, command-template placeholder quoting, markdown stripping for spoken
+  text, STT enabled/provider selection with fake local/cloud availability,
+  local STT model normalization, and audio-file validation errors. These
+  fixtures avoid live audio devices, live providers, and host Python.
 - Cron schedules: interval, cron, timestamp parsing, legacy job
   normalization, skill-field compatibility, schedule display fallbacks, paused
   state defaults, script/id name fallbacks, blank-profile normalization,

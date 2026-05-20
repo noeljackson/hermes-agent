@@ -1734,6 +1734,131 @@ const PLUGIN_VALID_HOOKS: &[&str] = &[
     "transform_tool_result",
 ];
 
+const DEFAULT_VOICE_PT_KEY: &str = "c-b";
+const VOICE_RESERVED_CTRL_CHARS: &[&str] = &["c", "d", "l"];
+
+pub fn voice_record_key_from_config(cfg: &Value) -> Value {
+    cfg.get("voice")
+        .and_then(Value::as_object)
+        .and_then(|voice| voice.get("record_key"))
+        .cloned()
+        .unwrap_or(Value::Null)
+}
+
+pub fn normalize_voice_record_key_for_prompt_toolkit(raw: &Value) -> String {
+    let Some(raw) = raw.as_str() else {
+        return DEFAULT_VOICE_PT_KEY.to_string();
+    };
+    let lowered = raw.trim().to_ascii_lowercase();
+    if lowered.is_empty() {
+        return DEFAULT_VOICE_PT_KEY.to_string();
+    }
+
+    let parts = lowered
+        .split('+')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+    if parts.len() != 2 {
+        return DEFAULT_VOICE_PT_KEY.to_string();
+    }
+
+    let modifier = parts[0];
+    let key = parts[1];
+    if matches!(modifier, "super" | "win" | "windows") {
+        return DEFAULT_VOICE_PT_KEY.to_string();
+    }
+
+    let normalized_mod = match modifier {
+        "ctrl" | "control" => "c-",
+        "alt" | "option" | "opt" => "a-",
+        _ => return DEFAULT_VOICE_PT_KEY.to_string(),
+    };
+
+    if key.chars().count() == 1 {
+        if normalized_mod == "c-" && VOICE_RESERVED_CTRL_CHARS.contains(&key) {
+            return DEFAULT_VOICE_PT_KEY.to_string();
+        }
+        return format!("{normalized_mod}{key}");
+    }
+
+    let named = match key {
+        "space" | "spc" => "space",
+        "enter" | "return" | "ret" => "enter",
+        "tab" => "tab",
+        "escape" | "esc" => "escape",
+        "backspace" | "bs" => "backspace",
+        "delete" | "del" => "delete",
+        _ => return DEFAULT_VOICE_PT_KEY.to_string(),
+    };
+    format!("{normalized_mod}{named}")
+}
+
+pub fn format_voice_record_key_for_status(raw: &Value) -> String {
+    let normalized = normalize_voice_record_key_for_prompt_toolkit(raw);
+    let (prefix, key) = if let Some(key) = normalized.strip_prefix("c-") {
+        ("Ctrl+", key)
+    } else if let Some(key) = normalized.strip_prefix("a-") {
+        ("Alt+", key)
+    } else if let Some((modifier, key)) = normalized.split_once('+') {
+        let mut chars = modifier.chars();
+        let prefix = match chars.next() {
+            Some(first) => format!("{}{}+", first.to_ascii_uppercase(), chars.as_str()),
+            None => "+".to_string(),
+        };
+        return format!("{prefix}{}", title_case_key(key));
+    } else {
+        return "Ctrl+B".to_string();
+    };
+
+    if key.is_empty() {
+        return prefix.trim_end_matches('+').to_string();
+    }
+    format!("{prefix}{}", title_case_key(key))
+}
+
+fn title_case_key(key: &str) -> String {
+    if key.chars().count() == 1 {
+        return key.to_ascii_uppercase();
+    }
+    let mut chars = key.chars();
+    match chars.next() {
+        Some(first) => format!("{}{}", first.to_ascii_uppercase(), chars.as_str()),
+        None => String::new(),
+    }
+}
+
+pub fn voice_record_key_config_fixture(cases: &[Value]) -> Value {
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let cfg = &case["config"];
+                json!({
+                    "config": cfg,
+                    "record_key": voice_record_key_from_config(cfg),
+                })
+            })
+            .collect(),
+    )
+}
+
+pub fn voice_record_key_normalization_fixture(cases: &[Value]) -> Value {
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let raw = &case["raw"];
+                json!({
+                    "normalized": normalize_voice_record_key_for_prompt_toolkit(raw),
+                    "raw": raw,
+                    "status": format_voice_record_key_for_status(raw),
+                })
+            })
+            .collect(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

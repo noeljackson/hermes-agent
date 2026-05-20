@@ -27,6 +27,16 @@ def normalize_home(value, home: Path):
     return value
 
 
+def normalize_path_marker(value, path: Path, marker: str):
+    if isinstance(value, dict):
+        return {key: normalize_path_marker(item, path, marker) for key, item in value.items()}
+    if isinstance(value, list):
+        return [normalize_path_marker(item, path, marker) for item in value]
+    if isinstance(value, str):
+        return value.replace(str(path), marker)
+    return value
+
+
 class LocalFixtureEnv:
     def __init__(self, cwd: str):
         self.cwd = cwd
@@ -274,6 +284,394 @@ def deterministic_web_image_browser_cases():
     ]
 
 
+def deterministic_voice_tts_stt_cases():
+    from hermes_cli import voice as voice_cli
+    from tools import transcription_tools as stt
+    from tools import tts_tool as tts
+
+    voice_config_cases = []
+    for cfg in [
+        {},
+        {"voice": True},
+        {"voice": "ctrl+space"},
+        {"voice": {"record_key": "ctrl+space"}},
+        {"voice": {"record_key": "option+return"}},
+        {"voice": {"record_key": ""}},
+    ]:
+        voice_config_cases.append(
+            {
+                "config": cfg,
+                "record_key": voice_cli.voice_record_key_from_config(cfg),
+            }
+        )
+
+    voice_key_cases = []
+    for raw in [
+        None,
+        True,
+        7,
+        "",
+        "ctrl+b",
+        "control+o",
+        "CTRL + SPACE",
+        "alt+space",
+        "option+return",
+        "ctrl+c",
+        "ctrl+d",
+        "ctrl+l",
+        "alt+c",
+        "super+b",
+        "windows+space",
+        "ctrl+alt+r",
+        "b",
+        "space",
+        "ctrl+spcae",
+        "ctrl+delete",
+    ]:
+        voice_key_cases.append(
+            {
+                "raw": raw,
+                "normalized": voice_cli.normalize_voice_record_key_for_prompt_toolkit(raw),
+                "status": voice_cli.format_voice_record_key_for_status(raw),
+            }
+        )
+
+    tts_config = {
+        "provider": " Piper-Local ",
+        "providers": {
+            "piper-local": {
+                "type": "command",
+                "command": "piper --input {input_path} --output {output_path}",
+                "output_format": "wav",
+                "timeout": "2.5",
+                "voice_compatible": "yes",
+                "max_text_length": 1234,
+            },
+            "fallback-command": {
+                "type": "command",
+                "command": "synth {text_path} {output_path}",
+            },
+            "bad-command": {
+                "type": "command",
+                "command": "   ",
+                "output_format": "bad",
+                "timeout": -1,
+                "voice_compatible": "no",
+            },
+            "edge": {
+                "type": "command",
+                "command": "shadow-built-in",
+            },
+        },
+        "elevenlabs": {"model_id": "eleven_flash_v2_5"},
+        "openai": {"max_text_length": 111},
+    }
+    tts_provider_cases = []
+    for cfg in [
+        {},
+        {"provider": ""},
+        {"provider": " OpenAI "},
+        {"provider": " Piper-Local "},
+    ]:
+        tts_provider_cases.append({"config": cfg, "provider": tts._get_provider(cfg)})
+
+    tts_length_cases = []
+    for provider in [
+        "openai",
+        "elevenlabs",
+        "piper-local",
+        "fallback-command",
+        "unknown",
+        "",
+        None,
+    ]:
+        tts_length_cases.append(
+            {
+                "provider": provider,
+                "max_text_length": tts._resolve_max_text_length(provider, tts_config),
+            }
+        )
+
+    tts_command_cases = {
+        "provider_config": tts._get_named_provider_config(tts_config, "piper-local"),
+        "builtin_shadow_config": tts._get_named_provider_config(tts_config, "edge"),
+        "is_command": tts._is_command_provider_config(
+            tts._get_named_provider_config(tts_config, "piper-local")
+        ),
+        "is_bad_command": tts._is_command_provider_config(
+            tts._get_named_provider_config(tts_config, "bad-command")
+        ),
+        "iter_command_names": sorted(name for name, _ in tts._iter_command_providers(tts_config)),
+        "timeout": tts._get_command_tts_timeout(
+            tts._get_named_provider_config(tts_config, "piper-local")
+        ),
+        "bad_timeout": tts._get_command_tts_timeout(
+            tts._get_named_provider_config(tts_config, "bad-command")
+        ),
+        "output_from_path": tts._get_command_tts_output_format(
+            tts._get_named_provider_config(tts_config, "piper-local"),
+            "/tmp/voice output.OGG",
+        ),
+        "output_from_config": tts._get_command_tts_output_format(
+            tts._get_named_provider_config(tts_config, "piper-local")
+        ),
+        "bad_output": tts._get_command_tts_output_format(
+            tts._get_named_provider_config(tts_config, "bad-command")
+        ),
+        "voice_compatible": tts._is_command_tts_voice_compatible(
+            tts._get_named_provider_config(tts_config, "piper-local")
+        ),
+        "bad_voice_compatible": tts._is_command_tts_voice_compatible(
+            tts._get_named_provider_config(tts_config, "bad-command")
+        ),
+    }
+
+    placeholders = {
+        "input_path": "/tmp/input text.txt",
+        "text_path": "/tmp/input text.txt",
+        "output_path": "/tmp/out file.mp3",
+        "format": "mp3",
+        "voice": "Amy O'Neil",
+        "model": "model$`one",
+        "speed": "1.0",
+        "text": "Hello $USER",
+    }
+    tts_template_cases = []
+    for template in [
+        "tool --in {input_path} --out {output_path}",
+        "tool --voice '{voice}' --model \"{model}\" --text {text}",
+        "tool --literal {{format}} --skip ${model} --speed {speed}",
+    ]:
+        tts_template_cases.append(
+            {
+                "template": template,
+                "rendered": tts._render_command_tts_template(template, placeholders),
+            }
+        )
+
+    tts_markdown_cases = []
+    for text in [
+        "# Heading\n\nHello **bold** and *italic* with `code`.",
+        "Read [docs](https://example.com/docs) and https://secret.example/token.",
+        "- item one\n* item two\n---\n```python\nsecret()\n```",
+    ]:
+        tts_markdown_cases.append(
+            {"input": text, "stripped": tts._strip_markdown_for_tts(text)}
+        )
+
+    original_fast = stt._HAS_FASTER_WHISPER
+    original_openai = stt._HAS_OPENAI
+    original_has_local_command = stt._has_local_command
+    original_has_openai_audio_backend = stt._has_openai_audio_backend
+    original_get_env_value = stt.get_env_value
+    try:
+        stt_provider_cases = []
+        for case in [
+            {
+                "name": "disabled",
+                "config": {"enabled": False},
+                "fast": True,
+                "local_command": True,
+                "openai": True,
+                "env": {"GROQ_API_KEY": "fake-groq"},
+                "openai_backend": True,
+            },
+            {
+                "name": "explicit_local_fast",
+                "config": {"provider": "local"},
+                "fast": True,
+                "local_command": False,
+                "openai": False,
+                "env": {},
+                "openai_backend": False,
+            },
+            {
+                "name": "explicit_local_command",
+                "config": {"provider": "local"},
+                "fast": False,
+                "local_command": True,
+                "openai": False,
+                "env": {},
+                "openai_backend": False,
+            },
+            {
+                "name": "explicit_local_unavailable",
+                "config": {"provider": "local"},
+                "fast": False,
+                "local_command": False,
+                "openai": False,
+                "env": {},
+                "openai_backend": False,
+            },
+            {
+                "name": "explicit_local_command_fallback_fast",
+                "config": {"provider": "local_command"},
+                "fast": True,
+                "local_command": False,
+                "openai": False,
+                "env": {},
+                "openai_backend": False,
+            },
+            {
+                "name": "explicit_groq_key",
+                "config": {"provider": "groq"},
+                "fast": False,
+                "local_command": False,
+                "openai": True,
+                "env": {"GROQ_API_KEY": "fake-groq"},
+                "openai_backend": False,
+            },
+            {
+                "name": "explicit_groq_missing_key",
+                "config": {"provider": "groq"},
+                "fast": False,
+                "local_command": False,
+                "openai": True,
+                "env": {},
+                "openai_backend": False,
+            },
+            {
+                "name": "explicit_openai_backend",
+                "config": {"provider": "openai"},
+                "fast": False,
+                "local_command": False,
+                "openai": True,
+                "env": {},
+                "openai_backend": True,
+            },
+            {
+                "name": "auto_local_fast",
+                "config": {},
+                "fast": True,
+                "local_command": True,
+                "openai": True,
+                "env": {"GROQ_API_KEY": "fake-groq"},
+                "openai_backend": True,
+            },
+            {
+                "name": "auto_local_command",
+                "config": {},
+                "fast": False,
+                "local_command": True,
+                "openai": True,
+                "env": {"GROQ_API_KEY": "fake-groq"},
+                "openai_backend": True,
+            },
+            {
+                "name": "auto_groq",
+                "config": {},
+                "fast": False,
+                "local_command": False,
+                "openai": True,
+                "env": {"GROQ_API_KEY": "fake-groq"},
+                "openai_backend": True,
+            },
+            {
+                "name": "auto_openai",
+                "config": {},
+                "fast": False,
+                "local_command": False,
+                "openai": True,
+                "env": {},
+                "openai_backend": True,
+            },
+            {
+                "name": "auto_none",
+                "config": {},
+                "fast": False,
+                "local_command": False,
+                "openai": False,
+                "env": {},
+                "openai_backend": False,
+            },
+            {
+                "name": "explicit_unknown_passthrough",
+                "config": {"provider": "fixture"},
+                "fast": False,
+                "local_command": False,
+                "openai": False,
+                "env": {},
+                "openai_backend": False,
+            },
+        ]:
+            stt._HAS_FASTER_WHISPER = case["fast"]
+            stt._HAS_OPENAI = case["openai"]
+            stt._has_local_command = lambda case=case: case["local_command"]
+            stt._has_openai_audio_backend = lambda case=case: case["openai_backend"]
+            stt.get_env_value = lambda name, default=None, case=case: case["env"].get(name, default)
+            stt_provider_cases.append(
+                {
+                    "name": case["name"],
+                    "config": case["config"],
+                    "provider": stt._get_provider(case["config"]),
+                }
+            )
+    finally:
+        stt._HAS_FASTER_WHISPER = original_fast
+        stt._HAS_OPENAI = original_openai
+        stt._has_local_command = original_has_local_command
+        stt._has_openai_audio_backend = original_has_openai_audio_backend
+        stt.get_env_value = original_get_env_value
+
+    stt_enabled_cases = []
+    for cfg in [
+        {},
+        {"enabled": True},
+        {"enabled": False},
+        {"enabled": "yes"},
+        {"enabled": "no"},
+        {"enabled": "0"},
+        {"enabled": "unexpected"},
+    ]:
+        stt_enabled_cases.append({"config": cfg, "enabled": stt.is_stt_enabled(cfg)})
+
+    stt_model_cases = []
+    for model in [None, "", "whisper-1", "whisper-large-v3-turbo", "small", "large-v3"]:
+        stt_model_cases.append(
+            {"model": model, "normalized": stt._normalize_local_model(model)}
+        )
+
+    with tempfile.TemporaryDirectory(prefix="hermes-audio-fixture-") as tmp:
+        root = Path(tmp)
+        (root / "folder.wav").mkdir()
+        (root / "note.txt").write_text("not audio", encoding="utf-8")
+        (root / "ok.wav").write_bytes(b"RIFF")
+        too_large = root / "huge.mp3"
+        with too_large.open("wb") as fh:
+            fh.truncate(stt.MAX_FILE_SIZE + 1)
+
+        audio_paths = [
+            root / "missing.wav",
+            root / "folder.wav",
+            root / "note.txt",
+            root / "ok.wav",
+            too_large,
+        ]
+        audio_validation_cases = []
+        for path in audio_paths:
+            result = stt._validate_audio_file(str(path))
+            audio_validation_cases.append(
+                {
+                    "path": str(path).replace(str(root), "<AUDIO_ROOT>"),
+                    "result": normalize_path_marker(result, root, "<AUDIO_ROOT>"),
+                }
+            )
+
+    return [
+        {"name": "voice_record_key_config", "cases": voice_config_cases},
+        {"name": "voice_record_key_normalization", "cases": voice_key_cases},
+        {"name": "tts_provider_resolution", "cases": tts_provider_cases},
+        {"name": "tts_max_text_length", "config": tts_config, "cases": tts_length_cases},
+        {"name": "tts_command_provider_helpers", "result": tts_command_cases},
+        {"name": "tts_command_template_rendering", "cases": tts_template_cases},
+        {"name": "tts_markdown_stripping", "cases": tts_markdown_cases},
+        {"name": "stt_enabled_resolution", "cases": stt_enabled_cases},
+        {"name": "stt_provider_resolution", "cases": stt_provider_cases},
+        {"name": "stt_local_model_normalization", "cases": stt_model_cases},
+        {"name": "stt_audio_file_validation", "cases": audio_validation_cases},
+    ]
+
+
 def main() -> int:
     out = parse_out_arg()
     with isolated_hermes_home() as home:
@@ -319,6 +717,7 @@ def main() -> int:
             },
         ]
         cases.extend(deterministic_web_image_browser_cases())
+        cases.extend(deterministic_voice_tts_stt_cases())
 
         todo_store = TodoStore()
         cases.extend(

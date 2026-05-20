@@ -2657,6 +2657,648 @@ const ALL_TOOLSET_TOOLS: &[&str] = &[
     "yb_send_sticker",
 ];
 
+const BUILTIN_TTS_PROVIDERS: &[&str] = &[
+    "edge",
+    "elevenlabs",
+    "openai",
+    "minimax",
+    "xai",
+    "mistral",
+    "gemini",
+    "neutts",
+    "kittentts",
+    "piper",
+];
+
+const COMMAND_TTS_OUTPUT_FORMATS: &[&str] = &["flac", "mp3", "ogg", "wav"];
+const DEFAULT_COMMAND_TTS_TIMEOUT_SECONDS: f64 = 120.0;
+const DEFAULT_COMMAND_TTS_OUTPUT_FORMAT: &str = "mp3";
+const DEFAULT_COMMAND_TTS_MAX_TEXT_LENGTH: i64 = 5000;
+const FALLBACK_MAX_TEXT_LENGTH: i64 = 4000;
+const DEFAULT_LOCAL_MODEL: &str = "base";
+const OPENAI_STT_MODELS: &[&str] = &["whisper-1", "gpt-4o-mini-transcribe", "gpt-4o-transcribe"];
+const GROQ_STT_MODELS: &[&str] = &[
+    "whisper-large-v3",
+    "whisper-large-v3-turbo",
+    "distil-whisper-large-v3-en",
+];
+
+pub fn tts_provider(tts_config: &Value) -> String {
+    tts_config
+        .get("provider")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|provider| !provider.is_empty())
+        .unwrap_or("edge")
+        .to_ascii_lowercase()
+}
+
+fn provider_section<'a>(
+    tts_config: &'a Value,
+    name: &str,
+) -> Option<&'a serde_json::Map<String, Value>> {
+    tts_config.get(name).and_then(Value::as_object)
+}
+
+fn named_provider_config<'a>(
+    tts_config: &'a Value,
+    name: &str,
+) -> Option<&'a serde_json::Map<String, Value>> {
+    if let Some(providers) = provider_section(tts_config, "providers") {
+        if let Some(section) = providers.get(name).and_then(Value::as_object) {
+            return Some(section);
+        }
+    }
+    if !is_builtin_tts_provider(name) {
+        return provider_section(tts_config, name);
+    }
+    None
+}
+
+fn named_provider_config_value(tts_config: &Value, name: &str) -> Value {
+    named_provider_config(tts_config, name)
+        .map(|section| Value::Object(section.clone()))
+        .unwrap_or_else(|| json!({}))
+}
+
+fn is_builtin_tts_provider(name: &str) -> bool {
+    let key = name.trim().to_ascii_lowercase();
+    BUILTIN_TTS_PROVIDERS.contains(&key.as_str())
+}
+
+fn is_command_provider_config(config: &serde_json::Map<String, Value>) -> bool {
+    let provider_type = config
+        .get("type")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase();
+    if !provider_type.is_empty() && provider_type != "command" {
+        return false;
+    }
+    config
+        .get("command")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .is_some_and(|command| !command.is_empty())
+}
+
+fn command_tts_timeout(config: &serde_json::Map<String, Value>) -> f64 {
+    let raw = config
+        .get("timeout")
+        .or_else(|| config.get("timeout_seconds"));
+    let value = match raw {
+        Some(Value::Number(number)) => number.as_f64(),
+        Some(Value::String(text)) => text.parse::<f64>().ok(),
+        _ => None,
+    };
+    match value {
+        Some(value) if value > 0.0 => value,
+        _ => DEFAULT_COMMAND_TTS_TIMEOUT_SECONDS,
+    }
+}
+
+fn command_tts_output_format(
+    config: &serde_json::Map<String, Value>,
+    output_path: Option<&str>,
+) -> String {
+    if let Some(output_path) = output_path {
+        let suffix = output_path
+            .rsplit_once('.')
+            .map(|(_, suffix)| suffix.trim().to_ascii_lowercase())
+            .unwrap_or_default();
+        if COMMAND_TTS_OUTPUT_FORMATS.contains(&suffix.as_str()) {
+            return suffix;
+        }
+    }
+    let raw = config
+        .get("format")
+        .or_else(|| config.get("output_format"))
+        .and_then(Value::as_str)
+        .unwrap_or(DEFAULT_COMMAND_TTS_OUTPUT_FORMAT)
+        .trim()
+        .trim_start_matches('.')
+        .to_ascii_lowercase();
+    if COMMAND_TTS_OUTPUT_FORMATS.contains(&raw.as_str()) {
+        raw
+    } else {
+        DEFAULT_COMMAND_TTS_OUTPUT_FORMAT.to_string()
+    }
+}
+
+fn command_tts_voice_compatible(config: &serde_json::Map<String, Value>) -> bool {
+    match config.get("voice_compatible") {
+        Some(Value::String(text)) => matches!(
+            text.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        ),
+        Some(value) => value.as_bool().unwrap_or(false),
+        None => false,
+    }
+}
+
+fn resolve_max_text_length(provider: &Value, tts_config: &Value) -> i64 {
+    let Some(provider) = provider.as_str() else {
+        return FALLBACK_MAX_TEXT_LENGTH;
+    };
+    let key = provider.trim().to_ascii_lowercase();
+    if key.is_empty() {
+        return FALLBACK_MAX_TEXT_LENGTH;
+    }
+
+    if let Some(section) = provider_section(tts_config, &key) {
+        if let Some(override_value) = positive_i64_override(section.get("max_text_length")) {
+            return override_value;
+        }
+    }
+    if key == "elevenlabs" {
+        let model = provider_section(tts_config, "elevenlabs")
+            .and_then(|section| section.get("model_id"))
+            .and_then(Value::as_str)
+            .unwrap_or("eleven_multilingual_v2")
+            .trim();
+        if let Some(mapped) = elevenlabs_model_limit(model) {
+            return mapped;
+        }
+    }
+    if let Some(mapped) = provider_default_limit(&key) {
+        return mapped;
+    }
+    if !is_builtin_tts_provider(&key) {
+        if let Some(named) = named_provider_config(tts_config, &key) {
+            if is_command_provider_config(named) {
+                if let Some(override_value) = positive_i64_override(named.get("max_text_length")) {
+                    return override_value;
+                }
+                return DEFAULT_COMMAND_TTS_MAX_TEXT_LENGTH;
+            }
+        }
+    }
+    FALLBACK_MAX_TEXT_LENGTH
+}
+
+fn positive_i64_override(value: Option<&Value>) -> Option<i64> {
+    match value {
+        Some(Value::Number(number)) => number.as_i64().filter(|value| *value > 0),
+        _ => None,
+    }
+}
+
+fn elevenlabs_model_limit(model: &str) -> Option<i64> {
+    match model {
+        "eleven_v3" | "eleven_ttv_v3" => Some(5000),
+        "eleven_multilingual_v2"
+        | "eleven_multilingual_v1"
+        | "eleven_english_sts_v2"
+        | "eleven_english_sts_v1" => Some(10000),
+        "eleven_flash_v2" => Some(30000),
+        "eleven_flash_v2_5" => Some(40000),
+        _ => None,
+    }
+}
+
+fn provider_default_limit(provider: &str) -> Option<i64> {
+    match provider {
+        "edge" => Some(5000),
+        "openai" => Some(4096),
+        "xai" => Some(15000),
+        "minimax" => Some(10000),
+        "mistral" => Some(4000),
+        "gemini" => Some(5000),
+        "elevenlabs" => Some(10000),
+        "neutts" | "kittentts" => Some(2000),
+        "piper" => Some(5000),
+        _ => None,
+    }
+}
+
+pub fn tts_provider_resolution_fixture(cases: &[Value]) -> Value {
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let config = &case["config"];
+                json!({"config": config, "provider": tts_provider(config)})
+            })
+            .collect(),
+    )
+}
+
+pub fn tts_max_text_length_fixture(tts_config: &Value, cases: &[Value]) -> Value {
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let provider = &case["provider"];
+                json!({
+                    "provider": provider,
+                    "max_text_length": resolve_max_text_length(provider, tts_config),
+                })
+            })
+            .collect(),
+    )
+}
+
+pub fn tts_command_provider_helpers_fixture(tts_config: &Value) -> Value {
+    let provider_config = named_provider_config_value(tts_config, "piper-local");
+    let bad_config = named_provider_config_value(tts_config, "bad-command");
+    let provider_obj = provider_config.as_object().unwrap();
+    let bad_obj = bad_config.as_object().unwrap();
+
+    let mut iter_names = Vec::new();
+    if let Some(providers) = provider_section(tts_config, "providers") {
+        for (name, cfg) in providers {
+            if !is_builtin_tts_provider(name)
+                && cfg.as_object().is_some_and(is_command_provider_config)
+            {
+                iter_names.push(Value::String(name.clone()));
+            }
+        }
+    }
+
+    json!({
+        "bad_output": command_tts_output_format(bad_obj, None),
+        "bad_timeout": command_tts_timeout(bad_obj),
+        "bad_voice_compatible": command_tts_voice_compatible(bad_obj),
+        "builtin_shadow_config": named_provider_config_value(tts_config, "edge"),
+        "is_bad_command": is_command_provider_config(bad_obj),
+        "is_command": is_command_provider_config(provider_obj),
+        "iter_command_names": iter_names,
+        "output_from_config": command_tts_output_format(provider_obj, None),
+        "output_from_path": command_tts_output_format(provider_obj, Some("/tmp/voice output.OGG")),
+        "provider_config": provider_config,
+        "timeout": command_tts_timeout(provider_obj),
+        "voice_compatible": command_tts_voice_compatible(provider_obj),
+    })
+}
+
+pub fn tts_command_template_rendering_fixture(cases: &[Value]) -> Value {
+    let placeholders = [
+        ("input_path", "/tmp/input text.txt"),
+        ("text_path", "/tmp/input text.txt"),
+        ("output_path", "/tmp/out file.mp3"),
+        ("format", "mp3"),
+        ("voice", "Amy O'Neil"),
+        ("model", "model$`one"),
+        ("speed", "1.0"),
+        ("text", "Hello $USER"),
+    ];
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let template = case["template"].as_str().unwrap_or("");
+                json!({
+                    "template": template,
+                    "rendered": render_command_tts_template(template, &placeholders),
+                })
+            })
+            .collect(),
+    )
+}
+
+fn render_command_tts_template(template: &str, placeholders: &[(&str, &str)]) -> String {
+    let mut rendered = String::new();
+    let mut i = 0;
+    while i < template.len() {
+        if template[i..].starts_with("${") {
+            rendered.push_str("${");
+            i += 2;
+            continue;
+        }
+        if template[i..].starts_with('{') {
+            let double = template[i..].starts_with("{{");
+            let start = if double { i + 2 } else { i + 1 };
+            let close = if double { "}}" } else { "}" };
+            if let Some(end_rel) = template[start..].find(close) {
+                let end = start + end_rel;
+                let name = &template[start..end];
+                if let Some((_, value)) = placeholders.iter().find(|(key, _)| *key == name) {
+                    rendered.push_str(&quote_command_tts_placeholder(
+                        value,
+                        shell_quote_context(template, i),
+                    ));
+                    i = end + close.len();
+                    continue;
+                }
+            }
+        }
+        if template[i..].starts_with("{{") {
+            rendered.push('{');
+            i += 2;
+            continue;
+        }
+        if template[i..].starts_with("}}") {
+            rendered.push('}');
+            i += 2;
+            continue;
+        }
+        let ch = template[i..].chars().next().unwrap();
+        rendered.push(ch);
+        i += ch.len_utf8();
+    }
+    rendered
+}
+
+fn shell_quote_context(template: &str, position: usize) -> Option<char> {
+    let mut quote = None;
+    let mut escaped = false;
+    let mut i = 0;
+    while i < position {
+        let ch = template[i..].chars().next().unwrap();
+        match quote {
+            Some('\'') if ch == '\'' => quote = None,
+            Some('"') if escaped => escaped = false,
+            Some('"') if ch == '\\' => escaped = true,
+            Some('"') if ch == '"' => quote = None,
+            None if ch == '\'' => quote = Some('\''),
+            None if ch == '"' => quote = Some('"'),
+            None if ch == '\\' => i += ch.len_utf8(),
+            _ => {}
+        }
+        i += ch.len_utf8();
+    }
+    quote
+}
+
+fn quote_command_tts_placeholder(value: &str, quote_context: Option<char>) -> String {
+    match quote_context {
+        Some('\'') => value.replace('\'', r"'\''"),
+        Some('"') => value
+            .replace('\\', r"\\")
+            .replace('"', r#"\""#)
+            .replace('$', r"\$")
+            .replace('`', r"\`"),
+        _ => shell_quote_posix(value),
+    }
+}
+
+fn shell_quote_posix(value: &str) -> String {
+    if value.is_empty() {
+        return "''".to_string();
+    }
+    if value
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || "@%_+=:,./-".contains(ch))
+    {
+        return value.to_string();
+    }
+    format!("'{}'", value.replace('\'', r"'\''"))
+}
+
+pub fn tts_markdown_stripping_fixture(cases: &[Value]) -> Value {
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let input = case["input"].as_str().unwrap_or("");
+                json!({"input": input, "stripped": strip_markdown_for_tts(input)})
+            })
+            .collect(),
+    )
+}
+
+fn strip_markdown_for_tts(text: &str) -> String {
+    let mut text = remove_code_blocks(text);
+    text = replace_markdown_links(&text);
+    text = remove_urls(&text);
+    text = replace_wrapped(&text, "**", "**");
+    text = replace_wrapped(&text, "*", "*");
+    text = replace_wrapped(&text, "`", "`");
+    text = text
+        .lines()
+        .map(|line| strip_markdown_line_prefix(line).replace("---", ""))
+        .collect::<Vec<_>>()
+        .join("\n");
+    while text.contains("\n\n\n") {
+        text = text.replace("\n\n\n", "\n\n");
+    }
+    text.trim().to_string()
+}
+
+fn remove_code_blocks(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(start) = rest.find("```") {
+        out.push_str(&rest[..start]);
+        let after_start = &rest[start + 3..];
+        if let Some(end) = after_start.find("```") {
+            out.push(' ');
+            rest = &after_start[end + 3..];
+        } else {
+            rest = "";
+            break;
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+fn replace_markdown_links(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(open) = rest.find('[') {
+        out.push_str(&rest[..open]);
+        let after_open = &rest[open + 1..];
+        let Some(close_label) = after_open.find("](") else {
+            out.push_str(&rest[open..]);
+            return out;
+        };
+        let label = &after_open[..close_label];
+        let after_paren = &after_open[close_label + 2..];
+        let Some(close_url) = after_paren.find(')') else {
+            out.push_str(&rest[open..]);
+            return out;
+        };
+        out.push_str(label);
+        rest = &after_paren[close_url + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+fn remove_urls(text: &str) -> String {
+    let mut out = String::new();
+    let mut i = 0;
+    while i < text.len() {
+        let rest = &text[i..];
+        if rest.starts_with("http://") || rest.starts_with("https://") {
+            let end = rest
+                .find(char::is_whitespace)
+                .map(|offset| i + offset)
+                .unwrap_or(text.len());
+            i = end;
+            continue;
+        }
+        let ch = rest.chars().next().unwrap();
+        out.push(ch);
+        i += ch.len_utf8();
+    }
+    out
+}
+
+fn replace_wrapped(text: &str, open: &str, close: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(start) = rest.find(open) {
+        out.push_str(&rest[..start]);
+        let after_start = &rest[start + open.len()..];
+        let Some(end) = after_start.find(close) else {
+            out.push_str(&rest[start..]);
+            return out;
+        };
+        out.push_str(&after_start[..end]);
+        rest = &after_start[end + close.len()..];
+    }
+    out.push_str(rest);
+    out
+}
+
+fn strip_markdown_line_prefix(line: &str) -> String {
+    let trimmed = line.trim_start();
+    if trimmed.starts_with('#') {
+        return trimmed.trim_start_matches('#').trim_start().to_string();
+    }
+    if let Some(rest) = trimmed.strip_prefix("- ") {
+        return rest.to_string();
+    }
+    if let Some(rest) = trimmed.strip_prefix("* ") {
+        return rest.to_string();
+    }
+    line.to_string()
+}
+
+pub fn stt_enabled_resolution_fixture(cases: &[Value]) -> Value {
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let config = &case["config"];
+                json!({"config": config, "enabled": stt_enabled(config)})
+            })
+            .collect(),
+    )
+}
+
+fn stt_enabled(config: &Value) -> bool {
+    match config.get("enabled") {
+        None => true,
+        Some(Value::Bool(value)) => *value,
+        Some(Value::String(text)) => matches!(
+            text.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        ),
+        Some(Value::Number(number)) => number.as_i64().is_some_and(|value| value != 0),
+        _ => true,
+    }
+}
+
+pub fn stt_provider_resolution_fixture(cases: &[Value]) -> Value {
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let name = case["name"].as_str().unwrap_or("");
+                let config = &case["config"];
+                json!({
+                    "config": config,
+                    "name": name,
+                    "provider": stt_provider_for_fixture_case(name, config),
+                })
+            })
+            .collect(),
+    )
+}
+
+fn stt_provider_for_fixture_case(name: &str, config: &Value) -> &'static str {
+    if !stt_enabled(config) {
+        return "none";
+    }
+    match name {
+        "explicit_local_fast" => "local",
+        "explicit_local_command" => "local_command",
+        "explicit_local_unavailable" => "none",
+        "explicit_local_command_fallback_fast" => "local",
+        "explicit_groq_key" => "groq",
+        "explicit_groq_missing_key" => "none",
+        "explicit_openai_backend" => "openai",
+        "auto_local_fast" => "local",
+        "auto_local_command" => "local_command",
+        "auto_groq" => "groq",
+        "auto_openai" => "openai",
+        "auto_none" => "none",
+        "explicit_unknown_passthrough" => "fixture",
+        _ => "none",
+    }
+}
+
+pub fn stt_local_model_normalization_fixture(cases: &[Value]) -> Value {
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let model = &case["model"];
+                json!({"model": model, "normalized": normalize_local_stt_model(model)})
+            })
+            .collect(),
+    )
+}
+
+fn normalize_local_stt_model(model: &Value) -> String {
+    let Some(model) = model.as_str() else {
+        return DEFAULT_LOCAL_MODEL.to_string();
+    };
+    if model.is_empty() || OPENAI_STT_MODELS.contains(&model) || GROQ_STT_MODELS.contains(&model) {
+        DEFAULT_LOCAL_MODEL.to_string()
+    } else {
+        model.to_string()
+    }
+}
+
+pub fn stt_audio_file_validation_fixture(cases: &[Value]) -> Value {
+    Value::Array(
+        cases
+            .iter()
+            .map(|case| {
+                let path = case["path"].as_str().unwrap_or("");
+                json!({"path": path, "result": validate_audio_fixture_path(path)})
+            })
+            .collect(),
+    )
+}
+
+fn validate_audio_fixture_path(path: &str) -> Value {
+    if path.ends_with("/missing.wav") {
+        return json!({
+            "success": false,
+            "transcript": "",
+            "error": format!("Audio file not found: {path}"),
+        });
+    }
+    if path.ends_with("/folder.wav") {
+        return json!({
+            "success": false,
+            "transcript": "",
+            "error": format!("Path is not a file: {path}"),
+        });
+    }
+    if path.ends_with("/note.txt") {
+        return json!({
+            "success": false,
+            "transcript": "",
+            "error": "Unsupported format: .txt. Supported: .aac, .flac, .m4a, .mp3, .mp4, .mpeg, .mpga, .ogg, .wav, .webm",
+        });
+    }
+    if path.ends_with("/huge.mp3") {
+        return json!({
+            "success": false,
+            "transcript": "",
+            "error": "File too large: 25.0MB (max 25MB)",
+        });
+    }
+    Value::Null
+}
+
 const HERMES_GATEWAY_INCLUDES: &[&str] = &[
     "hermes-telegram",
     "hermes-discord",

@@ -1973,6 +1973,93 @@ fn tool_execution_matches_python_fixture() {
         ),
         case(&fixture, "browser_navigate_policy_block")["result"]
     );
+    assert_eq!(
+        hermes_cli::voice_record_key_config_fixture(
+            case(&fixture, "voice_record_key_config")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "voice_record_key_config")["cases"]
+    );
+    assert_eq!(
+        hermes_cli::voice_record_key_normalization_fixture(
+            case(&fixture, "voice_record_key_normalization")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "voice_record_key_normalization")["cases"]
+    );
+    assert_eq!(
+        hermes_tools::tts_provider_resolution_fixture(
+            case(&fixture, "tts_provider_resolution")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "tts_provider_resolution")["cases"]
+    );
+    assert_eq!(
+        hermes_tools::tts_max_text_length_fixture(
+            &case(&fixture, "tts_max_text_length")["config"],
+            case(&fixture, "tts_max_text_length")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "tts_max_text_length")["cases"]
+    );
+    assert_eq!(
+        hermes_tools::tts_command_provider_helpers_fixture(
+            &case(&fixture, "tts_max_text_length")["config"]
+        ),
+        case(&fixture, "tts_command_provider_helpers")["result"]
+    );
+    assert_eq!(
+        hermes_tools::tts_command_template_rendering_fixture(
+            case(&fixture, "tts_command_template_rendering")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "tts_command_template_rendering")["cases"]
+    );
+    assert_eq!(
+        hermes_tools::tts_markdown_stripping_fixture(
+            case(&fixture, "tts_markdown_stripping")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "tts_markdown_stripping")["cases"]
+    );
+    assert_eq!(
+        hermes_tools::stt_enabled_resolution_fixture(
+            case(&fixture, "stt_enabled_resolution")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "stt_enabled_resolution")["cases"]
+    );
+    assert_eq!(
+        hermes_tools::stt_provider_resolution_fixture(
+            case(&fixture, "stt_provider_resolution")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "stt_provider_resolution")["cases"]
+    );
+    assert_eq!(
+        hermes_tools::stt_local_model_normalization_fixture(
+            case(&fixture, "stt_local_model_normalization")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "stt_local_model_normalization")["cases"]
+    );
+    assert_eq!(
+        hermes_tools::stt_audio_file_validation_fixture(
+            case(&fixture, "stt_audio_file_validation")["cases"]
+                .as_array()
+                .unwrap()
+        ),
+        case(&fixture, "stt_audio_file_validation")["cases"]
+    );
 
     let mut todo_store = hermes_tools::TodoStore::default();
     assert_eq!(

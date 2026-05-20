@@ -229,6 +229,522 @@
       }
     },
     {
+      "cases": [
+        {
+          "config": {},
+          "record_key": null
+        },
+        {
+          "config": {
+            "voice": true
+          },
+          "record_key": null
+        },
+        {
+          "config": {
+            "voice": "ctrl+space"
+          },
+          "record_key": null
+        },
+        {
+          "config": {
+            "voice": {
+              "record_key": "ctrl+space"
+            }
+          },
+          "record_key": "ctrl+space"
+        },
+        {
+          "config": {
+            "voice": {
+              "record_key": "option+return"
+            }
+          },
+          "record_key": "option+return"
+        },
+        {
+          "config": {
+            "voice": {
+              "record_key": ""
+            }
+          },
+          "record_key": ""
+        }
+      ],
+      "name": "voice_record_key_config"
+    },
+    {
+      "cases": [
+        {
+          "normalized": "c-b",
+          "raw": null,
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": true,
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": 7,
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "ctrl+b",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-o",
+          "raw": "control+o",
+          "status": "Ctrl+O"
+        },
+        {
+          "normalized": "c-space",
+          "raw": "CTRL + SPACE",
+          "status": "Ctrl+Space"
+        },
+        {
+          "normalized": "a-space",
+          "raw": "alt+space",
+          "status": "Alt+Space"
+        },
+        {
+          "normalized": "a-enter",
+          "raw": "option+return",
+          "status": "Alt+Enter"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "ctrl+c",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "ctrl+d",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "ctrl+l",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "a-c",
+          "raw": "alt+c",
+          "status": "Alt+C"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "super+b",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "windows+space",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "ctrl+alt+r",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "b",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "space",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-b",
+          "raw": "ctrl+spcae",
+          "status": "Ctrl+B"
+        },
+        {
+          "normalized": "c-delete",
+          "raw": "ctrl+delete",
+          "status": "Ctrl+Delete"
+        }
+      ],
+      "name": "voice_record_key_normalization"
+    },
+    {
+      "cases": [
+        {
+          "config": {},
+          "provider": "edge"
+        },
+        {
+          "config": {
+            "provider": ""
+          },
+          "provider": "edge"
+        },
+        {
+          "config": {
+            "provider": " OpenAI "
+          },
+          "provider": "openai"
+        },
+        {
+          "config": {
+            "provider": " Piper-Local "
+          },
+          "provider": "piper-local"
+        }
+      ],
+      "name": "tts_provider_resolution"
+    },
+    {
+      "cases": [
+        {
+          "max_text_length": 111,
+          "provider": "openai"
+        },
+        {
+          "max_text_length": 40000,
+          "provider": "elevenlabs"
+        },
+        {
+          "max_text_length": 1234,
+          "provider": "piper-local"
+        },
+        {
+          "max_text_length": 5000,
+          "provider": "fallback-command"
+        },
+        {
+          "max_text_length": 4000,
+          "provider": "unknown"
+        },
+        {
+          "max_text_length": 4000,
+          "provider": ""
+        },
+        {
+          "max_text_length": 4000,
+          "provider": null
+        }
+      ],
+      "config": {
+        "elevenlabs": {
+          "model_id": "eleven_flash_v2_5"
+        },
+        "openai": {
+          "max_text_length": 111
+        },
+        "provider": " Piper-Local ",
+        "providers": {
+          "bad-command": {
+            "command": "   ",
+            "output_format": "bad",
+            "timeout": -1,
+            "type": "command",
+            "voice_compatible": "no"
+          },
+          "edge": {
+            "command": "shadow-built-in",
+            "type": "command"
+          },
+          "fallback-command": {
+            "command": "synth {text_path} {output_path}",
+            "type": "command"
+          },
+          "piper-local": {
+            "command": "piper --input {input_path} --output {output_path}",
+            "max_text_length": 1234,
+            "output_format": "wav",
+            "timeout": "2.5",
+            "type": "command",
+            "voice_compatible": "yes"
+          }
+        }
+      },
+      "name": "tts_max_text_length"
+    },
+    {
+      "name": "tts_command_provider_helpers",
+      "result": {
+        "bad_output": "mp3",
+        "bad_timeout": 120.0,
+        "bad_voice_compatible": false,
+        "builtin_shadow_config": {
+          "command": "shadow-built-in",
+          "type": "command"
+        },
+        "is_bad_command": false,
+        "is_command": true,
+        "iter_command_names": [
+          "fallback-command",
+          "piper-local"
+        ],
+        "output_from_config": "wav",
+        "output_from_path": "ogg",
+        "provider_config": {
+          "command": "piper --input {input_path} --output {output_path}",
+          "max_text_length": 1234,
+          "output_format": "wav",
+          "timeout": "2.5",
+          "type": "command",
+          "voice_compatible": "yes"
+        },
+        "timeout": 2.5,
+        "voice_compatible": true
+      }
+    },
+    {
+      "cases": [
+        {
+          "rendered": "tool --in '/tmp/input text.txt' --out '/tmp/out file.mp3'",
+          "template": "tool --in {input_path} --out {output_path}"
+        },
+        {
+          "rendered": "tool --voice 'Amy O'\\''Neil' --model \"model\\$\\`one\" --text 'Hello $USER'",
+          "template": "tool --voice '{voice}' --model \"{model}\" --text {text}"
+        },
+        {
+          "rendered": "tool --literal mp3 --skip ${model} --speed 1.0",
+          "template": "tool --literal {{format}} --skip ${model} --speed {speed}"
+        }
+      ],
+      "name": "tts_command_template_rendering"
+    },
+    {
+      "cases": [
+        {
+          "input": "# Heading\n\nHello **bold** and *italic* with `code`.",
+          "stripped": "Heading\n\nHello bold and italic with code."
+        },
+        {
+          "input": "Read [docs](https://example.com/docs) and https://secret.example/token.",
+          "stripped": "Read docs and"
+        },
+        {
+          "input": "- item one\n* item two\n---\n```python\nsecret()\n```",
+          "stripped": "item one\nitem two"
+        }
+      ],
+      "name": "tts_markdown_stripping"
+    },
+    {
+      "cases": [
+        {
+          "config": {},
+          "enabled": true
+        },
+        {
+          "config": {
+            "enabled": true
+          },
+          "enabled": true
+        },
+        {
+          "config": {
+            "enabled": false
+          },
+          "enabled": false
+        },
+        {
+          "config": {
+            "enabled": "yes"
+          },
+          "enabled": true
+        },
+        {
+          "config": {
+            "enabled": "no"
+          },
+          "enabled": false
+        },
+        {
+          "config": {
+            "enabled": "0"
+          },
+          "enabled": false
+        },
+        {
+          "config": {
+            "enabled": "unexpected"
+          },
+          "enabled": false
+        }
+      ],
+      "name": "stt_enabled_resolution"
+    },
+    {
+      "cases": [
+        {
+          "config": {
+            "enabled": false
+          },
+          "name": "disabled",
+          "provider": "none"
+        },
+        {
+          "config": {
+            "provider": "local"
+          },
+          "name": "explicit_local_fast",
+          "provider": "local"
+        },
+        {
+          "config": {
+            "provider": "local"
+          },
+          "name": "explicit_local_command",
+          "provider": "local_command"
+        },
+        {
+          "config": {
+            "provider": "local"
+          },
+          "name": "explicit_local_unavailable",
+          "provider": "none"
+        },
+        {
+          "config": {
+            "provider": "local_command"
+          },
+          "name": "explicit_local_command_fallback_fast",
+          "provider": "local"
+        },
+        {
+          "config": {
+            "provider": "groq"
+          },
+          "name": "explicit_groq_key",
+          "provider": "groq"
+        },
+        {
+          "config": {
+            "provider": "groq"
+          },
+          "name": "explicit_groq_missing_key",
+          "provider": "none"
+        },
+        {
+          "config": {
+            "provider": "openai"
+          },
+          "name": "explicit_openai_backend",
+          "provider": "openai"
+        },
+        {
+          "config": {},
+          "name": "auto_local_fast",
+          "provider": "local"
+        },
+        {
+          "config": {},
+          "name": "auto_local_command",
+          "provider": "local_command"
+        },
+        {
+          "config": {},
+          "name": "auto_groq",
+          "provider": "groq"
+        },
+        {
+          "config": {},
+          "name": "auto_openai",
+          "provider": "openai"
+        },
+        {
+          "config": {},
+          "name": "auto_none",
+          "provider": "none"
+        },
+        {
+          "config": {
+            "provider": "fixture"
+          },
+          "name": "explicit_unknown_passthrough",
+          "provider": "fixture"
+        }
+      ],
+      "name": "stt_provider_resolution"
+    },
+    {
+      "cases": [
+        {
+          "model": null,
+          "normalized": "base"
+        },
+        {
+          "model": "",
+          "normalized": "base"
+        },
+        {
+          "model": "whisper-1",
+          "normalized": "base"
+        },
+        {
+          "model": "whisper-large-v3-turbo",
+          "normalized": "base"
+        },
+        {
+          "model": "small",
+          "normalized": "small"
+        },
+        {
+          "model": "large-v3",
+          "normalized": "large-v3"
+        }
+      ],
+      "name": "stt_local_model_normalization"
+    },
+    {
+      "cases": [
+        {
+          "path": "<AUDIO_ROOT>/missing.wav",
+          "result": {
+            "error": "Audio file not found: <AUDIO_ROOT>/missing.wav",
+            "success": false,
+            "transcript": ""
+          }
+        },
+        {
+          "path": "<AUDIO_ROOT>/folder.wav",
+          "result": {
+            "error": "Path is not a file: <AUDIO_ROOT>/folder.wav",
+            "success": false,
+            "transcript": ""
+          }
+        },
+        {
+          "path": "<AUDIO_ROOT>/note.txt",
+          "result": {
+            "error": "Unsupported format: .txt. Supported: .aac, .flac, .m4a, .mp3, .mp4, .mpeg, .mpga, .ogg, .wav, .webm",
+            "success": false,
+            "transcript": ""
+          }
+        },
+        {
+          "path": "<AUDIO_ROOT>/ok.wav",
+          "result": null
+        },
+        {
+          "path": "<AUDIO_ROOT>/huge.mp3",
+          "result": {
+            "error": "File too large: 25.0MB (max 25MB)",
+            "success": false,
+            "transcript": ""
+          }
+        }
+      ],
+      "name": "stt_audio_file_validation"
+    },
+    {
       "name": "todo_handler_replace",
       "result": {
         "summary": {
