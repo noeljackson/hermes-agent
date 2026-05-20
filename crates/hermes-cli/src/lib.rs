@@ -1413,12 +1413,11 @@ fn scan_plugin_manifest_level(
         };
 
         if let Some(manifest_file) = manifest_file {
-            manifests.push(parse_plugin_manifest(
-                &manifest_file,
-                &child_path,
-                source,
-                prefix,
-            )?);
+            if let Some(manifest) =
+                parse_plugin_manifest(&manifest_file, &child_path, source, prefix)?
+            {
+                manifests.push(manifest);
+            }
             continue;
         }
 
@@ -1447,9 +1446,14 @@ fn parse_plugin_manifest(
     plugin_dir: &Path,
     source: &str,
     prefix: &str,
-) -> io::Result<Value> {
+) -> io::Result<Option<Value>> {
     let text = fs::read_to_string(manifest_file)?;
-    let data: serde_yaml::Value = serde_yaml::from_str(&text).unwrap_or(serde_yaml::Value::Null);
+    let Ok(data) = serde_yaml::from_str::<serde_yaml::Value>(&text) else {
+        return Ok(None);
+    };
+    if !data.is_mapping() {
+        return Ok(None);
+    }
     let name = yaml_str(&data, "name")
         .map(str::to_string)
         .unwrap_or_else(|| {
@@ -1493,7 +1497,7 @@ fn parse_plugin_manifest(
         }
     }
 
-    Ok(json!({
+    Ok(Some(json!({
         "name": name,
         "version": yaml_string_field(&data, "version"),
         "description": yaml_string_field(&data, "description"),
@@ -1505,7 +1509,7 @@ fn parse_plugin_manifest(
         "path": plugin_dir.to_string_lossy(),
         "kind": kind,
         "key": key,
-    }))
+    })))
 }
 
 fn yaml_str<'a>(data: &'a serde_yaml::Value, key: &str) -> Option<&'a str> {

@@ -25,6 +25,12 @@ provides_hooks:
   - pre_tool_call
 """.lstrip(),
     "flat-demo/__init__.py": "def register(ctx): pass\n",
+    "yml-demo/plugin.yml": """
+name: yml-demo
+version: 0.2.0
+description: YML extension demo.
+""".lstrip(),
+    "yml-demo/__init__.py": "def register(ctx): pass\n",
     "image_gen/openai/plugin.yaml": """
 name: openai
 kind: backend
@@ -42,12 +48,20 @@ name: provider-auto
 description: Auto-detected model provider.
 """.lstrip(),
     "provider-auto/__init__.py": "from providers import register_provider, ProviderProfile\n",
+    "explicit-standalone-memory/plugin.yaml": """
+name: explicit-standalone-memory
+kind: standalone
+description: Explicit standalone is not auto-coerced.
+""".lstrip(),
+    "explicit-standalone-memory/__init__.py": "from agent.memory_provider import MemoryProvider\n",
     "bad-kind/plugin.yaml": """
 name: bad-kind
 kind: surprising
 description: Invalid kind falls back.
 """.lstrip(),
     "bad-kind/__init__.py": "def register(ctx): pass\n",
+    "invalid-yaml/plugin.yaml": "name: [unterminated\n",
+    "non-mapping/plugin.yaml": "- just\n- a\n- list\n",
     "too/deep/plugin/plugin.yaml": "name: too-deep\n",
     "skip-me/plugin.yaml": "name: skip-me\n",
 }

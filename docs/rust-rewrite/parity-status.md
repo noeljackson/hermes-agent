@@ -87,10 +87,12 @@ against those fixtures in `crates/hermes-parity`:
 - Plugin surfaces: valid plugin hook and plugin-kind inventories, entry-point
   group name, controlled manifest parsing, flat and category plugin key
   construction, skip-list behavior, two-level scan depth cap, invalid-kind
-  fallback to `standalone`, and source-text auto-classification for memory
-  providers (`exclusive`) and model providers (`model-provider`). The Rust
-  side records manifest metadata only; it does not execute arbitrary Python
-  plugin modules. Controlled load-policy fixtures cover disabled-plugin
+  fallback to `standalone`, `plugin.yml` extension support, malformed/non-map
+  manifest rejection, explicit `kind: standalone` precedence over source-text
+  heuristics, and source-text auto-classification for memory providers
+  (`exclusive`) and model providers (`model-provider`). The Rust side records
+  manifest metadata only; it does not execute arbitrary Python plugin modules.
+  Controlled load-policy fixtures cover disabled-plugin
   precedence, bundled backend/platform auto-enable, bundled standalone opt-in,
   user standalone opt-in, user backend opt-in, hook/command registration
   metadata, project-plugin opt-in precedence over same-key user plugins, and

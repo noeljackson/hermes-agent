@@ -34,16 +34,22 @@
       "files": {
         "bad-kind/__init__.py": "def register(ctx): pass\n",
         "bad-kind/plugin.yaml": "name: bad-kind\nkind: surprising\ndescription: Invalid kind falls back.\n",
+        "explicit-standalone-memory/__init__.py": "from agent.memory_provider import MemoryProvider\n",
+        "explicit-standalone-memory/plugin.yaml": "name: explicit-standalone-memory\nkind: standalone\ndescription: Explicit standalone is not auto-coerced.\n",
         "flat-demo/__init__.py": "def register(ctx): pass\n",
         "flat-demo/plugin.yaml": "name: flat-demo\nversion: 1.2.3\ndescription: Flat demo plugin.\nauthor: Parity\nrequires_env:\n  - FLAT_TOKEN\n  - name: FLAT_OPTIONAL\n    optional: true\nprovides_tools:\n  - flat_tool\nprovides_hooks:\n  - pre_tool_call\n",
         "image_gen/openai/__init__.py": "def register(ctx): pass\n",
         "image_gen/openai/plugin.yaml": "name: openai\nkind: backend\nversion: 0.1.0\ndescription: Image backend.\n",
+        "invalid-yaml/plugin.yaml": "name: [unterminated\n",
         "memory-auto/__init__.py": "from agent.memory_provider import MemoryProvider\n",
         "memory-auto/plugin.yaml": "name: memory-auto\ndescription: Auto-detected memory provider.\n",
+        "non-mapping/plugin.yaml": "- just\n- a\n- list\n",
         "provider-auto/__init__.py": "from providers import register_provider, ProviderProfile\n",
         "provider-auto/plugin.yaml": "name: provider-auto\ndescription: Auto-detected model provider.\n",
         "skip-me/plugin.yaml": "name: skip-me\n",
-        "too/deep/plugin/plugin.yaml": "name: too-deep\n"
+        "too/deep/plugin/plugin.yaml": "name: too-deep\n",
+        "yml-demo/__init__.py": "def register(ctx): pass\n",
+        "yml-demo/plugin.yml": "name: yml-demo\nversion: 0.2.0\ndescription: YML extension demo.\n"
       },
       "manifests": [
         {
@@ -53,6 +59,19 @@
           "kind": "standalone",
           "name": "bad-kind",
           "path": "bad-kind",
+          "provides_hooks": [],
+          "provides_tools": [],
+          "requires_env": [],
+          "source": "user",
+          "version": ""
+        },
+        {
+          "author": "",
+          "description": "Explicit standalone is not auto-coerced.",
+          "key": "explicit-standalone-memory",
+          "kind": "standalone",
+          "name": "explicit-standalone-memory",
+          "path": "explicit-standalone-memory",
           "provides_hooks": [],
           "provides_tools": [],
           "requires_env": [],
@@ -120,6 +139,19 @@
           "requires_env": [],
           "source": "user",
           "version": ""
+        },
+        {
+          "author": "",
+          "description": "YML extension demo.",
+          "key": "yml-demo",
+          "kind": "standalone",
+          "name": "yml-demo",
+          "path": "yml-demo",
+          "provides_hooks": [],
+          "provides_tools": [],
+          "requires_env": [],
+          "source": "user",
+          "version": "0.2.0"
         }
       ],
       "name": "controlled_manifest_scan",
