@@ -602,8 +602,159 @@ pub fn valid_dashboard_event_channel(channel: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
 }
 
+pub fn tui_cli_exec_blocked(argv: &[&str]) -> Option<&'static str> {
+    if argv.is_empty() {
+        return Some("bare `hermes` is interactive — use `/hermes chat -q …` or run `hermes` in another terminal");
+    }
+    let first = argv[0].to_ascii_lowercase();
+    match first.as_str() {
+        "setup" => Some("`hermes setup` needs a full terminal — run it outside the TUI"),
+        "gateway" => Some("`hermes gateway` is long-running — run it in another terminal"),
+        "sessions" if argv.get(1).is_some_and(|value| value.eq_ignore_ascii_case("browse")) => {
+            Some("`hermes sessions browse` is interactive — use /resume here, or run browse in another terminal")
+        }
+        "config" if argv.get(1).is_some_and(|value| value.eq_ignore_ascii_case("edit")) => {
+            Some("`hermes config edit` needs $EDITOR in a real terminal")
+        }
+        _ => None,
+    }
+}
+
+pub fn tui_details_completions(text: &str) -> Option<Vec<Value>> {
+    if !text.to_ascii_lowercase().starts_with("/details") {
+        return None;
+    }
+
+    let stripped = text.trim();
+    if !stripped.is_empty()
+        && !"/details".starts_with(
+            stripped
+                .to_ascii_lowercase()
+                .split_whitespace()
+                .next()
+                .unwrap_or(""),
+        )
+    {
+        return None;
+    }
+
+    let mut body = text.get("/details".len()..).unwrap_or("");
+    if let Some(rest) = body.strip_prefix(' ') {
+        body = rest;
+    }
+    let parts = body.split_whitespace().collect::<Vec<_>>();
+    let has_trailing_space = text.ends_with(' ');
+
+    if body.is_empty() || (parts.is_empty() && has_trailing_space) {
+        let needs_leading_space = !has_trailing_space;
+        let mut items = Vec::new();
+        for mode in DETAIL_MODES {
+            items.push(details_root_completion_item(
+                mode,
+                "global mode",
+                needs_leading_space,
+            ));
+        }
+        items.push(details_root_completion_item(
+            "cycle",
+            "cycle global mode",
+            needs_leading_space,
+        ));
+        for section in DETAIL_SECTION_NAMES {
+            items.push(details_root_completion_item(
+                section,
+                "section override",
+                needs_leading_space,
+            ));
+        }
+        return Some(items);
+    }
+
+    if parts.len() == 1 && !has_trailing_space {
+        let prefix = parts[0].to_ascii_lowercase();
+        let candidates = DETAIL_MODES
+            .iter()
+            .copied()
+            .chain(["cycle"])
+            .chain(DETAIL_SECTION_NAMES.iter().copied());
+        return Some(
+            candidates
+                .filter(|candidate| candidate.starts_with(&prefix) && *candidate != prefix)
+                .map(|candidate| {
+                    let meta = if DETAIL_SECTION_NAMES.contains(&candidate) {
+                        "section override"
+                    } else if candidate == "cycle" {
+                        "cycle global mode"
+                    } else {
+                        "global mode"
+                    };
+                    details_completion_item(candidate, meta)
+                })
+                .collect(),
+        );
+    }
+
+    if parts.len() == 1 && has_trailing_space && DETAIL_SECTION_NAMES.contains(&parts[0]) {
+        let section = parts[0].to_ascii_lowercase();
+        let mut items = DETAIL_MODES
+            .iter()
+            .map(|mode| details_completion_item(mode, &format!("set {section}")))
+            .collect::<Vec<_>>();
+        items.push(details_completion_item(
+            "reset",
+            &format!("clear {section} override"),
+        ));
+        return Some(items);
+    }
+
+    if parts.len() == 2 && !has_trailing_space && DETAIL_SECTION_NAMES.contains(&parts[0]) {
+        let section = parts[0].to_ascii_lowercase();
+        let prefix = parts[1].to_ascii_lowercase();
+        return Some(
+            DETAIL_MODES
+                .iter()
+                .copied()
+                .chain(["reset"])
+                .filter(|candidate| candidate.starts_with(&prefix) && *candidate != prefix)
+                .map(|candidate| {
+                    let meta = if candidate == "reset" {
+                        format!("clear {section} override")
+                    } else {
+                        format!("set {section}")
+                    };
+                    details_completion_item(candidate, &meta)
+                })
+                .collect(),
+        );
+    }
+
+    Some(Vec::new())
+}
+
+pub fn tui_complete_slash_details_response(id: Value, text: &str) -> Option<Value> {
+    let items = tui_details_completions(text)?;
+    let replace_from = text.rfind(' ').map(|index| index + 1).unwrap_or(text.len());
+    Some(tui_jsonrpc_ok(
+        id,
+        json!({"items": items, "replace_from": replace_from}),
+    ))
+}
+
 pub fn dashboard_loopback_hosts() -> &'static [&'static str] {
     &["127.0.0.1", "::1", "localhost", "testclient"]
+}
+
+fn details_completion_item(value: &str, meta: &str) -> Value {
+    json!({"text": value, "display": value, "meta": meta})
+}
+
+fn details_root_completion_item(value: &str, meta: &str, needs_leading_space: bool) -> Value {
+    let text = if needs_leading_space {
+        format!(" {value}")
+    } else {
+        value.to_string()
+    };
+    json!({"text": text, "display": text, "meta": meta})
 }
 
 fn split_once_byte(bytes: &[u8], needle: u8) -> Option<(&[u8], &[u8])> {
@@ -749,6 +900,9 @@ const TUI_GATEWAY_METHODS: &[&str] = &[
     "voice.toggle",
     "voice.tts",
 ];
+
+const DETAIL_SECTION_NAMES: &[&str] = &["thinking", "tools", "subagents", "activity"];
+const DETAIL_MODES: &[&str] = &["hidden", "collapsed", "expanded"];
 
 #[cfg(test)]
 mod tests {

@@ -275,6 +275,166 @@
         "space": false,
         "too_long": false
       }
+    },
+    {
+      "name": "command_resolution",
+      "responses": {
+        "alias_bg": {
+          "id": "resolve-bg",
+          "jsonrpc": "2.0",
+          "result": {
+            "canonical": "background",
+            "category": "Session",
+            "description": "Run a prompt in the background"
+          }
+        },
+        "help": {
+          "id": "resolve-help",
+          "jsonrpc": "2.0",
+          "result": {
+            "canonical": "help",
+            "category": "Info",
+            "description": "Show available commands"
+          }
+        },
+        "unknown": {
+          "error": {
+            "code": 4011,
+            "message": "unknown command: no-such-command"
+          },
+          "id": "resolve-missing",
+          "jsonrpc": "2.0"
+        }
+      }
+    },
+    {
+      "cases": {
+        "bare": "bare `hermes` is interactive \u2014 use `/hermes chat -q \u2026` or run `hermes` in another terminal",
+        "config_edit": "`hermes config edit` needs $EDITOR in a real terminal",
+        "gateway": "`hermes gateway` is long-running \u2014 run it in another terminal",
+        "sessions_browse": "`hermes sessions browse` is interactive \u2014 use /resume here, or run browse in another terminal",
+        "setup": "`hermes setup` needs a full terminal \u2014 run it outside the TUI",
+        "version_allowed": null
+      },
+      "name": "cli_exec_blocking"
+    },
+    {
+      "cases": {
+        "not_details": null,
+        "root": [
+          {
+            "display": " hidden",
+            "meta": "global mode",
+            "text": " hidden"
+          },
+          {
+            "display": " collapsed",
+            "meta": "global mode",
+            "text": " collapsed"
+          },
+          {
+            "display": " expanded",
+            "meta": "global mode",
+            "text": " expanded"
+          },
+          {
+            "display": " cycle",
+            "meta": "cycle global mode",
+            "text": " cycle"
+          },
+          {
+            "display": " thinking",
+            "meta": "section override",
+            "text": " thinking"
+          },
+          {
+            "display": " tools",
+            "meta": "section override",
+            "text": " tools"
+          },
+          {
+            "display": " subagents",
+            "meta": "section override",
+            "text": " subagents"
+          },
+          {
+            "display": " activity",
+            "meta": "section override",
+            "text": " activity"
+          }
+        ],
+        "root_prefix": [
+          {
+            "display": "thinking",
+            "meta": "section override",
+            "text": "thinking"
+          },
+          {
+            "display": "tools",
+            "meta": "section override",
+            "text": "tools"
+          }
+        ],
+        "section_mode_prefix": [
+          {
+            "display": "hidden",
+            "meta": "set tools",
+            "text": "hidden"
+          }
+        ],
+        "section_modes": [
+          {
+            "display": "hidden",
+            "meta": "set tools",
+            "text": "hidden"
+          },
+          {
+            "display": "collapsed",
+            "meta": "set tools",
+            "text": "collapsed"
+          },
+          {
+            "display": "expanded",
+            "meta": "set tools",
+            "text": "expanded"
+          },
+          {
+            "display": "reset",
+            "meta": "clear tools override",
+            "text": "reset"
+          }
+        ]
+      },
+      "name": "details_completions",
+      "rpc": {
+        "id": "complete-details",
+        "jsonrpc": "2.0",
+        "result": {
+          "items": [
+            {
+              "display": "hidden",
+              "meta": "set tools",
+              "text": "hidden"
+            },
+            {
+              "display": "collapsed",
+              "meta": "set tools",
+              "text": "collapsed"
+            },
+            {
+              "display": "expanded",
+              "meta": "set tools",
+              "text": "expanded"
+            },
+            {
+              "display": "reset",
+              "meta": "clear tools override",
+              "text": "reset"
+            }
+          ],
+          "replace_from": 15
+        }
+      }
     }
   ],
   "source": {

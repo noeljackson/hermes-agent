@@ -114,6 +114,64 @@ def main() -> int:
                 },
                 "loopback_hosts": sorted(web_server._LOOPBACK_HOSTS),
             },
+            {
+                "name": "command_resolution",
+                "responses": {
+                    "help": server.handle_request(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": "resolve-help",
+                            "method": "command.resolve",
+                            "params": {"name": "help"},
+                        }
+                    ),
+                    "alias_bg": server.handle_request(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": "resolve-bg",
+                            "method": "command.resolve",
+                            "params": {"name": "bg"},
+                        }
+                    ),
+                    "unknown": server.handle_request(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": "resolve-missing",
+                            "method": "command.resolve",
+                            "params": {"name": "no-such-command"},
+                        }
+                    ),
+                },
+            },
+            {
+                "name": "cli_exec_blocking",
+                "cases": {
+                    "bare": server._cli_exec_blocked([]),
+                    "setup": server._cli_exec_blocked(["setup"]),
+                    "gateway": server._cli_exec_blocked(["gateway"]),
+                    "sessions_browse": server._cli_exec_blocked(["sessions", "browse"]),
+                    "config_edit": server._cli_exec_blocked(["config", "edit"]),
+                    "version_allowed": server._cli_exec_blocked(["version"]),
+                },
+            },
+            {
+                "name": "details_completions",
+                "cases": {
+                    "root": server._details_completions("/details"),
+                    "root_prefix": server._details_completions("/details t"),
+                    "section_modes": server._details_completions("/details tools "),
+                    "section_mode_prefix": server._details_completions("/details tools h"),
+                    "not_details": server._details_completions("/help"),
+                },
+                "rpc": server.handle_request(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": "complete-details",
+                        "method": "complete.slash",
+                        "params": {"text": "/details tools "},
+                    }
+                ),
+            },
         ]
 
     write_fixture(out, fixture(SCRIPT, cases))

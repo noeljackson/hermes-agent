@@ -172,8 +172,11 @@ against those fixtures in `crates/hermes-parity`:
   inventory, `_ok`/`_err`/unknown-method frame shapes, request normalization
   errors for malformed requests and params, event frame shape, dashboard PTY
   resize escape parsing, dashboard event-channel validation, and loopback host
-  allowlist. This protects the Ink/Python gateway boundary and dashboard PTY
-  bridge contract before live TUI behavior is ported.
+  allowlist. Higher-level TUI helpers are fixture-backed for command
+  resolution, headless CLI blocking hints, `/details` completion item shapes,
+  and the `/details` slash-completion response envelope. This protects the
+  Ink/Python gateway boundary and dashboard PTY bridge contract before live TUI
+  behavior is ported.
 - Tool registry: built-in tool metadata for name, toolset, async flag,
   env requirements, schema parameter names, required fields, and description
   presence. Selected core tool schemas (`terminal`, `read_file`, `write_file`,

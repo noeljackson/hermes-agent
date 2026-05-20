@@ -3523,6 +3523,89 @@ fn tui_gateway_contract_matches_python_fixture() {
             .collect::<Vec<_>>()
             .as_slice()
     );
+
+    let command_resolution = &case(&fixture, "command_resolution")["responses"];
+    let expected_resolve = |id: &str, name: &str| -> Value {
+        if let Some(canonical) = hermes_slash::resolve_command(name) {
+            let command = hermes_slash::command_by_name(canonical).unwrap();
+            hermes_cli::tui_jsonrpc_ok(
+                json!(id),
+                json!({
+                    "canonical": command.name,
+                    "description": command.description,
+                    "category": command.category,
+                }),
+            )
+        } else {
+            hermes_cli::tui_jsonrpc_err(json!(id), 4011, &format!("unknown command: {name}"))
+        }
+    };
+    assert_eq!(
+        expected_resolve("resolve-help", "help"),
+        command_resolution["help"]
+    );
+    assert_eq!(
+        expected_resolve("resolve-bg", "bg"),
+        command_resolution["alias_bg"]
+    );
+    assert_eq!(
+        expected_resolve("resolve-missing", "no-such-command"),
+        command_resolution["unknown"]
+    );
+
+    let blocked = &case(&fixture, "cli_exec_blocking")["cases"];
+    assert_eq!(
+        hermes_cli::tui_cli_exec_blocked(&[]),
+        blocked["bare"].as_str()
+    );
+    assert_eq!(
+        hermes_cli::tui_cli_exec_blocked(&["setup"]),
+        blocked["setup"].as_str()
+    );
+    assert_eq!(
+        hermes_cli::tui_cli_exec_blocked(&["gateway"]),
+        blocked["gateway"].as_str()
+    );
+    assert_eq!(
+        hermes_cli::tui_cli_exec_blocked(&["sessions", "browse"]),
+        blocked["sessions_browse"].as_str()
+    );
+    assert_eq!(
+        hermes_cli::tui_cli_exec_blocked(&["config", "edit"]),
+        blocked["config_edit"].as_str()
+    );
+    assert_eq!(
+        hermes_cli::tui_cli_exec_blocked(&["version"]),
+        blocked["version_allowed"].as_str()
+    );
+
+    let details = case(&fixture, "details_completions");
+    assert_eq!(
+        Value::Array(hermes_cli::tui_details_completions("/details").unwrap()),
+        details["cases"]["root"]
+    );
+    assert_eq!(
+        Value::Array(hermes_cli::tui_details_completions("/details t").unwrap()),
+        details["cases"]["root_prefix"]
+    );
+    assert_eq!(
+        Value::Array(hermes_cli::tui_details_completions("/details tools ").unwrap()),
+        details["cases"]["section_modes"]
+    );
+    assert_eq!(
+        Value::Array(hermes_cli::tui_details_completions("/details tools h").unwrap()),
+        details["cases"]["section_mode_prefix"]
+    );
+    assert!(details["cases"]["not_details"].is_null());
+    assert_eq!(hermes_cli::tui_details_completions("/help"), None);
+    assert_eq!(
+        hermes_cli::tui_complete_slash_details_response(
+            json!("complete-details"),
+            "/details tools "
+        )
+        .unwrap(),
+        details["rpc"]
+    );
 }
 
 #[test]
