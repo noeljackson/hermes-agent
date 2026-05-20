@@ -620,6 +620,20 @@ fn profile_migration_matches_python_fixture() {
         hermes_config::export_ignore(&export_nested, false),
         export["nested"]
     );
+
+    let tree = case(&fixture, "profile_tree_copy_policy");
+    let paths = tree["paths"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    let mut expected_tree = tree.clone();
+    expected_tree.as_object_mut().unwrap().remove("name");
+    assert_eq!(
+        hermes_config::profile_tree_copy_policy(&paths),
+        expected_tree
+    );
 }
 
 #[test]

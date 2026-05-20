@@ -65,7 +65,14 @@ Python-reference fixtures also protect the current profile migration rules:
 profile bootstrap directories, clone config and memory files, clone-all runtime
 strip files, default-profile infrastructure exclusions, export exclusions,
 profile-name normalization/validation, clone-all ignore behavior for default vs
-named profiles, and portable export ignore behavior. Rust migration validators
+named profiles, portable export ignore behavior, and a concrete synthetic
+profile tree spanning config, secrets, sessions, skills, plugins, cron, gateway
+state, memory, tool history, checkpoints, trajectories, logs, profile metadata,
+distribution metadata, install artifacts, cache files, sockets, temp files, and
+runtime PID/state files. The tree fixture preserves the Python distinction that
+`--clone-all` keeps live state but strips root runtime process files, default
+profile exports drop credentials/runtime/cache/infrastructure, and named
+profile exports strip only `.env` and `auth.json`. Rust migration validators
 must keep these rules fixture-aligned before any mutating cutover path is
 enabled.
 

@@ -6,6 +6,41 @@ from parity_common import fixture, isolated_hermes_home, parse_out_arg, write_fi
 SCRIPT = "profile-migration-fixture.py"
 
 
+def _copy_policy(paths, root, ignore_cb, *, strip_root_runtime=False):
+    results = []
+    root = root.resolve()
+    for relpath in paths:
+        parts = relpath.split("/")
+        directory = root
+        ignored_at = None
+        for index, part in enumerate(parts):
+            ignored = set(ignore_cb(str(directory), [part]))
+            if part in ignored:
+                ignored_at = "/".join(parts[: index + 1])
+                break
+            directory = directory / part
+
+        if ignored_at is not None:
+            action = "excluded"
+        elif strip_root_runtime and len(parts) == 1 and parts[0] in {
+            "gateway.pid",
+            "gateway_state.json",
+            "processes.json",
+        }:
+            action = "stripped_after_copy"
+        else:
+            action = "kept"
+
+        results.append(
+            {
+                "path": relpath,
+                "action": action,
+                "ignored_at": ignored_at,
+            }
+        )
+    return results
+
+
 def main() -> int:
     out = parse_out_arg()
     with isolated_hermes_home() as home:
@@ -95,6 +130,47 @@ def main() -> int:
             "runtime.sock",
             "scratch.tmp",
         ]
+        tree_paths = [
+            "config.yaml",
+            ".env",
+            "auth.json",
+            "state.db",
+            "sessions/session.jsonl",
+            "skills/demo/SKILL.md",
+            "plugins/demo/plugin.yaml",
+            "cron/jobs.json",
+            "gateway/telegram/state.json",
+            "memories/MEMORY.md",
+            "memories/USER.md",
+            "tool_history/history.jsonl",
+            "checkpoints/checkpoint.json",
+            "trajectories/run.json",
+            "exports/export.json",
+            "logs/agent.log",
+            "home/.ssh/config",
+            "profile.yaml",
+            "distribution.yaml",
+            "SOUL.md",
+            "hermes-agent/README.md",
+            ".worktrees/w1/file",
+            "profiles/coder/config.yaml",
+            "bin/hermes",
+            "node_modules/pkg/index.js",
+            "skills/demo/__pycache__/cache.pyc",
+            "skills/demo/cache.pyc",
+            "skills/demo/cache.pyo",
+            "gateway/runtime.sock",
+            "workspace/scratch.tmp",
+            "gateway.pid",
+            "gateway_state.json",
+            "processes.json",
+            "package.json",
+            "workspace/package-lock.json",
+        ]
+        named_export_ignore = lambda _directory, contents: {
+            "auth.json",
+            ".env",
+        } & set(contents)
 
         cases = [
             {
@@ -129,6 +205,24 @@ def main() -> int:
                 "nested_names": nested_names,
                 "root": sorted(export_ignore(home, export_names)),
                 "nested": sorted(export_ignore(home / "nested", nested_names)),
+            },
+            {
+                "name": "profile_tree_copy_policy",
+                "paths": tree_paths,
+                "clone_all_default": _copy_policy(
+                    tree_paths,
+                    home,
+                    default_ignore,
+                    strip_root_runtime=True,
+                ),
+                "clone_all_named": _copy_policy(
+                    tree_paths,
+                    named_source,
+                    named_ignore,
+                    strip_root_runtime=True,
+                ),
+                "export_default": _copy_policy(tree_paths, home, export_ignore),
+                "export_named": _copy_policy(tree_paths, named_source, named_export_ignore),
             },
         ]
 

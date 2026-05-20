@@ -49,7 +49,10 @@ against those fixtures in `crates/hermes-parity`:
   memory subdirectory files, clone-all runtime strip files, default-profile
   infrastructure exclusions, export exclusions, no-bundled-skills marker,
   profile-name normalization/validation, clone-all ignore behavior for default
-  vs named profiles, and portable export ignore behavior.
+  vs named profiles, portable export ignore behavior, and concrete synthetic
+  profile-tree copy/export policy for durable user state, credentials, profile
+  metadata, distribution metadata, install artifacts, caches, sockets, temp
+  files, root runtime files, and default-profile infrastructure.
 - Install/update: install-method stamp format, stamped-method detection, and
   recommended update command mapping for NixOS, Homebrew, Docker, pip, git,
   and unknown installs.

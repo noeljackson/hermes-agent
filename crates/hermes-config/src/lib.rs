@@ -192,6 +192,16 @@ pub fn export_ignore(names: &[&str], at_root: bool) -> Value {
     json!(sorted_strings(&ignored))
 }
 
+pub fn profile_tree_copy_policy(paths: &[&str]) -> Value {
+    json!({
+        "paths": paths,
+        "clone_all_default": copy_policy(paths, CopyPolicyMode::CloneAllDefault),
+        "clone_all_named": copy_policy(paths, CopyPolicyMode::CloneAllNamed),
+        "export_default": copy_policy(paths, CopyPolicyMode::ExportDefault),
+        "export_named": copy_policy(paths, CopyPolicyMode::ExportNamed),
+    })
+}
+
 pub fn deep_merge(base: &Value, overlay: &Value) -> Value {
     match (base, overlay) {
         (Value::Object(base_obj), Value::Object(overlay_obj)) => {
@@ -356,6 +366,66 @@ const DEFAULT_EXPORT_EXCLUDE_ROOT: &[&str] = &[
     "sandboxes",
     "logs",
 ];
+
+#[derive(Debug, Clone, Copy)]
+enum CopyPolicyMode {
+    CloneAllDefault,
+    CloneAllNamed,
+    ExportDefault,
+    ExportNamed,
+}
+
+fn copy_policy(paths: &[&str], mode: CopyPolicyMode) -> Value {
+    Value::Array(
+        paths
+            .iter()
+            .map(|path| {
+                let parts = path.split('/').collect::<Vec<_>>();
+                let ignored_at = first_ignored_path(&parts, mode);
+                let action = if ignored_at.is_some() {
+                    "excluded"
+                } else if matches!(
+                    mode,
+                    CopyPolicyMode::CloneAllDefault | CopyPolicyMode::CloneAllNamed
+                ) && parts.len() == 1
+                    && CLONE_ALL_STRIP.contains(&parts[0])
+                {
+                    "stripped_after_copy"
+                } else {
+                    "kept"
+                };
+                json!({
+                    "path": path,
+                    "action": action,
+                    "ignored_at": ignored_at,
+                })
+            })
+            .collect(),
+    )
+}
+
+fn first_ignored_path(parts: &[&str], mode: CopyPolicyMode) -> Option<String> {
+    let mut prefix = Vec::new();
+    for (index, part) in parts.iter().enumerate() {
+        prefix.push(*part);
+        let ignored = match mode {
+            CopyPolicyMode::CloneAllDefault => {
+                is_universal_clone_exclude(part)
+                    || (index == 0 && CLONE_ALL_DEFAULT_EXCLUDE_ROOT.contains(part))
+            }
+            CopyPolicyMode::CloneAllNamed => is_universal_clone_exclude(part),
+            CopyPolicyMode::ExportDefault => {
+                is_universal_export_exclude(part)
+                    || (index == 0 && DEFAULT_EXPORT_EXCLUDE_ROOT.contains(part))
+            }
+            CopyPolicyMode::ExportNamed => matches!(*part, "auth.json" | ".env"),
+        };
+        if ignored {
+            return Some(prefix.join("/"));
+        }
+    }
+    None
+}
 
 fn path_statuses(home: &Path, paths: &[&str]) -> Value {
     Value::Array(

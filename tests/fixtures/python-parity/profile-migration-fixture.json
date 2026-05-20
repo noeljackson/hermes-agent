@@ -229,6 +229,754 @@
         "runtime.sock",
         "scratch.tmp"
       ]
+    },
+    {
+      "clone_all_default": [
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "config.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": ".env"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "auth.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "state.db"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "sessions/session.jsonl"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "skills/demo/SKILL.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "plugins/demo/plugin.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "cron/jobs.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "gateway/telegram/state.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "memories/MEMORY.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "memories/USER.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "tool_history/history.jsonl"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "checkpoints/checkpoint.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "trajectories/run.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "exports/export.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "logs/agent.log"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "home/.ssh/config"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "profile.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "distribution.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "SOUL.md"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "hermes-agent",
+          "path": "hermes-agent/README.md"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": ".worktrees",
+          "path": ".worktrees/w1/file"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "profiles",
+          "path": "profiles/coder/config.yaml"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "bin",
+          "path": "bin/hermes"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "node_modules",
+          "path": "node_modules/pkg/index.js"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "skills/demo/__pycache__",
+          "path": "skills/demo/__pycache__/cache.pyc"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "skills/demo/cache.pyc",
+          "path": "skills/demo/cache.pyc"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "skills/demo/cache.pyo",
+          "path": "skills/demo/cache.pyo"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "gateway/runtime.sock",
+          "path": "gateway/runtime.sock"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "workspace/scratch.tmp",
+          "path": "workspace/scratch.tmp"
+        },
+        {
+          "action": "stripped_after_copy",
+          "ignored_at": null,
+          "path": "gateway.pid"
+        },
+        {
+          "action": "stripped_after_copy",
+          "ignored_at": null,
+          "path": "gateway_state.json"
+        },
+        {
+          "action": "stripped_after_copy",
+          "ignored_at": null,
+          "path": "processes.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "package.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "workspace/package-lock.json"
+        }
+      ],
+      "clone_all_named": [
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "config.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": ".env"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "auth.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "state.db"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "sessions/session.jsonl"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "skills/demo/SKILL.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "plugins/demo/plugin.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "cron/jobs.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "gateway/telegram/state.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "memories/MEMORY.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "memories/USER.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "tool_history/history.jsonl"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "checkpoints/checkpoint.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "trajectories/run.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "exports/export.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "logs/agent.log"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "home/.ssh/config"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "profile.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "distribution.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "SOUL.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "hermes-agent/README.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": ".worktrees/w1/file"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "profiles/coder/config.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "bin/hermes"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "node_modules/pkg/index.js"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "skills/demo/__pycache__",
+          "path": "skills/demo/__pycache__/cache.pyc"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "skills/demo/cache.pyc",
+          "path": "skills/demo/cache.pyc"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "skills/demo/cache.pyo",
+          "path": "skills/demo/cache.pyo"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "gateway/runtime.sock",
+          "path": "gateway/runtime.sock"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "workspace/scratch.tmp",
+          "path": "workspace/scratch.tmp"
+        },
+        {
+          "action": "stripped_after_copy",
+          "ignored_at": null,
+          "path": "gateway.pid"
+        },
+        {
+          "action": "stripped_after_copy",
+          "ignored_at": null,
+          "path": "gateway_state.json"
+        },
+        {
+          "action": "stripped_after_copy",
+          "ignored_at": null,
+          "path": "processes.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "package.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "workspace/package-lock.json"
+        }
+      ],
+      "export_default": [
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "config.yaml"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": ".env",
+          "path": ".env"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "auth.json",
+          "path": "auth.json"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "state.db",
+          "path": "state.db"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "sessions/session.jsonl"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "skills/demo/SKILL.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "plugins/demo/plugin.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "cron/jobs.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "gateway/telegram/state.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "memories/MEMORY.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "memories/USER.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "tool_history/history.jsonl"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "checkpoints",
+          "path": "checkpoints/checkpoint.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "trajectories/run.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "exports/export.json"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "logs",
+          "path": "logs/agent.log"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "home/.ssh/config"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "profile.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "distribution.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "SOUL.md"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "hermes-agent",
+          "path": "hermes-agent/README.md"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": ".worktrees",
+          "path": ".worktrees/w1/file"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "profiles",
+          "path": "profiles/coder/config.yaml"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "bin",
+          "path": "bin/hermes"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "node_modules",
+          "path": "node_modules/pkg/index.js"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "skills/demo/__pycache__",
+          "path": "skills/demo/__pycache__/cache.pyc"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "skills/demo/cache.pyc"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "skills/demo/cache.pyo"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "gateway/runtime.sock",
+          "path": "gateway/runtime.sock"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "workspace/scratch.tmp",
+          "path": "workspace/scratch.tmp"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "gateway.pid",
+          "path": "gateway.pid"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "gateway_state.json",
+          "path": "gateway_state.json"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "processes.json",
+          "path": "processes.json"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "package.json",
+          "path": "package.json"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "workspace/package-lock.json",
+          "path": "workspace/package-lock.json"
+        }
+      ],
+      "export_named": [
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "config.yaml"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": ".env",
+          "path": ".env"
+        },
+        {
+          "action": "excluded",
+          "ignored_at": "auth.json",
+          "path": "auth.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "state.db"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "sessions/session.jsonl"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "skills/demo/SKILL.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "plugins/demo/plugin.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "cron/jobs.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "gateway/telegram/state.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "memories/MEMORY.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "memories/USER.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "tool_history/history.jsonl"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "checkpoints/checkpoint.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "trajectories/run.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "exports/export.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "logs/agent.log"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "home/.ssh/config"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "profile.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "distribution.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "SOUL.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "hermes-agent/README.md"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": ".worktrees/w1/file"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "profiles/coder/config.yaml"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "bin/hermes"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "node_modules/pkg/index.js"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "skills/demo/__pycache__/cache.pyc"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "skills/demo/cache.pyc"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "skills/demo/cache.pyo"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "gateway/runtime.sock"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "workspace/scratch.tmp"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "gateway.pid"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "gateway_state.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "processes.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "package.json"
+        },
+        {
+          "action": "kept",
+          "ignored_at": null,
+          "path": "workspace/package-lock.json"
+        }
+      ],
+      "name": "profile_tree_copy_policy",
+      "paths": [
+        "config.yaml",
+        ".env",
+        "auth.json",
+        "state.db",
+        "sessions/session.jsonl",
+        "skills/demo/SKILL.md",
+        "plugins/demo/plugin.yaml",
+        "cron/jobs.json",
+        "gateway/telegram/state.json",
+        "memories/MEMORY.md",
+        "memories/USER.md",
+        "tool_history/history.jsonl",
+        "checkpoints/checkpoint.json",
+        "trajectories/run.json",
+        "exports/export.json",
+        "logs/agent.log",
+        "home/.ssh/config",
+        "profile.yaml",
+        "distribution.yaml",
+        "SOUL.md",
+        "hermes-agent/README.md",
+        ".worktrees/w1/file",
+        "profiles/coder/config.yaml",
+        "bin/hermes",
+        "node_modules/pkg/index.js",
+        "skills/demo/__pycache__/cache.pyc",
+        "skills/demo/cache.pyc",
+        "skills/demo/cache.pyo",
+        "gateway/runtime.sock",
+        "workspace/scratch.tmp",
+        "gateway.pid",
+        "gateway_state.json",
+        "processes.json",
+        "package.json",
+        "workspace/package-lock.json"
+      ]
     }
   ],
   "source": {
