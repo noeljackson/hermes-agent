@@ -3,10 +3,35 @@ REFERENCE_REF ?= main
 PARITY_FIXTURES_DIR ?= tests/fixtures/python-parity
 PARITY_IMAGE ?= hermes-python-parity
 
-.PHONY: check python-parity-build python-parity-fixtures python-parity-update python-parity-drift python-parity-agent real-provider-smoke real-gateway-smoke
+.PHONY: check coverage coverage-html coverage-lcov python-parity-build python-parity-fixtures python-parity-update python-parity-drift python-parity-agent real-provider-smoke real-gateway-smoke
 
 check:
 	@if [ -f Cargo.toml ]; then cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace; else echo "No Rust workspace yet; skipping cargo test."; fi
+
+coverage:
+	@if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
+		echo "cargo-llvm-cov is required for Rust coverage."; \
+		echo "Install it with: cargo install cargo-llvm-cov --locked"; \
+		exit 127; \
+	fi
+	cargo llvm-cov --workspace --all-targets --summary-only
+
+coverage-html:
+	@if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
+		echo "cargo-llvm-cov is required for Rust coverage."; \
+		echo "Install it with: cargo install cargo-llvm-cov --locked"; \
+		exit 127; \
+	fi
+	cargo llvm-cov --workspace --all-targets --html --output-dir target/coverage/html
+
+coverage-lcov:
+	@if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
+		echo "cargo-llvm-cov is required for Rust coverage."; \
+		echo "Install it with: cargo install cargo-llvm-cov --locked"; \
+		exit 127; \
+	fi
+	mkdir -p target/coverage
+	cargo llvm-cov --workspace --all-targets --lcov --output-path target/coverage/lcov.info
 
 python-parity-build:
 	docker build -f Dockerfile.python-parity \

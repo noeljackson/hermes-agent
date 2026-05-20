@@ -13,6 +13,19 @@ The Rust crate ownership map is tracked in
 Deliberate non-parity decisions are tracked in
 `docs/rust-rewrite/non-parity-register.md`.
 
+## Coverage Reporting
+
+Rust code coverage is available as an informational gap-finding tool. It is not
+the behavioral oracle and is not a substitute for Python parity fixtures.
+
+- `make coverage` prints a workspace Rust coverage summary.
+- `make coverage-html` writes an HTML report to `target/coverage/html`.
+- `make coverage-lcov` writes `target/coverage/lcov.info` for CI upload.
+
+These targets require `cargo-llvm-cov` and fail with an install hint when it is
+missing. They do not install tools automatically, do not run host Python, and
+are intentionally separate from `make check` and `make python-parity-drift`.
+
 ## Fixture-Backed Rust Behavior
 
 The following surfaces have committed Python fixtures and Rust behavior checked
