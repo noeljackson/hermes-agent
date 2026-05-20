@@ -922,6 +922,20 @@ fn tool_registry_matches_python_fixture() {
     for name in ["read_file", "write_file", "patch", "search_files"] {
         assert_eq!(file_schemas[name], selected[name], "{name} full schema");
     }
+    let core_schemas = hermes_tools::selected_core_tool_schemas_without_descriptions();
+    for name in [
+        "memory",
+        "patch",
+        "read_file",
+        "search_files",
+        "session_search",
+        "skill_manage",
+        "skills_list",
+        "terminal",
+        "write_file",
+    ] {
+        assert_eq!(core_schemas[name], selected[name], "{name} full schema");
+    }
     for contract in hermes_tools::selected_tool_param_contracts() {
         let property = &selected[contract.tool]["parameters"]["properties"][contract.parameter];
         assert_eq!(

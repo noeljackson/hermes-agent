@@ -250,10 +250,9 @@ against those fixtures in `crates/hermes-parity`:
   env requirements, schema parameter names, required fields, and description
   presence. Selected core tool schemas (`terminal`, `read_file`, `write_file`,
   `patch`, `search_files`, `memory`, `session_search`, `skill_manage`, and
-  `skills_list`) also check semantic schema contracts for required args, types,
-  defaults, enum values, and numeric bounds. The full stripped JSON Schema
-  payloads are fixture-backed for the deterministic file tools: `read_file`,
-  `write_file`, `patch`, and `search_files`.
+  `skills_list`) check full stripped JSON Schema payload parity plus semantic
+  schema contracts for required args, types, defaults, enum values, and numeric
+  bounds.
 - File-tool helpers: read/search pagination clamps, protected write-path
   detection, binary/image classification, line-number rendering with long-line
   truncation, and selected fuzzy replace behavior including exact,
@@ -290,8 +289,8 @@ runtime implementation is still intentionally incomplete:
 - Executable handlers for every slash command and CLI subcommand.
 - Executable handlers for every built-in tool beyond the deterministic local
   file-tool slice.
-- Full JSON Schema payload parity for every built-in tool beyond file tools and
-  selected core semantic schema contracts.
+- Full JSON Schema payload parity for every built-in tool beyond the selected
+  core schema set.
 - Full historical SQLite migration coverage for every legacy schema version;
   the current fixture proves one representative old schema that Python still
   opens successfully.

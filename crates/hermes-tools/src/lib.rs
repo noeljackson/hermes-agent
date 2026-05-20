@@ -2135,7 +2135,30 @@ pub fn selected_tool_param_contracts() -> &'static [ToolParamContract] {
 }
 
 pub fn file_tool_schemas_without_descriptions() -> Value {
+    let selected = selected_core_tool_schemas_without_descriptions();
     json!({
+        "patch": selected["patch"].clone(),
+        "read_file": selected["read_file"].clone(),
+        "search_files": selected["search_files"].clone(),
+        "write_file": selected["write_file"].clone(),
+    })
+}
+
+pub fn selected_core_tool_schemas_without_descriptions() -> Value {
+    json!({
+        "memory": {
+            "name": "memory",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["add", "replace", "remove"]},
+                    "target": {"type": "string", "enum": ["memory", "user"]},
+                    "content": {"type": "string"},
+                    "old_text": {"type": "string"},
+                },
+                "required": ["action", "target"],
+            },
+        },
         "patch": {
             "name": "patch",
             "parameters": {
@@ -2213,6 +2236,77 @@ pub fn file_tool_schemas_without_descriptions() -> Value {
                     },
                 },
                 "required": ["pattern"],
+            },
+        },
+        "session_search": {
+            "name": "session_search",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "around_message_id": {"type": "integer"},
+                    "limit": {"type": "integer", "default": 3},
+                    "query": {"type": "string"},
+                    "role_filter": {"type": "string"},
+                    "session_id": {"type": "string"},
+                    "sort": {"type": "string", "enum": ["newest", "oldest"]},
+                    "window": {"type": "integer", "default": 5},
+                },
+                "required": [],
+            },
+        },
+        "skill_manage": {
+            "name": "skill_manage",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "absorbed_into": {"type": "string"},
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "create",
+                            "patch",
+                            "edit",
+                            "delete",
+                            "write_file",
+                            "remove_file",
+                        ],
+                    },
+                    "category": {"type": "string"},
+                    "content": {"type": "string"},
+                    "file_content": {"type": "string"},
+                    "file_path": {"type": "string"},
+                    "name": {"type": "string"},
+                    "new_string": {"type": "string"},
+                    "old_string": {"type": "string"},
+                    "replace_all": {"type": "boolean"},
+                },
+                "required": ["action", "name"],
+            },
+        },
+        "skills_list": {
+            "name": "skills_list",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string"},
+                },
+                "required": [],
+            },
+        },
+        "terminal": {
+            "name": "terminal",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "background": {"type": "boolean", "default": false},
+                    "command": {"type": "string"},
+                    "notify_on_complete": {"type": "boolean", "default": false},
+                    "pty": {"type": "boolean", "default": false},
+                    "timeout": {"type": "integer", "minimum": 1},
+                    "watch_patterns": {"type": "array", "items": {"type": "string"}},
+                    "workdir": {"type": "string"},
+                },
+                "required": ["command"],
             },
         },
         "write_file": {
