@@ -575,6 +575,71 @@ pub fn project_codex_event_notifications(notifications: &[Value]) -> Vec<Value> 
         .collect()
 }
 
+pub fn stream_diag_capture_response(status_code: i64, headers: &Value) -> Value {
+    let mut captured = serde_json::Map::new();
+    for name in STREAM_DIAG_HEADERS {
+        if let Some(value) = headers.get(name).and_then(Value::as_str) {
+            if !value.is_empty() {
+                captured.insert(name.to_string(), json!(truncate_chars(value, 120)));
+            }
+        }
+    }
+    json!({
+        "started_at": 1000.0,
+        "first_chunk_at": null,
+        "chunks": 0,
+        "bytes": 0,
+        "headers": captured,
+        "http_status": status_code,
+    })
+}
+
+pub fn flatten_exception_chain(parts: &[(&str, &str)]) -> String {
+    parts
+        .iter()
+        .take(4)
+        .map(|(class_name, message)| {
+            let mut message = message.trim().replace('\n', " ");
+            if message.chars().count() > 140 {
+                message = format!("{}\u{2026}", truncate_chars(&message, 140));
+            }
+            if message.is_empty() {
+                (*class_name).to_string()
+            } else {
+                format!("{class_name}({message})")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" <- ")
+}
+
+pub fn stream_drop_emit_events(
+    provider: &str,
+    error_type: &str,
+    attempt: i64,
+    max_attempts: i64,
+    mid_tool_call: bool,
+    started_at: f64,
+    now: f64,
+) -> Value {
+    let kind = if mid_tool_call {
+        "drop mid tool-call"
+    } else {
+        "drop"
+    };
+    let suffix = format!(" after {:.1}s", (now - started_at).max(0.0));
+    json!({
+        "status_events": [
+            format!(
+                "\u{26a0}\u{fe0f} {provider} stream {kind} ({error_type}){suffix} \u{2014} reconnecting, retry {attempt}/{max_attempts}"
+            )
+        ],
+        "activity_events": [
+            format!("stream retry {attempt}/{max_attempts} after {error_type}")
+        ],
+    })
+}
+
 fn projection_result(
     messages: Vec<Value>,
     is_tool_iteration: bool,
@@ -697,6 +762,19 @@ fn python_json_scalar(value: &Value) -> String {
         _ => serde_json::to_string(value).unwrap(),
     }
 }
+
+const STREAM_DIAG_HEADERS: &[&str] = &[
+    "cf-ray",
+    "cf-cache-status",
+    "x-openrouter-provider",
+    "x-openrouter-model",
+    "x-openrouter-id",
+    "x-request-id",
+    "x-vercel-id",
+    "via",
+    "server",
+    "x-forwarded-for",
+];
 
 const PROVIDER_PROFILES: &[ProviderProfileSummary] = &[
     ProviderProfileSummary {

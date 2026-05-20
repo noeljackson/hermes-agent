@@ -23,6 +23,7 @@ def main() -> int:
             map_finish_reason,
         )
         from agent.transports.codex_event_projector import CodexEventProjector
+        import agent.stream_diag as stream_diag
         from providers.base import ProviderProfile
         from run_agent import AIAgent
 
@@ -330,6 +331,85 @@ def main() -> int:
                 }
             )
 
+        class FakeHeadersResponse:
+            status_code = 529
+            headers = {
+                "cf-ray": "cf123",
+                "x-openrouter-provider": "openrouter-provider-a",
+                "x-request-id": "r" * 150,
+                "authorization": "must-not-be-captured",
+            }
+
+        class FakeStreamAgent:
+            provider = "openrouter"
+            base_url = "https://openrouter.ai/api/v1"
+            _subagent_id = "sub-1"
+            _delegate_depth = 2
+
+            def __init__(self):
+                self.status_events = []
+                self.activity_events = []
+
+            def _summarize_api_error(self, error):
+                return f"summary: {type(error).__name__}"
+
+            def _emit_status(self, value):
+                self.status_events.append(value)
+
+            def _touch_activity(self, value):
+                self.activity_events.append(value)
+
+        chained = RuntimeError("outer\nline")
+        chained.__cause__ = ValueError("inner cause")
+        empty_message = RuntimeError()
+        long_message = RuntimeError("x" * 145)
+        captured_diag = {
+            "started_at": 1000.0,
+            "first_chunk_at": None,
+            "chunks": 0,
+            "bytes": 0,
+            "headers": {},
+            "http_status": None,
+        }
+        stream_diag.stream_diag_capture_response(
+            FakeStreamAgent(), captured_diag, FakeHeadersResponse()
+        )
+
+        fake_time = stream_diag.time.time
+        fake_agent = FakeStreamAgent()
+        try:
+            stream_diag.time.time = lambda: 1005.25
+            stream_diag.emit_stream_drop(
+                fake_agent,
+                error=RuntimeError("socket closed"),
+                attempt=2,
+                max_attempts=4,
+                mid_tool_call=True,
+                diag={
+                    "started_at": 1000.0,
+                    "first_chunk_at": 1001.0,
+                    "chunks": 3,
+                    "bytes": 42,
+                    "headers": {"cf-ray": "abc"},
+                    "http_status": 502,
+                },
+            )
+        finally:
+            stream_diag.time.time = fake_time
+
+        stream_diagnostics = {
+            "captured_response": captured_diag,
+            "drop_emit": {
+                "status_events": fake_agent.status_events,
+                "activity_events": fake_agent.activity_events,
+            },
+            "flatten_exception_chain": {
+                "chained": stream_diag.flatten_exception_chain(chained),
+                "empty": stream_diag.flatten_exception_chain(empty_message),
+                "truncated": stream_diag.flatten_exception_chain(long_message),
+            },
+        }
+
     cases = [
         {"name": "chat_completions_fake_provider", "request": kwargs},
         {"name": "chat_completions_strips_codex_leaks", "request": sanitized_chat_kwargs},
@@ -379,6 +459,7 @@ def main() -> int:
             "notifications": codex_projector_notifications,
             "results": codex_projection,
         },
+        {"name": "stream_diagnostics", "cases": stream_diagnostics},
     ]
     write_fixture(out, fixture(SCRIPT, cases))
     return 0

@@ -49,7 +49,10 @@ against those fixtures in `crates/hermes-parity`:
   OpenAI-compatible URLs. Codex app-server event projection is fixture-backed
   for ignored streaming deltas, reasoning carry-forward, assistant/user
   messages, command/file-change/MCP/dynamic tool-call materialization, tool
-  iteration counters, final-text capture, and opaque event fallback.
+  iteration counters, final-text capture, and opaque event fallback. Stream
+  retry diagnostics are fixture-backed for exception-chain formatting, selected
+  upstream response-header capture/truncation, and fixed-time user/activity
+  retry event text.
 - Provider profiles: built-in provider inventory, aliases, API modes, auth
   types, environment key discovery metadata, base URLs, fallback counts,
   max-token defaults, fixed-temperature sentinels, and default header keys.

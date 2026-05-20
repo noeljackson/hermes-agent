@@ -682,6 +682,36 @@
           ]
         }
       ]
+    },
+    {
+      "cases": {
+        "captured_response": {
+          "bytes": 0,
+          "chunks": 0,
+          "first_chunk_at": null,
+          "headers": {
+            "cf-ray": "cf123",
+            "x-openrouter-provider": "openrouter-provider-a",
+            "x-request-id": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          "http_status": 529,
+          "started_at": 1000.0
+        },
+        "drop_emit": {
+          "activity_events": [
+            "stream retry 2/4 after RuntimeError"
+          ],
+          "status_events": [
+            "\u26a0\ufe0f openrouter stream drop mid tool-call (RuntimeError) after 5.2s \u2014 reconnecting, retry 2/4"
+          ]
+        },
+        "flatten_exception_chain": {
+          "chained": "RuntimeError(outer line) <- ValueError(inner cause)",
+          "empty": "RuntimeError",
+          "truncated": "RuntimeError(xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026)"
+        }
+      },
+      "name": "stream_diagnostics"
     }
   ],
   "source": {

@@ -1715,6 +1715,47 @@ fn provider_request_shape_matches_python_fixture() {
         hermes_provider::project_codex_event_notifications(&notifications),
         codex_projection["results"].as_array().unwrap().to_vec()
     );
+
+    let stream_diag = &case(&fixture, "stream_diagnostics")["cases"];
+    assert_eq!(
+        hermes_provider::flatten_exception_chain(&[
+            ("RuntimeError", "outer\nline"),
+            ("ValueError", "inner cause")
+        ]),
+        stream_diag["flatten_exception_chain"]["chained"]
+    );
+    assert_eq!(
+        hermes_provider::flatten_exception_chain(&[("RuntimeError", "")]),
+        stream_diag["flatten_exception_chain"]["empty"]
+    );
+    assert_eq!(
+        hermes_provider::flatten_exception_chain(&[("RuntimeError", &"x".repeat(145))]),
+        stream_diag["flatten_exception_chain"]["truncated"]
+    );
+    assert_eq!(
+        hermes_provider::stream_diag_capture_response(
+            529,
+            &json!({
+                "cf-ray": "cf123",
+                "x-openrouter-provider": "openrouter-provider-a",
+                "x-request-id": "r".repeat(150),
+                "authorization": "must-not-be-captured",
+            }),
+        ),
+        stream_diag["captured_response"]
+    );
+    assert_eq!(
+        hermes_provider::stream_drop_emit_events(
+            "openrouter",
+            "RuntimeError",
+            2,
+            4,
+            true,
+            1000.0,
+            1005.25,
+        ),
+        stream_diag["drop_emit"]
+    );
 }
 
 #[test]
