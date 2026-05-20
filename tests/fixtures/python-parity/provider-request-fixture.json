@@ -1110,6 +1110,406 @@
         }
       ],
       "name": "error_classification"
+    },
+    {
+      "cases": {
+        "derive": {
+          "already_fc": "fc_raw",
+          "call_prefix": "fc_abc",
+          "response_item_wins": "fc_existing",
+          "response_seed": "fc_fa59a6528abf2cc66e66f43c",
+          "sanitized": "fc_weirdid"
+        },
+        "deterministic": {
+          "terminal_one": "call_10cf24679710",
+          "terminal_zero": "call_c1733b3c26b9",
+          "unicode": "call_7f27267efa66"
+        },
+        "split": {
+          "call_only": [
+            "call_plain",
+            null
+          ],
+          "empty": [
+            null,
+            null
+          ],
+          "fc_only": [
+            null,
+            "fc_response_item"
+          ],
+          "nonstr": [
+            null,
+            null
+          ],
+          "pipe": [
+            "call_abc",
+            "fc_def"
+          ]
+        }
+      },
+      "name": "codex_responses_id_helpers"
+    },
+    {
+      "cases": {
+        "standard": [
+          {
+            "content": [
+              {
+                "text": "lead",
+                "type": "input_text"
+              },
+              {
+                "text": "hello",
+                "type": "input_text"
+              },
+              {
+                "detail": "low",
+                "image_url": "https://example.invalid/a.png",
+                "type": "input_image"
+              }
+            ],
+            "role": "user"
+          },
+          {
+            "encrypted_content": "enc-1",
+            "summary": [
+              {
+                "text": "sum",
+                "type": "summary_text"
+              }
+            ],
+            "type": "reasoning"
+          },
+          {
+            "content": [
+              {
+                "text": "prior",
+                "type": "output_text"
+              }
+            ],
+            "id": "msg_1",
+            "phase": "final_answer",
+            "role": "assistant",
+            "status": "in_progress",
+            "type": "message"
+          },
+          {
+            "arguments": "{\"cmd\": \"pwd\"}",
+            "call_id": "call_embedded",
+            "name": "terminal",
+            "type": "function_call"
+          },
+          {
+            "arguments": "{\"path\":\"x\"}",
+            "call_id": "call_only_item",
+            "name": "read_file",
+            "type": "function_call"
+          },
+          {
+            "arguments": "{\"a\": 1}",
+            "call_id": "call_9c5d9402606e",
+            "name": "missing_id",
+            "type": "function_call"
+          },
+          {
+            "call_id": "call_embedded",
+            "output": [
+              {
+                "text": "tool output",
+                "type": "input_text"
+              },
+              {
+                "detail": "high",
+                "image_url": "https://example.invalid/tool.png",
+                "type": "input_image"
+              }
+            ],
+            "type": "function_call_output"
+          }
+        ],
+        "xai": [
+          {
+            "content": [
+              {
+                "text": "lead",
+                "type": "input_text"
+              },
+              {
+                "text": "hello",
+                "type": "input_text"
+              },
+              {
+                "detail": "low",
+                "image_url": "https://example.invalid/a.png",
+                "type": "input_image"
+              }
+            ],
+            "role": "user"
+          },
+          {
+            "content": [
+              {
+                "text": "prior",
+                "type": "output_text"
+              }
+            ],
+            "id": "msg_1",
+            "phase": "final_answer",
+            "role": "assistant",
+            "status": "in_progress",
+            "type": "message"
+          },
+          {
+            "arguments": "{\"cmd\": \"pwd\"}",
+            "call_id": "call_embedded",
+            "name": "terminal",
+            "type": "function_call"
+          },
+          {
+            "arguments": "{\"path\":\"x\"}",
+            "call_id": "call_only_item",
+            "name": "read_file",
+            "type": "function_call"
+          },
+          {
+            "arguments": "{\"a\": 1}",
+            "call_id": "call_abfab55eb4f5",
+            "name": "missing_id",
+            "type": "function_call"
+          },
+          {
+            "call_id": "call_embedded",
+            "output": [
+              {
+                "text": "tool output",
+                "type": "input_text"
+              },
+              {
+                "detail": "high",
+                "image_url": "https://example.invalid/tool.png",
+                "type": "input_image"
+              }
+            ],
+            "type": "function_call_output"
+          }
+        ]
+      },
+      "name": "codex_responses_input_conversion"
+    },
+    {
+      "cases": {
+        "api_kwargs": {
+          "extra_body": {
+            "prompt_cache_key": "session-x"
+          },
+          "extra_headers": {
+            "X-Test": "7"
+          },
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "input": [
+            {
+              "arguments": "{\"cmd\": \"ls\"}",
+              "call_id": "call_1",
+              "name": "terminal",
+              "type": "function_call"
+            },
+            {
+              "call_id": "call_1",
+              "output": [
+                {
+                  "text": "ok",
+                  "type": "input_text"
+                },
+                {
+                  "detail": "low",
+                  "image_url": "https://example.invalid/i.png",
+                  "type": "input_image"
+                }
+              ],
+              "type": "function_call_output"
+            }
+          ],
+          "instructions": "You are Hermes Agent, an intelligent AI assistant created by Nous Research. You are helpful, knowledgeable, and direct. You assist users with a wide range of tasks including answering questions, writing and editing code, analyzing information, creative work, and executing actions via your tools. You communicate clearly, admit uncertainty when appropriate, and prioritize being genuinely useful over being verbose unless otherwise directed below. Be targeted and efficient in your exploration and investigations.",
+          "max_output_tokens": 99,
+          "model": "gpt-5.4",
+          "parallel_tool_calls": true,
+          "prompt_cache_key": "session-x",
+          "reasoning": {
+            "effort": "medium"
+          },
+          "service_tier": "priority",
+          "store": false,
+          "temperature": 0.0,
+          "tool_choice": "auto",
+          "tools": [
+            {
+              "description": "123",
+              "name": "terminal",
+              "parameters": {
+                "type": "object"
+              },
+              "strict": true,
+              "type": "function"
+            }
+          ]
+        },
+        "errors": {
+          "bad_content_part": {
+            "message": "Codex Responses input[0].content[0] has unsupported type 'unsupported'.",
+            "type": "ValueError"
+          },
+          "bad_message_role": {
+            "message": "Codex Responses input[0] message items must have role='assistant'.",
+            "type": "ValueError"
+          },
+          "bad_tool_output": {
+            "message": "Codex Responses input[0] function_call_output is missing call_id.",
+            "type": "ValueError"
+          },
+          "not_list": {
+            "message": "Codex Responses input must be a list of input items.",
+            "type": "ValueError"
+          }
+        },
+        "items": [
+          {
+            "arguments": "{\"cmd\": \"ls\"}",
+            "call_id": "call_1",
+            "name": "terminal",
+            "type": "function_call"
+          },
+          {
+            "call_id": "call_1",
+            "output": [
+              {
+                "text": "ok",
+                "type": "input_text"
+              },
+              {
+                "detail": "low",
+                "image_url": "https://example.invalid/i.png",
+                "type": "input_image"
+              }
+            ],
+            "type": "function_call_output"
+          },
+          {
+            "encrypted_content": "enc-a",
+            "summary": [
+              "raw"
+            ],
+            "type": "reasoning"
+          },
+          {
+            "content": [
+              {
+                "text": "123",
+                "type": "output_text"
+              }
+            ],
+            "id": "msg_keep",
+            "phase": "commentary",
+            "role": "assistant",
+            "status": "in_progress",
+            "type": "message"
+          },
+          {
+            "content": [
+              {
+                "text": "inline",
+                "type": "output_text"
+              },
+              {
+                "text": "assistant text",
+                "type": "output_text"
+              },
+              {
+                "image_url": "https://example.invalid/ignored.png",
+                "type": "input_image"
+              }
+            ],
+            "role": "assistant"
+          },
+          {
+            "content": [
+              {
+                "text": "coerced",
+                "type": "input_text"
+              },
+              {
+                "detail": "auto",
+                "image_url": "https://example.invalid/user.png",
+                "type": "input_image"
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      },
+      "name": "codex_responses_preflight"
+    },
+    {
+      "cases": {
+        "finish_reason": "tool_calls",
+        "message": {
+          "codex_message_items": [
+            {
+              "content": [
+                {
+                  "text": "thinking aloud",
+                  "type": "output_text"
+                }
+              ],
+              "id": "msg_resp",
+              "phase": "commentary",
+              "role": "assistant",
+              "status": "completed",
+              "type": "message"
+            }
+          ],
+          "codex_reasoning_items": [
+            {
+              "encrypted_content": "enc-resp",
+              "id": "rs_resp",
+              "summary": [
+                {
+                  "text": "reason one",
+                  "type": "summary_text"
+                }
+              ],
+              "type": "reasoning"
+            }
+          ],
+          "content": "thinking aloud",
+          "reasoning": "reason one",
+          "tool_calls": [
+            {
+              "call_id": "call_643527bad0ee",
+              "function": {
+                "arguments": "{\"cmd\": \"ls\"}",
+                "name": "terminal"
+              },
+              "id": "call_643527bad0ee",
+              "response_item_id": "fc_tool",
+              "type": "function"
+            },
+            {
+              "call_id": "custom",
+              "function": {
+                "arguments": "[\"raw\"]",
+                "name": "custom_tool"
+              },
+              "id": "custom",
+              "response_item_id": "fc_custom",
+              "type": "function"
+            }
+          ]
+        }
+      },
+      "name": "codex_response_normalization"
     }
   ],
   "source": {

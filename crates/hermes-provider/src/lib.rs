@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sha1::{Digest as Sha1Digest, Sha1};
+use sha2::Sha256;
 use std::collections::VecDeque;
+
+const DEFAULT_AGENT_IDENTITY: &str = "You are Hermes Agent, an intelligent AI assistant created by Nous Research. You are helpful, knowledgeable, and direct. You assist users with a wide range of tasks including answering questions, writing and editing code, analyzing information, creative work, and executing actions via your tools. You communicate clearly, admit uncertainty when appropriate, and prioritize being genuinely useful over being verbose unless otherwise directed below. Be targeted and efficient in your exploration and investigations.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProviderProfileSummary {
@@ -299,6 +303,240 @@ pub fn map_finish_reason(reason: Option<&str>) -> &'static str {
     }
 }
 
+pub fn codex_responses_id_helpers_fixture() -> Value {
+    json!({
+        "deterministic": {
+            "terminal_zero": codex_deterministic_call_id("terminal", "{\"cmd\":\"ls\"}", 0),
+            "terminal_one": codex_deterministic_call_id("terminal", "{\"cmd\":\"ls\"}", 1),
+            "unicode": codex_deterministic_call_id("unicode", "{\"text\":\"olá\"}", 2),
+        },
+        "split": {
+            "pipe": codex_split_responses_tool_id_value(&json!(" call_abc | fc_def ")),
+            "fc_only": codex_split_responses_tool_id_value(&json!("fc_response_item")),
+            "call_only": codex_split_responses_tool_id_value(&json!("call_plain")),
+            "empty": codex_split_responses_tool_id_value(&json!("  ")),
+            "nonstr": codex_split_responses_tool_id_value(&json!(42)),
+        },
+        "derive": {
+            "response_item_wins": codex_derive_responses_function_call_id("call_abc", Some(" fc_existing ")),
+            "call_prefix": codex_derive_responses_function_call_id("call_abc", None),
+            "already_fc": codex_derive_responses_function_call_id("fc_raw", None),
+            "sanitized": codex_derive_responses_function_call_id("weird id/!*", None),
+            "response_seed": codex_derive_responses_function_call_id("", Some("notfc")),
+        },
+    })
+}
+
+pub fn codex_responses_input_conversion_fixture() -> Value {
+    let messages = codex_fixture_messages();
+    json!({
+        "standard": chat_messages_to_responses_input(&messages, false),
+        "xai": chat_messages_to_responses_input(&messages, true),
+    })
+}
+
+pub fn codex_responses_preflight_fixture() -> Value {
+    let input = preflight_items_input();
+    json!({
+        "items": preflight_codex_input_items(&Value::Array(input.clone())).unwrap(),
+        "errors": {
+            "not_list": preflight_error(&json!({"bad": true})),
+            "bad_tool_output": preflight_error(&json!([
+                {"type": "function_call_output", "output": "missing call"}
+            ])),
+            "bad_message_role": preflight_error(&json!([
+                {"type": "message", "role": "user", "content": []}
+            ])),
+            "bad_content_part": preflight_error(&json!([
+                {"role": "user", "content": [{"type": "unsupported"}]}
+            ])),
+        },
+        "api_kwargs": preflight_codex_api_kwargs(&json!({
+            "model": " gpt-5.4 ",
+            "instructions": " ",
+            "input": [input[0].clone(), input[1].clone()],
+            "tools": [
+                {
+                    "type": "function",
+                    "name": " terminal ",
+                    "description": 123,
+                    "strict": "yes",
+                    "parameters": {"type": "object"},
+                }
+            ],
+            "store": false,
+            "include": ["reasoning.encrypted_content"],
+            "reasoning": {"effort": "medium"},
+            "max_output_tokens": 99.9,
+            "temperature": 0,
+            "tool_choice": "auto",
+            "parallel_tool_calls": true,
+            "prompt_cache_key": "session-x",
+            "service_tier": " priority ",
+            "extra_headers": {" X-Test ": 7, "Skip": null},
+            "extra_body": {"prompt_cache_key": "session-x"},
+        })).unwrap(),
+    })
+}
+
+pub fn codex_response_normalization_fixture() -> Value {
+    let response = json!({
+        "status": "incomplete",
+        "output": [
+            {
+                "type": "reasoning",
+                "id": "rs_resp",
+                "encrypted_content": "enc-resp",
+                "summary": [{"text": "reason one"}],
+                "status": "completed",
+            },
+            {
+                "type": "message",
+                "id": "msg_resp",
+                "status": "completed",
+                "phase": "commentary",
+                "content": [{"type": "output_text", "text": "thinking aloud"}],
+            },
+            {
+                "type": "function_call",
+                "id": "fc_tool",
+                "call_id": "",
+                "name": "terminal",
+                "arguments": {"cmd": "ls"},
+                "status": "completed",
+            },
+            {
+                "type": "custom_tool_call",
+                "id": "custom|fc_custom",
+                "call_id": null,
+                "name": "custom_tool",
+                "input": ["raw"],
+                "status": "completed",
+            },
+        ],
+    });
+    normalize_codex_response(&response)
+}
+
+fn codex_fixture_messages() -> Vec<Value> {
+    vec![
+        json!({"role": "system", "content": "ignored system"}),
+        json!({
+            "role": "user",
+            "content": [
+                "lead",
+                {"type": "text", "text": "hello"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "https://example.invalid/a.png", "detail": "low"}
+                },
+                {"type": "unknown", "text": "ignored"}
+            ],
+        }),
+        json!({
+            "role": "assistant",
+            "content": "",
+            "codex_reasoning_items": [
+                {
+                    "id": "rs_1",
+                    "type": "reasoning",
+                    "encrypted_content": "enc-1",
+                    "summary": [{"type": "summary_text", "text": "sum"}],
+                },
+                {
+                    "id": "rs_1",
+                    "type": "reasoning",
+                    "encrypted_content": "enc-duplicate",
+                },
+            ],
+            "codex_message_items": [
+                {
+                    "id": "msg_1",
+                    "type": "message",
+                    "role": "assistant",
+                    "status": "in progress",
+                    "phase": "final_answer",
+                    "content": [
+                        {"type": "text", "text": "prior"},
+                        {"type": "ignored", "text": "drop"},
+                    ],
+                }
+            ],
+            "tool_calls": [
+                {
+                    "id": " call_embedded | fc_item ",
+                    "type": "function",
+                    "function": {"name": "terminal", "arguments": {"cmd": "pwd"}},
+                },
+                {
+                    "id": "fc_only_item",
+                    "type": "function",
+                    "function": {"name": "read_file", "arguments": " {\"path\":\"x\"} "},
+                },
+                {
+                    "type": "function",
+                    "function": {"name": "missing_id", "arguments": {"a": 1}},
+                },
+            ],
+        }),
+        json!({
+            "role": "tool",
+            "tool_call_id": " call_embedded | fc_item ",
+            "content": [
+                {"type": "text", "text": "tool output"},
+                {
+                    "type": "image_url",
+                    "image_url": "https://example.invalid/tool.png",
+                    "detail": "high",
+                },
+                {"type": "unknown", "text": "drop"},
+            ],
+        }),
+        json!({"role": "tool", "tool_call_id": "", "content": "ignored"}),
+    ]
+}
+
+fn preflight_items_input() -> Vec<Value> {
+    vec![
+        json!({"type": "function_call", "call_id": " call_1 ", "name": " terminal ", "arguments": {"cmd": "ls"}}),
+        json!({
+            "type": "function_call_output",
+            "call_id": " call_1 ",
+            "output": [
+                {"type": "input_text", "text": "ok"},
+                {"type": "input_image", "image_url": "https://example.invalid/i.png", "detail": " low "},
+                {"type": "input_image", "image_url": ""},
+                {"type": "bad", "text": "drop"},
+            ],
+        }),
+        json!({"type": "reasoning", "id": "rs_a", "encrypted_content": "enc-a", "summary": ["raw"]}),
+        json!({"type": "reasoning", "id": "rs_a", "encrypted_content": "enc-b"}),
+        json!({
+            "type": "message",
+            "role": "assistant",
+            "status": "IN-PROGRESS",
+            "id": " msg_keep ",
+            "phase": " commentary ",
+            "content": [{"type": "text", "text": 123}],
+        }),
+        json!({
+            "role": "assistant",
+            "content": [
+                "inline",
+                {"type": "input_text", "text": "assistant text"},
+                {"type": "input_image", "image_url": "https://example.invalid/ignored.png"},
+            ],
+        }),
+        json!({
+            "role": "user",
+            "content": [
+                {"type": "output_text", "text": "coerced"},
+                {"type": "image_url", "image_url": {"url": "https://example.invalid/user.png", "detail": "auto"}},
+            ],
+        }),
+    ]
+}
+
 pub fn model_requires_responses_api(model: &str) -> bool {
     let normalized = model
         .to_ascii_lowercase()
@@ -360,6 +598,1032 @@ fn base_url_hostname(base_url: &str) -> String {
         .unwrap_or_default()
         .trim()
         .to_string()
+}
+
+fn codex_deterministic_call_id(fn_name: &str, arguments: &str, index: usize) -> String {
+    let seed = format!("{fn_name}:{arguments}:{index}");
+    let digest = Sha256::digest(seed.as_bytes());
+    format!("call_{}", hex_prefix(&digest, 12))
+}
+
+fn codex_split_responses_tool_id(raw_id: &Value) -> (Option<String>, Option<String>) {
+    let Some(raw) = raw_id.as_str() else {
+        return (None, None);
+    };
+    let value = raw.trim();
+    if value.is_empty() {
+        return (None, None);
+    }
+    if let Some((call_id, response_item_id)) = value.split_once('|') {
+        return (
+            nonempty_trimmed(call_id),
+            nonempty_trimmed(response_item_id),
+        );
+    }
+    if value.starts_with("fc_") {
+        return (None, Some(value.to_string()));
+    }
+    (Some(value.to_string()), None)
+}
+
+fn codex_split_responses_tool_id_value(raw_id: &Value) -> Value {
+    let (call_id, response_item_id) = codex_split_responses_tool_id(raw_id);
+    json!([call_id, response_item_id])
+}
+
+fn codex_derive_responses_function_call_id(
+    call_id: &str,
+    response_item_id: Option<&str>,
+) -> String {
+    if let Some(candidate) = response_item_id.map(str::trim) {
+        if candidate.starts_with("fc_") {
+            return candidate.to_string();
+        }
+    }
+
+    let source = call_id.trim();
+    if source.starts_with("fc_") {
+        return source.to_string();
+    }
+    if let Some(suffix) = source.strip_prefix("call_") {
+        if !suffix.is_empty() {
+            return format!("fc_{suffix}");
+        }
+    }
+
+    let sanitized = source
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-'))
+        .collect::<String>();
+    if sanitized.starts_with("fc_") {
+        return sanitized;
+    }
+    if let Some(suffix) = sanitized.strip_prefix("call_") {
+        if !suffix.is_empty() {
+            return format!("fc_{suffix}");
+        }
+    }
+    if !sanitized.is_empty() {
+        return format!("fc_{}", truncate_chars(&sanitized, 48));
+    }
+
+    let seed = if source.is_empty() {
+        response_item_id.unwrap_or_default().to_string()
+    } else {
+        source.to_string()
+    };
+    let digest = Sha1::digest(seed.as_bytes());
+    format!("fc_{}", hex_prefix(&digest, 24))
+}
+
+fn chat_messages_to_responses_input(messages: &[Value], is_xai_responses: bool) -> Vec<Value> {
+    let mut items = Vec::new();
+    let mut seen_item_ids = Vec::<String>::new();
+
+    for msg in messages {
+        if !msg.is_object() {
+            continue;
+        }
+        let role = get_str(msg, "role");
+        if role == "system" {
+            continue;
+        }
+
+        if matches!(role, "user" | "assistant") {
+            let content = msg.get("content").unwrap_or(&Value::Null);
+            let (content_parts, content_text) = if content.is_array() {
+                let parts = chat_content_to_responses_parts(content, role);
+                let text_type = if role == "assistant" {
+                    "output_text"
+                } else {
+                    "input_text"
+                };
+                let text = parts
+                    .iter()
+                    .filter(|part| get_str(part, "type") == text_type)
+                    .map(|part| get_str(part, "text"))
+                    .collect::<String>();
+                (parts, text)
+            } else {
+                (Vec::new(), value_to_python_str(content))
+            };
+
+            if role == "assistant" {
+                let mut has_codex_reasoning = false;
+                if !is_xai_responses {
+                    if let Some(reasoning_items) =
+                        msg.get("codex_reasoning_items").and_then(Value::as_array)
+                    {
+                        for reasoning_item in reasoning_items {
+                            let encrypted = get_str(reasoning_item, "encrypted_content");
+                            if encrypted.is_empty() {
+                                continue;
+                            }
+                            let item_id = get_str(reasoning_item, "id");
+                            if !item_id.is_empty() && seen_item_ids.iter().any(|id| id == item_id) {
+                                continue;
+                            }
+                            let mut replay_item = reasoning_item.as_object().unwrap().clone();
+                            replay_item.remove("id");
+                            items.push(Value::Object(replay_item));
+                            if !item_id.is_empty() {
+                                seen_item_ids.push(item_id.to_string());
+                            }
+                            has_codex_reasoning = true;
+                        }
+                    }
+                }
+
+                let mut replayed_message_items = 0;
+                if let Some(message_items) =
+                    msg.get("codex_message_items").and_then(Value::as_array)
+                {
+                    for raw_item in message_items {
+                        if raw_item.get("type").and_then(Value::as_str) != Some("message")
+                            || raw_item.get("role").and_then(Value::as_str) != Some("assistant")
+                        {
+                            continue;
+                        }
+                        let Some(raw_content_parts) =
+                            raw_item.get("content").and_then(Value::as_array)
+                        else {
+                            continue;
+                        };
+                        let normalized_content_parts = raw_content_parts
+                            .iter()
+                            .filter_map(|part| {
+                                let part_type = get_str(part, "type").trim();
+                                if !matches!(part_type, "output_text" | "text") {
+                                    return None;
+                                }
+                                Some(json!({
+                                    "type": "output_text",
+                                    "text": value_to_python_str(part.get("text").unwrap_or(&Value::String(String::new()))),
+                                }))
+                            })
+                            .collect::<Vec<_>>();
+                        if normalized_content_parts.is_empty() {
+                            continue;
+                        }
+                        let mut replay_item = json!({
+                            "type": "message",
+                            "role": "assistant",
+                            "status": normalize_responses_message_status(raw_item.get("status")),
+                            "content": normalized_content_parts,
+                        });
+                        if let Some(object) = replay_item.as_object_mut() {
+                            let item_id = get_str(raw_item, "id").trim();
+                            if !item_id.is_empty() {
+                                object.insert("id".to_string(), json!(item_id));
+                            }
+                            let phase = get_str(raw_item, "phase").trim();
+                            if !phase.is_empty() {
+                                object.insert("phase".to_string(), json!(phase));
+                            }
+                        }
+                        items.push(replay_item);
+                        replayed_message_items += 1;
+                    }
+                }
+
+                if replayed_message_items == 0 {
+                    if !content_parts.is_empty() {
+                        items.push(json!({"role": "assistant", "content": content_parts}));
+                    } else if !content_text.trim().is_empty() {
+                        items.push(json!({"role": "assistant", "content": content_text}));
+                    } else if has_codex_reasoning {
+                        items.push(json!({"role": "assistant", "content": ""}));
+                    }
+                }
+
+                if let Some(tool_calls) = msg.get("tool_calls").and_then(Value::as_array) {
+                    for tool_call in tool_calls {
+                        let function = tool_call.get("function").unwrap_or(&Value::Null);
+                        let fn_name = get_str(function, "name");
+                        if fn_name.trim().is_empty() {
+                            continue;
+                        }
+                        let (embedded_call_id, embedded_response_item_id) =
+                            codex_split_responses_tool_id(
+                                tool_call.get("id").unwrap_or(&Value::Null),
+                            );
+                        let mut call_id = tool_call
+                            .get("call_id")
+                            .and_then(Value::as_str)
+                            .map(str::trim)
+                            .filter(|value| !value.is_empty())
+                            .map(ToOwned::to_owned)
+                            .or(embedded_call_id);
+                        if call_id.as_ref().is_none_or(|value| value.trim().is_empty()) {
+                            if let Some(response_item_id) = embedded_response_item_id {
+                                if let Some(suffix) = response_item_id.strip_prefix("fc_") {
+                                    if !suffix.is_empty() {
+                                        call_id = Some(format!("call_{suffix}"));
+                                    }
+                                }
+                            }
+                        }
+                        let arguments_value = function
+                            .get("arguments")
+                            .cloned()
+                            .unwrap_or_else(|| json!("{}"));
+                        let raw_arguments_for_id = python_repr_for_str(&arguments_value);
+                        let mut arguments =
+                            if arguments_value.is_object() || arguments_value.is_array() {
+                                python_json_in_order(&arguments_value)
+                            } else if let Some(value) = arguments_value.as_str() {
+                                value.to_string()
+                            } else {
+                                value_to_python_str(&arguments_value)
+                            };
+                        arguments = arguments.trim().to_string();
+                        if arguments.is_empty() {
+                            arguments = "{}".to_string();
+                        }
+                        let call_id = call_id.unwrap_or_else(|| {
+                            codex_deterministic_call_id(fn_name, &raw_arguments_for_id, items.len())
+                        });
+                        items.push(json!({
+                            "type": "function_call",
+                            "call_id": call_id.trim(),
+                            "name": fn_name,
+                            "arguments": arguments,
+                        }));
+                    }
+                }
+                continue;
+            }
+
+            if !content_parts.is_empty() {
+                items.push(json!({"role": role, "content": content_parts}));
+            } else {
+                items.push(json!({"role": role, "content": content_text}));
+            }
+            continue;
+        }
+
+        if role == "tool" {
+            let raw_tool_call_id = msg.get("tool_call_id").unwrap_or(&Value::Null);
+            let (mut call_id, _) = codex_split_responses_tool_id(raw_tool_call_id);
+            if call_id.as_ref().is_none_or(|value| value.trim().is_empty()) {
+                call_id = raw_tool_call_id
+                    .as_str()
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(ToOwned::to_owned);
+            }
+            let Some(call_id) = call_id else {
+                continue;
+            };
+            let tool_content = msg.get("content").unwrap_or(&Value::Null);
+            let output = if tool_content.is_array() {
+                let converted = chat_content_to_responses_parts(tool_content, "user");
+                if converted.is_empty() {
+                    json!("")
+                } else {
+                    Value::Array(converted)
+                }
+            } else {
+                json!(value_to_python_str(tool_content))
+            };
+            items.push(json!({
+                "type": "function_call_output",
+                "call_id": call_id,
+                "output": output,
+            }));
+        }
+    }
+
+    items
+}
+
+fn preflight_error(raw_items: &Value) -> Value {
+    match preflight_codex_input_items(raw_items) {
+        Ok(_) => json!({"type": null, "message": null}),
+        Err(message) => json!({"type": "ValueError", "message": message}),
+    }
+}
+
+fn preflight_codex_input_items(raw_items: &Value) -> Result<Value, String> {
+    let Some(items) = raw_items.as_array() else {
+        return Err("Codex Responses input must be a list of input items.".to_string());
+    };
+    let mut normalized = Vec::new();
+    let mut seen_ids = Vec::<String>::new();
+    for (idx, item) in items.iter().enumerate() {
+        if !item.is_object() {
+            return Err(format!("Codex Responses input[{idx}] must be an object."));
+        }
+        let item_type = get_str(item, "type");
+        if item_type == "function_call" {
+            let call_id = get_str(item, "call_id").trim();
+            let name = get_str(item, "name").trim();
+            if call_id.is_empty() {
+                return Err(format!(
+                    "Codex Responses input[{idx}] function_call is missing call_id."
+                ));
+            }
+            if name.is_empty() {
+                return Err(format!(
+                    "Codex Responses input[{idx}] function_call is missing name."
+                ));
+            }
+            let arguments_value = item
+                .get("arguments")
+                .cloned()
+                .unwrap_or_else(|| json!("{}"));
+            let mut arguments = if arguments_value.is_object() || arguments_value.is_array() {
+                python_json_in_order(&arguments_value)
+            } else if let Some(value) = arguments_value.as_str() {
+                value.to_string()
+            } else {
+                value_to_python_str(&arguments_value)
+            };
+            arguments = arguments.trim().to_string();
+            if arguments.is_empty() {
+                arguments = "{}".to_string();
+            }
+            normalized.push(json!({
+                "type": "function_call",
+                "call_id": call_id,
+                "name": name,
+                "arguments": arguments,
+            }));
+            continue;
+        }
+        if item_type == "function_call_output" {
+            let call_id = get_str(item, "call_id").trim();
+            if call_id.is_empty() {
+                return Err(format!(
+                    "Codex Responses input[{idx}] function_call_output is missing call_id."
+                ));
+            }
+            let output = item.get("output").unwrap_or(&Value::Null);
+            if let Some(parts) = output.as_array() {
+                let mut cleaned = Vec::new();
+                for part in parts {
+                    match get_str(part, "type") {
+                        "input_text" => {
+                            let text = get_str(part, "text");
+                            if !text.is_empty() {
+                                cleaned.push(json!({"type": "input_text", "text": text}));
+                            }
+                        }
+                        "input_image" => {
+                            let url = get_str(part, "image_url");
+                            if !url.is_empty() {
+                                let mut entry = json!({"type": "input_image", "image_url": url});
+                                let detail = get_str(part, "detail").trim();
+                                if !detail.is_empty() {
+                                    entry
+                                        .as_object_mut()
+                                        .unwrap()
+                                        .insert("detail".to_string(), json!(detail));
+                                }
+                                cleaned.push(entry);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                normalized.push(json!({
+                    "type": "function_call_output",
+                    "call_id": call_id,
+                    "output": if cleaned.is_empty() { json!("") } else { Value::Array(cleaned) },
+                }));
+                continue;
+            }
+            normalized.push(json!({
+                "type": "function_call_output",
+                "call_id": call_id,
+                "output": value_to_python_str(output),
+            }));
+            continue;
+        }
+        if item_type == "reasoning" {
+            let encrypted = get_str(item, "encrypted_content");
+            if !encrypted.is_empty() {
+                let item_id = get_str(item, "id");
+                if !item_id.is_empty() {
+                    if seen_ids.iter().any(|id| id == item_id) {
+                        continue;
+                    }
+                    seen_ids.push(item_id.to_string());
+                }
+                let summary = item
+                    .get("summary")
+                    .filter(|value| value.is_array())
+                    .cloned()
+                    .unwrap_or_else(|| json!([]));
+                normalized.push(json!({
+                    "type": "reasoning",
+                    "encrypted_content": encrypted,
+                    "summary": summary,
+                }));
+            }
+            continue;
+        }
+        if item_type == "message" {
+            if get_str(item, "role") != "assistant" {
+                return Err(format!(
+                    "Codex Responses input[{idx}] message items must have role='assistant'."
+                ));
+            }
+            let Some(content) = item.get("content").and_then(Value::as_array) else {
+                return Err(format!(
+                    "Codex Responses input[{idx}] message item must have content list."
+                ));
+            };
+            let mut normalized_content = Vec::new();
+            for (part_idx, part) in content.iter().enumerate() {
+                if !part.is_object() {
+                    return Err(format!(
+                        "Codex Responses input[{idx}] message content[{part_idx}] must be an object."
+                    ));
+                }
+                let part_type = get_str(part, "type");
+                if !matches!(part_type, "output_text" | "text") {
+                    return Err(format!(
+                        "Codex Responses input[{idx}] message content[{part_idx}] has unsupported type {}.",
+                        python_repr(part.get("type").unwrap_or(&Value::Null))
+                    ));
+                }
+                normalized_content.push(json!({
+                    "type": "output_text",
+                    "text": value_to_python_str(part.get("text").unwrap_or(&Value::String(String::new()))),
+                }));
+            }
+            if normalized_content.is_empty() {
+                return Err(format!(
+                    "Codex Responses input[{idx}] message item must contain at least one text part."
+                ));
+            }
+            let mut normalized_item = json!({
+                "type": "message",
+                "role": "assistant",
+                "status": normalize_responses_message_status(item.get("status")),
+                "content": normalized_content,
+            });
+            let object = normalized_item.as_object_mut().unwrap();
+            let item_id = get_str(item, "id").trim();
+            if !item_id.is_empty() {
+                object.insert("id".to_string(), json!(item_id));
+            }
+            let phase = get_str(item, "phase").trim();
+            if !phase.is_empty() {
+                object.insert("phase".to_string(), json!(phase));
+            }
+            normalized.push(normalized_item);
+            continue;
+        }
+        let role = get_str(item, "role");
+        if matches!(role, "user" | "assistant") {
+            let content = item.get("content").unwrap_or(&Value::Null);
+            if let Some(parts) = content.as_array() {
+                let text_type = if role == "assistant" {
+                    "output_text"
+                } else {
+                    "input_text"
+                };
+                let mut validated = Vec::new();
+                for (part_idx, part) in parts.iter().enumerate() {
+                    if let Some(text) = part.as_str() {
+                        if !text.is_empty() {
+                            validated.push(json!({"type": text_type, "text": text}));
+                        }
+                        continue;
+                    }
+                    if !part.is_object() {
+                        return Err(format!(
+                            "Codex Responses input[{idx}].content[{part_idx}] must be an object or string."
+                        ));
+                    }
+                    let ptype = get_str(part, "type").trim().to_ascii_lowercase();
+                    if matches!(ptype.as_str(), "input_text" | "text" | "output_text") {
+                        validated.push(json!({
+                            "type": text_type,
+                            "text": value_to_python_str(part.get("text").unwrap_or(&Value::String(String::new()))),
+                        }));
+                    } else if matches!(ptype.as_str(), "input_image" | "image_url") {
+                        let image_ref = part.get("image_url").unwrap_or(&Value::Null);
+                        let (url, detail) = if let Some(object) = image_ref.as_object() {
+                            (
+                                object
+                                    .get("url")
+                                    .map(value_to_python_str)
+                                    .unwrap_or_default(),
+                                object
+                                    .get("detail")
+                                    .or_else(|| part.get("detail"))
+                                    .and_then(Value::as_str)
+                                    .map(str::trim)
+                                    .filter(|value| !value.is_empty())
+                                    .map(ToOwned::to_owned),
+                            )
+                        } else {
+                            (
+                                value_to_python_str(image_ref),
+                                part.get("detail")
+                                    .and_then(Value::as_str)
+                                    .map(str::trim)
+                                    .filter(|value| !value.is_empty())
+                                    .map(ToOwned::to_owned),
+                            )
+                        };
+                        let mut image_part = json!({"type": "input_image", "image_url": url});
+                        if let Some(detail) = detail {
+                            image_part
+                                .as_object_mut()
+                                .unwrap()
+                                .insert("detail".to_string(), json!(detail));
+                        }
+                        validated.push(image_part);
+                    } else {
+                        return Err(format!(
+                            "Codex Responses input[{idx}].content[{part_idx}] has unsupported type {}.",
+                            python_repr(part.get("type").unwrap_or(&Value::Null))
+                        ));
+                    }
+                }
+                normalized.push(json!({"role": role, "content": validated}));
+                continue;
+            }
+            normalized.push(json!({"role": role, "content": value_to_python_str(content)}));
+            continue;
+        }
+        return Err(format!(
+            "Codex Responses input[{idx}] has unsupported item shape (type={item_type:?}, role={role:?})."
+        ));
+    }
+    Ok(Value::Array(normalized))
+}
+
+fn preflight_codex_api_kwargs(api_kwargs: &Value) -> Result<Value, String> {
+    let object = api_kwargs
+        .as_object()
+        .ok_or_else(|| "Codex Responses request must be a dict.".to_string())?;
+    for required in ["model", "instructions", "input"] {
+        if !object.contains_key(required) {
+            return Err(format!(
+                "Codex Responses request missing required field(s): {required}."
+            ));
+        }
+    }
+    let model = get_str(api_kwargs, "model").trim();
+    if model.is_empty() {
+        return Err("Codex Responses request 'model' must be a non-empty string.".to_string());
+    }
+    let mut instructions = value_to_python_str(api_kwargs.get("instructions").unwrap())
+        .trim()
+        .to_string();
+    if instructions.is_empty() {
+        instructions = DEFAULT_AGENT_IDENTITY.to_string();
+    }
+    let normalized_input = preflight_codex_input_items(api_kwargs.get("input").unwrap())?;
+    let mut normalized = json!({
+        "model": model,
+        "instructions": instructions,
+        "input": normalized_input,
+        "store": false,
+    });
+
+    if let Some(tools) = api_kwargs.get("tools") {
+        if !tools.is_null() {
+            let Some(tools_array) = tools.as_array() else {
+                return Err(
+                    "Codex Responses request 'tools' must be a list when provided.".to_string(),
+                );
+            };
+            let mut normalized_tools = Vec::new();
+            for (idx, tool) in tools_array.iter().enumerate() {
+                if !tool.is_object() {
+                    return Err(format!("Codex Responses tools[{idx}] must be an object."));
+                }
+                if get_str(tool, "type") != "function" {
+                    return Err(format!(
+                        "Codex Responses tools[{idx}] has unsupported type {}.",
+                        python_repr(tool.get("type").unwrap_or(&Value::Null))
+                    ));
+                }
+                let name = get_str(tool, "name").trim();
+                if name.is_empty() {
+                    return Err(format!(
+                        "Codex Responses tools[{idx}] is missing a valid name."
+                    ));
+                }
+                let parameters = tool
+                    .get("parameters")
+                    .filter(|value| value.is_object())
+                    .ok_or_else(|| {
+                        format!("Codex Responses tools[{idx}] is missing valid parameters.")
+                    })?;
+                normalized_tools.push(json!({
+                    "type": "function",
+                    "name": name,
+                    "description": value_to_python_str(tool.get("description").unwrap_or(&Value::String(String::new()))),
+                    "strict": tool.get("strict").and_then(Value::as_bool).unwrap_or_else(|| !tool.get("strict").unwrap_or(&Value::Bool(false)).is_null()),
+                    "parameters": parameters,
+                }));
+            }
+            normalized
+                .as_object_mut()
+                .unwrap()
+                .insert("tools".to_string(), Value::Array(normalized_tools));
+        }
+    }
+
+    if api_kwargs.get("store") != Some(&Value::Bool(false)) {
+        return Err("Codex Responses contract requires 'store' to be false.".to_string());
+    }
+    let target = normalized.as_object_mut().unwrap();
+    for key in ["reasoning", "include"] {
+        if let Some(value) = api_kwargs.get(key) {
+            if (key == "reasoning" && value.is_object()) || (key == "include" && value.is_array()) {
+                target.insert(key.to_string(), value.clone());
+            }
+        }
+    }
+    let service_tier = get_str(api_kwargs, "service_tier").trim();
+    if !service_tier.is_empty() {
+        target.insert("service_tier".to_string(), json!(service_tier));
+    }
+    if let Some(tokens) = api_kwargs.get("max_output_tokens").and_then(Value::as_f64) {
+        if tokens > 0.0 {
+            target.insert("max_output_tokens".to_string(), json!(tokens as i64));
+        }
+    }
+    if let Some(temperature) = api_kwargs.get("temperature").and_then(Value::as_f64) {
+        target.insert("temperature".to_string(), json!(temperature));
+    }
+    for key in ["tool_choice", "parallel_tool_calls", "prompt_cache_key"] {
+        if let Some(value) = api_kwargs.get(key).filter(|value| !value.is_null()) {
+            target.insert(key.to_string(), value.clone());
+        }
+    }
+    if let Some(headers) = api_kwargs.get("extra_headers") {
+        let mut normalized_headers = serde_json::Map::new();
+        if let Some(headers) = headers.as_object() {
+            for (key, value) in headers {
+                let trimmed = key.trim();
+                if !trimmed.is_empty() && !value.is_null() {
+                    normalized_headers
+                        .insert(trimmed.to_string(), json!(value_to_python_str(value)));
+                }
+            }
+        }
+        if !normalized_headers.is_empty() {
+            target.insert(
+                "extra_headers".to_string(),
+                Value::Object(normalized_headers),
+            );
+        }
+    }
+    if let Some(extra_body) = api_kwargs
+        .get("extra_body")
+        .filter(|value| value.is_object())
+    {
+        if !extra_body.as_object().unwrap().is_empty() {
+            target.insert("extra_body".to_string(), extra_body.clone());
+        }
+    }
+    Ok(normalized)
+}
+
+fn normalize_codex_response(response: &Value) -> Value {
+    let output = response
+        .get("output")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let response_status = response
+        .get("status")
+        .and_then(Value::as_str)
+        .map(|value| value.trim().to_ascii_lowercase());
+    let mut content_parts = Vec::new();
+    let mut reasoning_parts = Vec::new();
+    let mut reasoning_items_raw = Vec::new();
+    let mut message_items_raw = Vec::new();
+    let mut tool_calls = Vec::new();
+    let mut has_incomplete_items = matches!(
+        response_status.as_deref(),
+        Some("queued" | "in_progress" | "incomplete")
+    );
+    let mut saw_commentary_phase = false;
+    let mut saw_final_answer_phase = false;
+
+    for item in &output {
+        let item_type = get_str(item, "type");
+        let item_status = item
+            .get("status")
+            .and_then(Value::as_str)
+            .map(|value| value.trim().to_ascii_lowercase());
+        if matches!(
+            item_status.as_deref(),
+            Some("queued" | "in_progress" | "incomplete")
+        ) {
+            has_incomplete_items = true;
+        }
+        match item_type {
+            "message" => {
+                let normalized_phase = item
+                    .get("phase")
+                    .and_then(Value::as_str)
+                    .map(|value| value.trim().to_ascii_lowercase())
+                    .filter(|value| !value.is_empty());
+                if matches!(normalized_phase.as_deref(), Some("commentary" | "analysis")) {
+                    saw_commentary_phase = true;
+                } else if matches!(normalized_phase.as_deref(), Some("final_answer" | "final")) {
+                    saw_final_answer_phase = true;
+                }
+                let message_text = extract_responses_message_text(item);
+                if !message_text.is_empty() {
+                    content_parts.push(message_text.clone());
+                    let mut raw_message_item = json!({
+                        "type": "message",
+                        "role": "assistant",
+                        "status": normalize_responses_message_status_str(item_status.as_deref()),
+                        "content": [{"type": "output_text", "text": message_text}],
+                    });
+                    let object = raw_message_item.as_object_mut().unwrap();
+                    let item_id = get_str(item, "id");
+                    if !item_id.is_empty() {
+                        object.insert("id".to_string(), json!(item_id));
+                    }
+                    if let Some(phase) = normalized_phase {
+                        object.insert("phase".to_string(), json!(phase));
+                    }
+                    message_items_raw.push(raw_message_item);
+                }
+            }
+            "reasoning" => {
+                let reasoning_text = extract_responses_reasoning_text(item);
+                if !reasoning_text.is_empty() {
+                    reasoning_parts.push(reasoning_text);
+                }
+                let encrypted = get_str(item, "encrypted_content");
+                if !encrypted.is_empty() {
+                    let mut raw_item = json!({"type": "reasoning", "encrypted_content": encrypted});
+                    let object = raw_item.as_object_mut().unwrap();
+                    let item_id = get_str(item, "id");
+                    if !item_id.is_empty() {
+                        object.insert("id".to_string(), json!(item_id));
+                    }
+                    if let Some(summary) = item.get("summary").and_then(Value::as_array) {
+                        let raw_summary = summary
+                            .iter()
+                            .filter_map(|part| {
+                                part.get("text")
+                                    .and_then(Value::as_str)
+                                    .map(|text| json!({"type": "summary_text", "text": text}))
+                            })
+                            .collect::<Vec<_>>();
+                        object.insert("summary".to_string(), Value::Array(raw_summary));
+                    }
+                    reasoning_items_raw.push(raw_item);
+                }
+            }
+            "function_call" | "custom_tool_call" => {
+                if matches!(
+                    item_status.as_deref(),
+                    Some("queued" | "in_progress" | "incomplete")
+                ) {
+                    continue;
+                }
+                let fn_name = get_str(item, "name");
+                let argument_key = if item_type == "custom_tool_call" {
+                    "input"
+                } else {
+                    "arguments"
+                };
+                let arguments_value = item
+                    .get(argument_key)
+                    .cloned()
+                    .unwrap_or_else(|| json!("{}"));
+                let arguments = if arguments_value.is_string() {
+                    arguments_value.as_str().unwrap().to_string()
+                } else {
+                    python_json_in_order(&arguments_value)
+                };
+                let raw_call_id = item.get("call_id").and_then(Value::as_str).map(str::trim);
+                let raw_item_id = item.get("id").unwrap_or(&Value::Null);
+                let (embedded_call_id, _) = codex_split_responses_tool_id(raw_item_id);
+                let call_id = raw_call_id
+                    .filter(|value| !value.is_empty())
+                    .map(ToOwned::to_owned)
+                    .or(embedded_call_id)
+                    .unwrap_or_else(|| {
+                        codex_deterministic_call_id(fn_name, &arguments, tool_calls.len())
+                    });
+                let response_item_id = raw_item_id.as_str();
+                let response_item_id =
+                    codex_derive_responses_function_call_id(&call_id, response_item_id);
+                tool_calls.push(json!({
+                    "id": call_id,
+                    "call_id": call_id,
+                    "response_item_id": response_item_id,
+                    "type": "function",
+                    "function": {
+                        "name": fn_name,
+                        "arguments": arguments,
+                    },
+                }));
+            }
+            _ => {}
+        }
+    }
+
+    let final_text = content_parts
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string();
+    let finish_reason = if !tool_calls.is_empty() {
+        "tool_calls"
+    } else if has_incomplete_items
+        || (saw_commentary_phase && !saw_final_answer_phase)
+        || (!reasoning_items_raw.is_empty() && final_text.is_empty())
+    {
+        "incomplete"
+    } else {
+        "stop"
+    };
+    json!({
+        "finish_reason": finish_reason,
+        "message": {
+            "content": final_text,
+            "tool_calls": tool_calls,
+            "reasoning": if reasoning_parts.is_empty() { Value::Null } else { json!(reasoning_parts.join("\n\n")) },
+            "codex_reasoning_items": if reasoning_items_raw.is_empty() { Value::Null } else { Value::Array(reasoning_items_raw) },
+            "codex_message_items": if message_items_raw.is_empty() { Value::Null } else { Value::Array(message_items_raw) },
+        },
+    })
+}
+
+fn chat_content_to_responses_parts(content: &Value, role: &str) -> Vec<Value> {
+    let text_type = if role == "assistant" {
+        "output_text"
+    } else {
+        "input_text"
+    };
+    let Some(parts) = content.as_array() else {
+        return Vec::new();
+    };
+    let mut converted = Vec::new();
+    for part in parts {
+        if let Some(text) = part.as_str() {
+            if !text.is_empty() {
+                converted.push(json!({"type": text_type, "text": text}));
+            }
+            continue;
+        }
+        if !part.is_object() {
+            continue;
+        }
+        let ptype = get_str(part, "type").trim().to_ascii_lowercase();
+        if matches!(ptype.as_str(), "text" | "input_text" | "output_text") {
+            let text = part.get("text").and_then(Value::as_str).unwrap_or("");
+            if !text.is_empty() {
+                converted.push(json!({"type": text_type, "text": text}));
+            }
+        } else if matches!(ptype.as_str(), "image_url" | "input_image") {
+            let image_ref = part.get("image_url").unwrap_or(&Value::Null);
+            let (url, detail) = if let Some(object) = image_ref.as_object() {
+                (
+                    object.get("url").and_then(Value::as_str).unwrap_or(""),
+                    object
+                        .get("detail")
+                        .or_else(|| part.get("detail"))
+                        .and_then(Value::as_str),
+                )
+            } else {
+                (
+                    image_ref.as_str().unwrap_or(""),
+                    part.get("detail").and_then(Value::as_str),
+                )
+            };
+            if !url.is_empty() {
+                let mut image_part = json!({"type": "input_image", "image_url": url});
+                if let Some(detail) = detail.map(str::trim).filter(|value| !value.is_empty()) {
+                    image_part
+                        .as_object_mut()
+                        .unwrap()
+                        .insert("detail".to_string(), json!(detail));
+                }
+                converted.push(image_part);
+            }
+        }
+    }
+    converted
+}
+
+fn normalize_responses_message_status(value: Option<&Value>) -> &'static str {
+    if let Some(raw) = value.and_then(Value::as_str) {
+        return normalize_responses_message_status_str(Some(raw));
+    }
+    "completed"
+}
+
+fn normalize_responses_message_status_str(value: Option<&str>) -> &'static str {
+    if let Some(raw) = value {
+        let status = raw.trim().to_ascii_lowercase().replace(['-', ' '], "_");
+        if matches!(status.as_str(), "completed" | "incomplete" | "in_progress") {
+            return match status.as_str() {
+                "incomplete" => "incomplete",
+                "in_progress" => "in_progress",
+                _ => "completed",
+            };
+        }
+    }
+    "completed"
+}
+
+fn extract_responses_message_text(item: &Value) -> String {
+    item.get("content")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|part| matches!(get_str(part, "type"), "output_text" | "text"))
+        .filter_map(|part| part.get("text").and_then(Value::as_str))
+        .filter(|text| !text.is_empty())
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+fn extract_responses_reasoning_text(item: &Value) -> String {
+    if let Some(summary) = item.get("summary").and_then(Value::as_array) {
+        let chunks = summary
+            .iter()
+            .filter_map(|part| part.get("text").and_then(Value::as_str))
+            .filter(|text| !text.is_empty())
+            .collect::<Vec<_>>();
+        if !chunks.is_empty() {
+            return chunks.join("\n").trim().to_string();
+        }
+    }
+    get_str(item, "text").trim().to_string()
+}
+
+fn value_to_python_str(value: &Value) -> String {
+    match value {
+        Value::Null => String::new(),
+        Value::String(value) => value.clone(),
+        _ => value.to_string(),
+    }
+}
+
+fn python_repr(value: &Value) -> String {
+    match value {
+        Value::String(value) => format!("'{value}'"),
+        Value::Null => "None".to_string(),
+        Value::Bool(true) => "True".to_string(),
+        Value::Bool(false) => "False".to_string(),
+        _ => value.to_string(),
+    }
+}
+
+fn python_repr_for_str(value: &Value) -> String {
+    match value {
+        Value::Object(object) => {
+            let parts = object
+                .iter()
+                .map(|(key, value)| format!("'{key}': {}", python_repr_for_str(value)))
+                .collect::<Vec<_>>();
+            format!("{{{}}}", parts.join(", "))
+        }
+        Value::Array(items) => {
+            let parts = items.iter().map(python_repr_for_str).collect::<Vec<_>>();
+            format!("[{}]", parts.join(", "))
+        }
+        Value::String(value) => value.clone(),
+        Value::Null => "None".to_string(),
+        Value::Bool(true) => "True".to_string(),
+        Value::Bool(false) => "False".to_string(),
+        _ => value.to_string(),
+    }
+}
+
+fn nonempty_trimmed(value: &str) -> Option<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value.to_string())
+    }
+}
+
+fn hex_prefix(bytes: &[u8], chars: usize) -> String {
+    let mut out = String::with_capacity(chars);
+    for byte in bytes {
+        out.push_str(&format!("{byte:02x}"));
+        if out.len() >= chars {
+            out.truncate(chars);
+            break;
+        }
+    }
+    out
 }
 
 #[derive(Debug, Default)]

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from parity_common import fixture, isolated_hermes_home, parse_out_arg, write_fixture
 
 
@@ -23,6 +25,15 @@ def main() -> int:
             map_finish_reason,
         )
         from agent.transports.codex_event_projector import CodexEventProjector
+        from agent.codex_responses_adapter import (
+            _chat_messages_to_responses_input,
+            _derive_responses_function_call_id,
+            _deterministic_call_id,
+            _normalize_codex_response,
+            _preflight_codex_api_kwargs,
+            _preflight_codex_input_items,
+            _split_responses_tool_id,
+        )
         import agent.stream_diag as stream_diag
         from agent.error_classifier import classify_api_error
         from providers.base import ProviderProfile
@@ -564,6 +575,260 @@ def main() -> int:
             ),
         ]
 
+        codex_id_helpers = {
+            "deterministic": {
+                "terminal_zero": _deterministic_call_id("terminal", '{"cmd":"ls"}', 0),
+                "terminal_one": _deterministic_call_id("terminal", '{"cmd":"ls"}', 1),
+                "unicode": _deterministic_call_id("unicode", '{"text":"olá"}', 2),
+            },
+            "split": {
+                "pipe": list(_split_responses_tool_id(" call_abc | fc_def ")),
+                "fc_only": list(_split_responses_tool_id("fc_response_item")),
+                "call_only": list(_split_responses_tool_id("call_plain")),
+                "empty": list(_split_responses_tool_id("  ")),
+                "nonstr": list(_split_responses_tool_id(42)),
+            },
+            "derive": {
+                "response_item_wins": _derive_responses_function_call_id(
+                    "call_abc", " fc_existing "
+                ),
+                "call_prefix": _derive_responses_function_call_id("call_abc", None),
+                "already_fc": _derive_responses_function_call_id("fc_raw", None),
+                "sanitized": _derive_responses_function_call_id("weird id/!*", None),
+                "response_seed": _derive_responses_function_call_id("", "notfc"),
+            },
+        }
+
+        codex_messages = [
+            {"role": "system", "content": "ignored system"},
+            {
+                "role": "user",
+                "content": [
+                    "lead",
+                    {"type": "text", "text": "hello"},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": "https://example.invalid/a.png", "detail": "low"},
+                    },
+                    {"type": "unknown", "text": "ignored"},
+                ],
+            },
+            {
+                "role": "assistant",
+                "content": "",
+                "codex_reasoning_items": [
+                    {
+                        "id": "rs_1",
+                        "type": "reasoning",
+                        "encrypted_content": "enc-1",
+                        "summary": [{"type": "summary_text", "text": "sum"}],
+                    },
+                    {
+                        "id": "rs_1",
+                        "type": "reasoning",
+                        "encrypted_content": "enc-duplicate",
+                    },
+                ],
+                "codex_message_items": [
+                    {
+                        "id": "msg_1",
+                        "type": "message",
+                        "role": "assistant",
+                        "status": "in progress",
+                        "phase": "final_answer",
+                        "content": [
+                            {"type": "text", "text": "prior"},
+                            {"type": "ignored", "text": "drop"},
+                        ],
+                    }
+                ],
+                "tool_calls": [
+                    {
+                        "id": " call_embedded | fc_item ",
+                        "type": "function",
+                        "function": {"name": "terminal", "arguments": {"cmd": "pwd"}},
+                    },
+                    {
+                        "id": "fc_only_item",
+                        "type": "function",
+                        "function": {"name": "read_file", "arguments": " {\"path\":\"x\"} "},
+                    },
+                    {
+                        "type": "function",
+                        "function": {"name": "missing_id", "arguments": {"a": 1}},
+                    },
+                ],
+            },
+            {
+                "role": "tool",
+                "tool_call_id": " call_embedded | fc_item ",
+                "content": [
+                    {"type": "text", "text": "tool output"},
+                    {
+                        "type": "image_url",
+                        "image_url": "https://example.invalid/tool.png",
+                        "detail": "high",
+                    },
+                    {"type": "unknown", "text": "drop"},
+                ],
+            },
+            {"role": "tool", "tool_call_id": "", "content": "ignored"},
+        ]
+        codex_input_conversion = {
+            "standard": _chat_messages_to_responses_input(codex_messages),
+            "xai": _chat_messages_to_responses_input(
+                codex_messages, is_xai_responses=True
+            ),
+        }
+
+        preflight_items_input = [
+            {"type": "function_call", "call_id": " call_1 ", "name": " terminal ", "arguments": {"cmd": "ls"}},
+            {
+                "type": "function_call_output",
+                "call_id": " call_1 ",
+                "output": [
+                    {"type": "input_text", "text": "ok"},
+                    {"type": "input_image", "image_url": "https://example.invalid/i.png", "detail": " low "},
+                    {"type": "input_image", "image_url": ""},
+                    {"type": "bad", "text": "drop"},
+                ],
+            },
+            {"type": "reasoning", "id": "rs_a", "encrypted_content": "enc-a", "summary": ["raw"]},
+            {"type": "reasoning", "id": "rs_a", "encrypted_content": "enc-b"},
+            {
+                "type": "message",
+                "role": "assistant",
+                "status": "IN-PROGRESS",
+                "id": " msg_keep ",
+                "phase": " commentary ",
+                "content": [{"type": "text", "text": 123}],
+            },
+            {
+                "role": "assistant",
+                "content": [
+                    "inline",
+                    {"type": "input_text", "text": "assistant text"},
+                    {"type": "input_image", "image_url": "https://example.invalid/ignored.png"},
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "output_text", "text": "coerced"},
+                    {"type": "image_url", "image_url": {"url": "https://example.invalid/user.png", "detail": "auto"}},
+                ],
+            },
+        ]
+
+        def preflight_error(raw_items):
+            try:
+                _preflight_codex_input_items(raw_items)
+            except Exception as exc:
+                return {"type": type(exc).__name__, "message": str(exc)}
+            return {"type": None, "message": None}
+
+        codex_preflight = {
+            "items": _preflight_codex_input_items(preflight_items_input),
+            "errors": {
+                "not_list": preflight_error({"bad": True}),
+                "bad_tool_output": preflight_error([
+                    {"type": "function_call_output", "output": "missing call"},
+                ]),
+                "bad_message_role": preflight_error([
+                    {"type": "message", "role": "user", "content": []},
+                ]),
+                "bad_content_part": preflight_error([
+                    {"role": "user", "content": [{"type": "unsupported"}]},
+                ]),
+            },
+            "api_kwargs": _preflight_codex_api_kwargs(
+                {
+                    "model": " gpt-5.4 ",
+                    "instructions": " ",
+                    "input": preflight_items_input[:2],
+                    "tools": [
+                        {
+                            "type": "function",
+                            "name": " terminal ",
+                            "description": 123,
+                            "strict": "yes",
+                            "parameters": {"type": "object"},
+                        }
+                    ],
+                    "store": False,
+                    "include": ["reasoning.encrypted_content"],
+                    "reasoning": {"effort": "medium"},
+                    "max_output_tokens": 99.9,
+                    "temperature": 0,
+                    "tool_choice": "auto",
+                    "parallel_tool_calls": True,
+                    "prompt_cache_key": "session-x",
+                    "service_tier": " priority ",
+                    "extra_headers": {" X-Test ": 7, "Skip": None},
+                    "extra_body": {"prompt_cache_key": "session-x"},
+                }
+            ),
+        }
+
+        response = SimpleNamespace(
+            status="incomplete",
+            output=[
+                SimpleNamespace(
+                    type="reasoning",
+                    id="rs_resp",
+                    encrypted_content="enc-resp",
+                    summary=[SimpleNamespace(text="reason one")],
+                    status="completed",
+                ),
+                SimpleNamespace(
+                    type="message",
+                    id="msg_resp",
+                    status="completed",
+                    phase="commentary",
+                    content=[SimpleNamespace(type="output_text", text="thinking aloud")],
+                ),
+                SimpleNamespace(
+                    type="function_call",
+                    id="fc_tool",
+                    call_id="",
+                    name="terminal",
+                    arguments={"cmd": "ls"},
+                    status="completed",
+                ),
+                SimpleNamespace(
+                    type="custom_tool_call",
+                    id="custom|fc_custom",
+                    call_id=None,
+                    name="custom_tool",
+                    input=["raw"],
+                    status="completed",
+                ),
+            ],
+        )
+        normalized_message, normalized_finish_reason = _normalize_codex_response(response)
+        codex_response_normalization = {
+            "finish_reason": normalized_finish_reason,
+            "message": {
+                "content": normalized_message.content,
+                "reasoning": normalized_message.reasoning,
+                "codex_reasoning_items": normalized_message.codex_reasoning_items,
+                "codex_message_items": normalized_message.codex_message_items,
+                "tool_calls": [
+                    {
+                        "id": tool_call.id,
+                        "call_id": tool_call.call_id,
+                        "response_item_id": tool_call.response_item_id,
+                        "type": tool_call.type,
+                        "function": {
+                            "name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments,
+                        },
+                    }
+                    for tool_call in normalized_message.tool_calls
+                ],
+            },
+        }
+
     cases = [
         {"name": "chat_completions_fake_provider", "request": kwargs},
         {"name": "chat_completions_strips_codex_leaks", "request": sanitized_chat_kwargs},
@@ -616,6 +881,10 @@ def main() -> int:
         },
         {"name": "stream_diagnostics", "cases": stream_diagnostics},
         {"name": "error_classification", "cases": error_classification},
+        {"name": "codex_responses_id_helpers", "cases": codex_id_helpers},
+        {"name": "codex_responses_input_conversion", "cases": codex_input_conversion},
+        {"name": "codex_responses_preflight", "cases": codex_preflight},
+        {"name": "codex_response_normalization", "cases": codex_response_normalization},
     ]
     write_fixture(out, fixture(SCRIPT, cases))
     return 0

@@ -1775,6 +1775,23 @@ fn provider_request_shape_matches_python_fixture() {
             classification["name"].as_str().unwrap()
         );
     }
+
+    assert_eq!(
+        hermes_provider::codex_responses_id_helpers_fixture(),
+        case(&fixture, "codex_responses_id_helpers")["cases"]
+    );
+    assert_eq!(
+        hermes_provider::codex_responses_input_conversion_fixture(),
+        case(&fixture, "codex_responses_input_conversion")["cases"]
+    );
+    assert_eq!(
+        hermes_provider::codex_responses_preflight_fixture(),
+        case(&fixture, "codex_responses_preflight")["cases"]
+    );
+    assert_eq!(
+        hermes_provider::codex_response_normalization_fixture(),
+        case(&fixture, "codex_response_normalization")["cases"]
+    );
 }
 
 #[test]

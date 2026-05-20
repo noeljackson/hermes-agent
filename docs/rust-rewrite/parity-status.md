@@ -71,7 +71,11 @@ against those fixtures in `crates/hermes-parity`:
   transient usage limits, model-not-found, policy blocks, payload/context
   overflow, thinking-signature recovery, llama.cpp grammar retry, rate-limit
   type coercion, remote disconnects, SSL transport retry, and Grok entitlement
-  failures.
+  failures. Responses replay/id helpers now cover deterministic call IDs,
+  stored `call_id|response_item_id` splitting, `fc_` derivation, chat-message
+  to Responses input conversion, xAI encrypted-reasoning stripping, preflight
+  input/API-kwargs normalization, validation error strings, and normalized
+  response extraction for reasoning/message/tool-call continuity.
 - Provider profiles: built-in provider inventory, aliases, API modes, auth
   types, environment key discovery metadata, base URLs, fallback counts,
   max-token defaults, fixed-temperature sentinels, and default header keys.
