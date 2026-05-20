@@ -44,7 +44,9 @@ against those fixtures in `crates/hermes-parity`:
   accessors, and finish-reason mapping. Provider/model Responses API routing is
   fixture-backed for GPT-5 vendor-prefix stripping, the Nous GPT-5
   chat-completions exception, OpenRouter GPT-5 routing, blank-provider fallback,
-  and Copilot non-GPT-5 behavior.
+  and Copilot non-GPT-5 behavior. Max-token parameter routing is fixture-backed
+  for direct OpenAI, Azure OpenAI, GitHub Copilot, OpenRouter, and local
+  OpenAI-compatible URLs.
 - Provider profiles: built-in provider inventory, aliases, API modes, auth
   types, environment key discovery metadata, base URLs, fallback counts,
   max-token defaults, fixed-temperature sentinels, and default header keys.

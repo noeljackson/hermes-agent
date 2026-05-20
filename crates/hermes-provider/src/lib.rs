@@ -304,6 +304,45 @@ fn copilot_model_requires_responses_api(model: &str) -> bool {
     model_requires_responses_api(model)
 }
 
+pub fn max_tokens_param(base_url: &str, value: i64) -> Value {
+    if is_direct_openai_url(base_url)
+        || is_azure_openai_url(base_url)
+        || is_github_copilot_url(base_url)
+    {
+        json!({"max_completion_tokens": value})
+    } else {
+        json!({"max_tokens": value})
+    }
+}
+
+pub fn is_direct_openai_url(base_url: &str) -> bool {
+    base_url_hostname(base_url) == "api.openai.com"
+}
+
+pub fn is_azure_openai_url(base_url: &str) -> bool {
+    base_url.to_ascii_lowercase().contains("openai.azure.com")
+}
+
+pub fn is_github_copilot_url(base_url: &str) -> bool {
+    base_url_hostname(base_url) == "api.githubcopilot.com"
+}
+
+fn base_url_hostname(base_url: &str) -> String {
+    let lower = base_url.trim().to_ascii_lowercase();
+    let without_scheme = lower
+        .split_once("://")
+        .map(|(_, rest)| rest)
+        .unwrap_or(lower.as_str());
+    let authority = without_scheme.split('/').next().unwrap_or_default();
+    let host_port = authority.rsplit('@').next().unwrap_or(authority);
+    host_port
+        .split(':')
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_string()
+}
+
 const PROVIDER_PROFILES: &[ProviderProfileSummary] = &[
     ProviderProfileSummary {
         name: "ai-gateway",

@@ -248,6 +248,26 @@
         "openrouter_gpt5": true
       },
       "name": "responses_api_routing"
+    },
+    {
+      "cases": {
+        "azure_openai": {
+          "max_completion_tokens": 321
+        },
+        "direct_openai": {
+          "max_completion_tokens": 321
+        },
+        "github_copilot": {
+          "max_completion_tokens": 321
+        },
+        "local": {
+          "max_tokens": 321
+        },
+        "openrouter": {
+          "max_tokens": 321
+        }
+      },
+      "name": "max_tokens_param_routing"
     }
   ],
   "source": {

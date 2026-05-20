@@ -165,6 +165,18 @@ def main() -> int:
                 "gpt-4o", provider="copilot"
             ),
         }
+        max_tokens_routing = {}
+        for name, base_url in {
+            "direct_openai": "https://api.openai.com/v1",
+            "azure_openai": "https://example-resource.openai.azure.com/openai/v1",
+            "github_copilot": "https://api.githubcopilot.com",
+            "openrouter": "https://openrouter.ai/api/v1",
+            "local": "http://localhost:11434/v1",
+        }.items():
+            agent = AIAgent.__new__(AIAgent)
+            agent._base_url_lower = base_url.lower()
+            agent._base_url_hostname = ""
+            max_tokens_routing[name] = AIAgent._max_tokens_param(agent, 321)
 
     cases = [
         {"name": "chat_completions_fake_provider", "request": kwargs},
@@ -209,6 +221,7 @@ def main() -> int:
             },
         },
         {"name": "responses_api_routing", "cases": responses_api_routing},
+        {"name": "max_tokens_param_routing", "cases": max_tokens_routing},
     ]
     write_fixture(out, fixture(SCRIPT, cases))
     return 0

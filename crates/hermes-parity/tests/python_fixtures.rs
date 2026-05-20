@@ -1687,6 +1687,24 @@ fn provider_request_shape_matches_python_fixture() {
         hermes_provider::provider_model_requires_responses_api("gpt-4o", Some("copilot")),
         routing["copilot_gpt4o"]
     );
+
+    let max_tokens = &case(&fixture, "max_tokens_param_routing")["cases"];
+    for (name, base_url) in [
+        ("direct_openai", "https://api.openai.com/v1"),
+        (
+            "azure_openai",
+            "https://example-resource.openai.azure.com/openai/v1",
+        ),
+        ("github_copilot", "https://api.githubcopilot.com"),
+        ("openrouter", "https://openrouter.ai/api/v1"),
+        ("local", "http://localhost:11434/v1"),
+    ] {
+        assert_eq!(
+            hermes_provider::max_tokens_param(base_url, 321),
+            max_tokens[name],
+            "{name}"
+        );
+    }
 }
 
 #[test]
