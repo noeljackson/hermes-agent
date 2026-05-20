@@ -45,6 +45,11 @@ against those fixtures in `crates/hermes-parity`:
   high-value defaults for model, toolsets, agent limits/timeouts, terminal
   sandbox settings, browser safety defaults, memory, security, cron, logging,
   sessions, updates, and LSP.
+- Profile migration rules: profile bootstrap directories, clone config files,
+  memory subdirectory files, clone-all runtime strip files, default-profile
+  infrastructure exclusions, export exclusions, no-bundled-skills marker,
+  profile-name normalization/validation, clone-all ignore behavior for default
+  vs named profiles, and portable export ignore behavior.
 - Install/update: install-method stamp format, stamped-method detection, and
   recommended update command mapping for NixOS, Homebrew, Docker, pip, git,
   and unknown installs.

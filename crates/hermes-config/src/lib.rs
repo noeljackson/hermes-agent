@@ -120,6 +120,78 @@ pub fn migration_dry_run_report(home: &Path) -> Value {
     })
 }
 
+pub fn profile_migration_constants_fixture() -> Value {
+    json!({
+        "profile_dirs": PROFILE_DIRS,
+        "clone_config_files": CLONE_CONFIG_FILES,
+        "clone_subdir_files": CLONE_SUBDIR_FILES,
+        "clone_all_strip": CLONE_ALL_STRIP,
+        "clone_all_default_exclude_root": sorted_strings(CLONE_ALL_DEFAULT_EXCLUDE_ROOT),
+        "default_export_exclude_root": sorted_strings(DEFAULT_EXPORT_EXCLUDE_ROOT),
+        "no_bundled_skills_marker": NO_BUNDLED_SKILLS_MARKER,
+    })
+}
+
+pub fn profile_name_validation_cases(inputs: &[&str]) -> Value {
+    Value::Array(
+        inputs
+            .iter()
+            .map(|input| match normalize_profile_name(input) {
+                Ok(normalized) => match validate_profile_name(&normalized) {
+                    Ok(()) => json!({
+                        "input": input,
+                        "normalized": normalized,
+                        "valid_after_normalize": true,
+                        "validation_error": null,
+                    }),
+                    Err(error) => json!({
+                        "input": input,
+                        "normalized": normalized,
+                        "valid_after_normalize": false,
+                        "validation_error": error,
+                    }),
+                },
+                Err(error) => json!({
+                    "input": input,
+                    "normalized": null,
+                    "valid_after_normalize": false,
+                    "validation_error": error,
+                }),
+            })
+            .collect(),
+    )
+}
+
+pub fn clone_all_ignore(
+    names: &[&str],
+    is_default_source_root: bool,
+    at_source_root: bool,
+) -> Value {
+    let ignored = names
+        .iter()
+        .copied()
+        .filter(|entry| {
+            is_universal_clone_exclude(entry)
+                || (is_default_source_root
+                    && at_source_root
+                    && CLONE_ALL_DEFAULT_EXCLUDE_ROOT.contains(entry))
+        })
+        .collect::<Vec<_>>();
+    json!(sorted_strings(&ignored))
+}
+
+pub fn export_ignore(names: &[&str], at_root: bool) -> Value {
+    let ignored = names
+        .iter()
+        .copied()
+        .filter(|entry| {
+            is_universal_export_exclude(entry)
+                || (at_root && DEFAULT_EXPORT_EXCLUDE_ROOT.contains(entry))
+        })
+        .collect::<Vec<_>>();
+    json!(sorted_strings(&ignored))
+}
+
 pub fn deep_merge(base: &Value, overlay: &Value) -> Value {
     match (base, overlay) {
         (Value::Object(base_obj), Value::Object(overlay_obj)) => {
@@ -229,6 +301,62 @@ const RELOADABLE_PROFILE_PATHS: &[&str] = &[
     "target",
 ];
 
+const PROFILE_DIRS: &[&str] = &[
+    "memories",
+    "sessions",
+    "skills",
+    "skins",
+    "logs",
+    "plans",
+    "workspace",
+    "cron",
+    "home",
+];
+
+const CLONE_CONFIG_FILES: &[&str] = &["config.yaml", ".env", "SOUL.md"];
+const CLONE_SUBDIR_FILES: &[&str] = &["memories/MEMORY.md", "memories/USER.md"];
+const CLONE_ALL_STRIP: &[&str] = &["gateway.pid", "gateway_state.json", "processes.json"];
+const CLONE_ALL_DEFAULT_EXCLUDE_ROOT: &[&str] = &[
+    "hermes-agent",
+    ".worktrees",
+    "profiles",
+    "bin",
+    "node_modules",
+];
+const NO_BUNDLED_SKILLS_MARKER: &str = ".no-bundled-skills";
+const RESERVED_PROFILE_NAMES: &[&str] = &["hermes", "default", "test", "tmp", "root", "sudo"];
+const DEFAULT_EXPORT_EXCLUDE_ROOT: &[&str] = &[
+    "hermes-agent",
+    ".worktrees",
+    "profiles",
+    "bin",
+    "node_modules",
+    "state.db",
+    "state.db-shm",
+    "state.db-wal",
+    "hermes_state.db",
+    "response_store.db",
+    "response_store.db-shm",
+    "response_store.db-wal",
+    "gateway.pid",
+    "gateway_state.json",
+    "processes.json",
+    "auth.json",
+    ".env",
+    "auth.lock",
+    "active_profile",
+    ".update_check",
+    "errors.log",
+    ".hermes_history",
+    "image_cache",
+    "audio_cache",
+    "document_cache",
+    "browser_screenshots",
+    "checkpoints",
+    "sandboxes",
+    "logs",
+];
+
 fn path_statuses(home: &Path, paths: &[&str]) -> Value {
     Value::Array(
         paths
@@ -261,6 +389,74 @@ fn existing_relative_paths(statuses: &Value) -> Value {
             .map(|entry| entry["path"].clone())
             .collect(),
     )
+}
+
+fn normalize_profile_name(name: &str) -> Result<String, String> {
+    let stripped = name.trim();
+    if stripped.is_empty() {
+        return Err("profile name cannot be empty".to_string());
+    }
+    if stripped.eq_ignore_ascii_case("default") {
+        return Ok("default".to_string());
+    }
+    Ok(stripped.to_ascii_lowercase())
+}
+
+fn validate_profile_name(name: &str) -> Result<(), String> {
+    if name == "default" {
+        return Ok(());
+    }
+    if !valid_profile_id(name) {
+        return Err(format!(
+            "Invalid profile name '{}'. Must match [a-z0-9][a-z0-9_-]{{0,63}}",
+            name.replace('\'', "\\'")
+        ));
+    }
+    if RESERVED_PROFILE_NAMES.contains(&name) {
+        return Err(format!(
+            "Profile name '{}' is reserved — it collides with either the Hermes installation itself or a common system binary.  Pick a different name.",
+            name.replace('\'', "\\'")
+        ));
+    }
+    Ok(())
+}
+
+fn valid_profile_id(name: &str) -> bool {
+    let bytes = name.as_bytes();
+    if bytes.is_empty() || bytes.len() > 64 {
+        return false;
+    }
+    let first = bytes[0];
+    if !first.is_ascii_lowercase() && !first.is_ascii_digit() {
+        return false;
+    }
+    bytes.iter().all(|byte| {
+        byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-')
+    })
+}
+
+fn is_universal_clone_exclude(entry: &str) -> bool {
+    entry == "__pycache__"
+        || entry.ends_with(".pyc")
+        || entry.ends_with(".pyo")
+        || entry.ends_with(".sock")
+        || entry.ends_with(".tmp")
+}
+
+fn is_universal_export_exclude(entry: &str) -> bool {
+    entry == "__pycache__"
+        || entry.ends_with(".sock")
+        || entry.ends_with(".tmp")
+        || matches!(entry, "package.json" | "package-lock.json")
+}
+
+fn sorted_strings(values: &[&str]) -> Vec<String> {
+    let mut values = values
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect::<Vec<_>>();
+    values.sort();
+    values
 }
 
 pub fn set_dot_path(config: &mut Value, path: &str, value: Value) {

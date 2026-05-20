@@ -1,0 +1,239 @@
+{
+  "cases": [
+    {
+      "clone_all_default_exclude_root": [
+        ".worktrees",
+        "bin",
+        "hermes-agent",
+        "node_modules",
+        "profiles"
+      ],
+      "clone_all_strip": [
+        "gateway.pid",
+        "gateway_state.json",
+        "processes.json"
+      ],
+      "clone_config_files": [
+        "config.yaml",
+        ".env",
+        "SOUL.md"
+      ],
+      "clone_subdir_files": [
+        "memories/MEMORY.md",
+        "memories/USER.md"
+      ],
+      "default_export_exclude_root": [
+        ".env",
+        ".hermes_history",
+        ".update_check",
+        ".worktrees",
+        "active_profile",
+        "audio_cache",
+        "auth.json",
+        "auth.lock",
+        "bin",
+        "browser_screenshots",
+        "checkpoints",
+        "document_cache",
+        "errors.log",
+        "gateway.pid",
+        "gateway_state.json",
+        "hermes-agent",
+        "hermes_state.db",
+        "image_cache",
+        "logs",
+        "node_modules",
+        "processes.json",
+        "profiles",
+        "response_store.db",
+        "response_store.db-shm",
+        "response_store.db-wal",
+        "sandboxes",
+        "state.db",
+        "state.db-shm",
+        "state.db-wal"
+      ],
+      "name": "profile_constants",
+      "no_bundled_skills_marker": ".no-bundled-skills",
+      "profile_dirs": [
+        "memories",
+        "sessions",
+        "skills",
+        "skins",
+        "logs",
+        "plans",
+        "workspace",
+        "cron",
+        "home"
+      ]
+    },
+    {
+      "cases": [
+        {
+          "input": "Default",
+          "normalized": "default",
+          "valid_after_normalize": true,
+          "validation_error": null
+        },
+        {
+          "input": " Coder ",
+          "normalized": "coder",
+          "valid_after_normalize": true,
+          "validation_error": null
+        },
+        {
+          "input": "Team_A",
+          "normalized": "team_a",
+          "valid_after_normalize": true,
+          "validation_error": null
+        },
+        {
+          "input": "",
+          "normalized": null,
+          "valid_after_normalize": false,
+          "validation_error": "profile name cannot be empty"
+        },
+        {
+          "input": "bad/name",
+          "normalized": "bad/name",
+          "valid_after_normalize": false,
+          "validation_error": "Invalid profile name 'bad/name'. Must match [a-z0-9][a-z0-9_-]{0,63}"
+        },
+        {
+          "input": "tmp",
+          "normalized": "tmp",
+          "valid_after_normalize": false,
+          "validation_error": "Profile name 'tmp' is reserved \u2014 it collides with either the Hermes installation itself or a common system binary.  Pick a different name."
+        },
+        {
+          "input": "profile",
+          "normalized": "profile",
+          "valid_after_normalize": true,
+          "validation_error": null
+        },
+        {
+          "input": "valid-01",
+          "normalized": "valid-01",
+          "valid_after_normalize": true,
+          "validation_error": null
+        },
+        {
+          "input": "UPPER",
+          "normalized": "upper",
+          "valid_after_normalize": true,
+          "validation_error": null
+        },
+        {
+          "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "normalized": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "valid_after_normalize": false,
+          "validation_error": "Invalid profile name 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'. Must match [a-z0-9][a-z0-9_-]{0,63}"
+        }
+      ],
+      "name": "profile_name_validation"
+    },
+    {
+      "default_nested": [
+        "__pycache__",
+        "runtime.sock",
+        "scratch.tmp"
+      ],
+      "default_root": [
+        ".worktrees",
+        "__pycache__",
+        "bin",
+        "cache.pyc",
+        "cache.pyo",
+        "hermes-agent",
+        "node_modules",
+        "profiles",
+        "runtime.sock",
+        "scratch.tmp"
+      ],
+      "name": "clone_all_ignore",
+      "named_nested": [
+        "__pycache__",
+        "runtime.sock",
+        "scratch.tmp"
+      ],
+      "named_root": [
+        "__pycache__",
+        "cache.pyc",
+        "cache.pyo",
+        "runtime.sock",
+        "scratch.tmp"
+      ],
+      "nested_names": [
+        "hermes-agent",
+        "profiles",
+        "config.yaml",
+        "__pycache__",
+        "runtime.sock",
+        "scratch.tmp"
+      ],
+      "root_names": [
+        "hermes-agent",
+        ".worktrees",
+        "profiles",
+        "bin",
+        "node_modules",
+        "config.yaml",
+        "skills",
+        "__pycache__",
+        "cache.pyc",
+        "cache.pyo",
+        "runtime.sock",
+        "scratch.tmp"
+      ]
+    },
+    {
+      "name": "export_ignore",
+      "nested": [
+        "__pycache__",
+        "runtime.sock",
+        "scratch.tmp"
+      ],
+      "nested_names": [
+        "hermes-agent",
+        "profiles",
+        "config.yaml",
+        "__pycache__",
+        "runtime.sock",
+        "scratch.tmp"
+      ],
+      "root": [
+        ".env",
+        "__pycache__",
+        "auth.json",
+        "hermes-agent",
+        "logs",
+        "package-lock.json",
+        "package.json",
+        "runtime.sock",
+        "scratch.tmp",
+        "state.db",
+        "state.db-wal"
+      ],
+      "root_names": [
+        "hermes-agent",
+        "state.db",
+        "state.db-wal",
+        ".env",
+        "auth.json",
+        "logs",
+        "skills",
+        "config.yaml",
+        "package.json",
+        "package-lock.json",
+        "__pycache__",
+        "runtime.sock",
+        "scratch.tmp"
+      ]
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/profile-migration-fixture.py"
+  }
+}

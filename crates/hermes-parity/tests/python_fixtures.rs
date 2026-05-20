@@ -18,6 +18,7 @@ const FIXTURES: &[&str] = &[
     "mcp-filtering-fixture.json",
     "memory-fixture.json",
     "plugin-surface-fixture.json",
+    "profile-migration-fixture.json",
     "provider-profiles-fixture.json",
     "provider-request-fixture.json",
     "session-export-fixture.json",
@@ -539,6 +540,86 @@ fn install_update_matches_python_fixture() {
             expected["detected"].as_str()
         );
     }
+}
+
+#[test]
+fn profile_migration_matches_python_fixture() {
+    let fixture = load_fixture("profile-migration-fixture.json");
+    let mut constants = case(&fixture, "profile_constants").clone();
+    constants.as_object_mut().unwrap().remove("name");
+    assert_eq!(
+        hermes_config::profile_migration_constants_fixture(),
+        constants
+    );
+
+    let name_inputs = [
+        "Default",
+        " Coder ",
+        "Team_A",
+        "",
+        "bad/name",
+        "tmp",
+        "profile",
+        "valid-01",
+        "UPPER",
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    ];
+    assert_eq!(
+        hermes_config::profile_name_validation_cases(&name_inputs),
+        case(&fixture, "profile_name_validation")["cases"]
+    );
+
+    let clone = case(&fixture, "clone_all_ignore");
+    let root_names = clone["root_names"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    let nested_names = clone["nested_names"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        hermes_config::clone_all_ignore(&root_names, true, true),
+        clone["default_root"]
+    );
+    assert_eq!(
+        hermes_config::clone_all_ignore(&nested_names, true, false),
+        clone["default_nested"]
+    );
+    assert_eq!(
+        hermes_config::clone_all_ignore(&root_names, false, true),
+        clone["named_root"]
+    );
+    assert_eq!(
+        hermes_config::clone_all_ignore(&nested_names, false, false),
+        clone["named_nested"]
+    );
+
+    let export = case(&fixture, "export_ignore");
+    let export_root = export["root_names"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    let export_nested = export["nested_names"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        hermes_config::export_ignore(&export_root, true),
+        export["root"]
+    );
+    assert_eq!(
+        hermes_config::export_ignore(&export_nested, false),
+        export["nested"]
+    );
 }
 
 #[test]

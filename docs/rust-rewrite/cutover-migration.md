@@ -61,6 +61,14 @@ gateway state, memory files, tool history, checkpoints, trajectories, exports,
 logs, and reloadable binaries/completions, then verifies the dry-run plans no
 writes or deletes and emits no secret material.
 
+Python-reference fixtures also protect the current profile migration rules:
+profile bootstrap directories, clone config and memory files, clone-all runtime
+strip files, default-profile infrastructure exclusions, export exclusions,
+profile-name normalization/validation, clone-all ignore behavior for default vs
+named profiles, and portable export ignore behavior. Rust migration validators
+must keep these rules fixture-aligned before any mutating cutover path is
+enabled.
+
 ## Profile Migration Flow
 
 1. Resolve `HERMES_HOME` using the same profile rules as Python.
@@ -103,6 +111,7 @@ make check
 make python-parity-drift
 git diff --check
 cargo test -p hermes-config migration_dry_run_classifies_profile_without_touching_user_data
+cargo test -p hermes-parity profile_migration_matches_python_fixture
 ```
 
 Opt-in real-provider or real-gateway smoke tests must live behind explicit
