@@ -85,7 +85,11 @@ against those fixtures in `crates/hermes-parity`:
   precedence, bundled backend/platform auto-enable, bundled standalone opt-in,
   user standalone opt-in, user backend opt-in, hook/command registration
   metadata, project-plugin opt-in precedence over same-key user plugins, and
-  the general PluginManager skip of model-provider directories.
+  the general PluginManager skip of model-provider directories. Provider-style
+  plugin registries are fixture-backed for image-generation, web, and browser
+  active-provider selection, including get/list semantics, explicit-config
+  precedence, availability-filtered fallback, web capability routing, legacy
+  preference order, and the browser rule that Firecrawl is not auto-selected.
 - Memory-provider plugin boundary: bundled memory-provider directory discovery,
   user memory-provider source-text heuristics, hidden/private/missing-init
   filtering, bundled-over-user collision precedence, `find_provider_dir`

@@ -167,6 +167,319 @@ def memory_provider_dirs(memory_module, root: Path) -> list[dict]:
     ]
 
 
+def provider_registry_selection_case() -> dict:
+    from agent.browser_provider import BrowserProvider
+    from agent.image_gen_provider import ImageGenProvider
+    from agent.web_search_provider import WebSearchProvider
+    from agent import browser_registry, image_gen_registry, web_search_registry
+
+    class FakeImageProvider(ImageGenProvider):
+        def __init__(self, name: str, available: bool = True):
+            self._name = name
+            self._available = available
+
+        @property
+        def name(self) -> str:
+            return self._name
+
+        def is_available(self) -> bool:
+            return self._available
+
+        def generate(self, prompt: str, aspect_ratio: str = "landscape", **kwargs):
+            return {"success": True, "provider": self.name, "prompt": prompt}
+
+    class FakeWebProvider(WebSearchProvider):
+        def __init__(
+            self,
+            name: str,
+            *,
+            available: bool = True,
+            search: bool = True,
+            extract: bool = False,
+            crawl: bool = False,
+        ):
+            self._name = name
+            self._available = available
+            self._search = search
+            self._extract = extract
+            self._crawl = crawl
+
+        @property
+        def name(self) -> str:
+            return self._name
+
+        def is_available(self) -> bool:
+            return self._available
+
+        def supports_search(self) -> bool:
+            return self._search
+
+        def supports_extract(self) -> bool:
+            return self._extract
+
+        def supports_crawl(self) -> bool:
+            return self._crawl
+
+    class FakeBrowserProvider(BrowserProvider):
+        def __init__(self, name: str, available: bool = True):
+            self._name = name
+            self._available = available
+
+        @property
+        def name(self) -> str:
+            return self._name
+
+        def is_available(self) -> bool:
+            return self._available
+
+        def create_session(self, task_id: str):
+            return {"session_name": task_id, "bb_session_id": task_id, "cdp_url": "", "features": {}}
+
+        def close_session(self, session_id: str) -> bool:
+            return True
+
+        def emergency_cleanup(self, session_id: str) -> None:
+            return None
+
+    def image_active(providers: list[dict], configured):
+        image_gen_registry._reset_for_tests()
+        for spec in providers:
+            image_gen_registry.register_provider(
+                FakeImageProvider(spec["name"], spec.get("available", True))
+            )
+
+        import hermes_cli.config as config_module
+
+        original_load_config = config_module.load_config
+        try:
+            if configured is None:
+                config_module.load_config = lambda: {"image_gen": {"provider": ""}}
+            else:
+                config_module.load_config = lambda: {"image_gen": {"provider": configured}}
+            active = image_gen_registry.get_active_provider()
+            return active.name if active else None
+        finally:
+            config_module.load_config = original_load_config
+            image_gen_registry._reset_for_tests()
+
+    def web_active(providers: list[dict], configured, capability: str):
+        web_search_registry._reset_for_tests()
+        for spec in providers:
+            web_search_registry.register_provider(
+                FakeWebProvider(
+                    spec["name"],
+                    available=spec.get("available", True),
+                    search=spec.get("search", True),
+                    extract=spec.get("extract", False),
+                    crawl=spec.get("crawl", False),
+                )
+            )
+        try:
+            active = web_search_registry._resolve(configured, capability=capability)
+            return active.name if active else None
+        finally:
+            web_search_registry._reset_for_tests()
+
+    def browser_active(providers: list[dict], configured):
+        browser_registry._reset_for_tests()
+        for spec in providers:
+            browser_registry.register_provider(
+                FakeBrowserProvider(spec["name"], spec.get("available", True))
+            )
+        try:
+            active = browser_registry._resolve(configured)
+            return active.name if active else None
+        finally:
+            browser_registry._reset_for_tests()
+
+    image_lookup_providers = [
+        {"name": "zeta", "available": True},
+        {"name": "fal", "available": True},
+        {"name": "alpha", "available": False},
+    ]
+    image_gen_registry._reset_for_tests()
+    for spec in image_lookup_providers:
+        image_gen_registry.register_provider(
+            FakeImageProvider(spec["name"], spec["available"])
+        )
+    image_lookup = {
+        "get_provider_inputs": {"trimmed": " fal ", "missing": "missing", "non_string": 123},
+        "list": [provider.name for provider in image_gen_registry.list_providers()],
+        "get_provider": {
+            "trimmed": (image_gen_registry.get_provider(" fal ") or None).name,
+            "missing": None if image_gen_registry.get_provider("missing") is None else "unexpected",
+            "non_string": None if image_gen_registry.get_provider(123) is None else "unexpected",
+        },
+    }
+    image_gen_registry._reset_for_tests()
+
+    web_lookup_providers = [
+        {"name": "tavily", "available": True, "search": True, "extract": True, "crawl": True},
+        {"name": "brave-free", "available": True, "search": True, "extract": False, "crawl": False},
+        {"name": "exa", "available": False, "search": True, "extract": True, "crawl": False},
+    ]
+    web_search_registry._reset_for_tests()
+    for spec in web_lookup_providers:
+        web_search_registry.register_provider(
+            FakeWebProvider(
+                spec["name"],
+                available=spec["available"],
+                search=spec["search"],
+                extract=spec["extract"],
+                crawl=spec["crawl"],
+            )
+        )
+    web_lookup = {
+        "get_provider_inputs": {"trimmed": " tavily ", "missing": "missing", "non_string": 123},
+        "legacy_preference": list(web_search_registry._LEGACY_PREFERENCE),
+        "list": [provider.name for provider in web_search_registry.list_providers()],
+        "get_provider": {
+            "trimmed": (web_search_registry.get_provider(" tavily ") or None).name,
+            "missing": None if web_search_registry.get_provider("missing") is None else "unexpected",
+            "non_string": None if web_search_registry.get_provider(123) is None else "unexpected",
+        },
+    }
+    web_search_registry._reset_for_tests()
+
+    browser_lookup_providers = [
+        {"name": "firecrawl", "available": True},
+        {"name": "browserbase", "available": True},
+        {"name": "browser-use", "available": False},
+    ]
+    browser_registry._reset_for_tests()
+    for spec in browser_lookup_providers:
+        browser_registry.register_provider(FakeBrowserProvider(spec["name"], spec["available"]))
+    browser_lookup = {
+        "get_provider_inputs": {"trimmed": " browserbase ", "missing": "missing", "non_string": 123},
+        "legacy_preference": list(browser_registry._LEGACY_PREFERENCE),
+        "list": [provider.name for provider in browser_registry.list_providers()],
+        "get_provider": {
+            "trimmed": (browser_registry.get_provider(" browserbase ") or None).name,
+            "missing": None if browser_registry.get_provider("missing") is None else "unexpected",
+            "non_string": None if browser_registry.get_provider(123) is None else "unexpected",
+        },
+    }
+    browser_registry._reset_for_tests()
+
+    image_cases = [
+        {
+            "label": "explicit_unavailable_wins",
+            "providers": [{"name": "alpha", "available": False}, {"name": "fal", "available": True}],
+            "configured": "alpha",
+        },
+        {
+            "label": "configured_missing_falls_back",
+            "providers": [{"name": "fal", "available": True}, {"name": "zeta", "available": False}],
+            "configured": "missing",
+        },
+        {
+            "label": "single_available_shortcut",
+            "providers": [{"name": "alpha", "available": False}, {"name": "zeta", "available": True}],
+            "configured": None,
+        },
+        {
+            "label": "fal_legacy_preference",
+            "providers": [{"name": "fal", "available": True}, {"name": "zeta", "available": True}],
+            "configured": None,
+        },
+        {
+            "label": "no_available_provider",
+            "providers": [{"name": "fal", "available": False}, {"name": "zeta", "available": False}],
+            "configured": None,
+        },
+    ]
+    for case in image_cases:
+        case["active"] = image_active(case["providers"], case["configured"])
+
+    web_cases = [
+        {
+            "label": "explicit_unavailable_capable_wins",
+            "providers": [{"name": "exa", "available": False, "search": True, "extract": True, "crawl": False}],
+            "configured": "exa",
+            "capability": "extract",
+        },
+        {
+            "label": "configured_incapable_falls_back",
+            "providers": [
+                {"name": "brave-free", "available": True, "search": True, "extract": False, "crawl": False},
+                {"name": "tavily", "available": True, "search": True, "extract": True, "crawl": True},
+            ],
+            "configured": "brave-free",
+            "capability": "extract",
+        },
+        {
+            "label": "single_eligible_shortcut",
+            "providers": [
+                {"name": "alpha", "available": True, "search": True, "extract": False, "crawl": False},
+                {"name": "zeta", "available": True, "search": False, "extract": True, "crawl": False},
+            ],
+            "configured": None,
+            "capability": "extract",
+        },
+        {
+            "label": "legacy_preference_order",
+            "providers": [
+                {"name": "tavily", "available": True, "search": True, "extract": True, "crawl": True},
+                {"name": "firecrawl", "available": True, "search": True, "extract": True, "crawl": True},
+                {"name": "brave-free", "available": True, "search": True, "extract": False, "crawl": False},
+            ],
+            "configured": None,
+            "capability": "search",
+        },
+        {
+            "label": "crawl_capability_filter",
+            "providers": [
+                {"name": "brave-free", "available": True, "search": True, "extract": False, "crawl": False},
+                {"name": "tavily", "available": True, "search": True, "extract": True, "crawl": True},
+            ],
+            "configured": None,
+            "capability": "crawl",
+        },
+    ]
+    for case in web_cases:
+        case["active"] = web_active(case["providers"], case["configured"], case["capability"])
+
+    browser_cases = [
+        {
+            "label": "explicit_local_disables_cloud",
+            "providers": [{"name": "browser-use", "available": True}],
+            "configured": "local",
+        },
+        {
+            "label": "explicit_unavailable_wins",
+            "providers": [{"name": "browserbase", "available": False}],
+            "configured": "browserbase",
+        },
+        {
+            "label": "legacy_preference_order",
+            "providers": [
+                {"name": "browserbase", "available": True},
+                {"name": "browser-use", "available": True},
+            ],
+            "configured": None,
+        },
+        {
+            "label": "firecrawl_not_auto_selected",
+            "providers": [{"name": "firecrawl", "available": True}],
+            "configured": None,
+        },
+        {
+            "label": "missing_configured_falls_back",
+            "providers": [{"name": "browserbase", "available": True}],
+            "configured": "missing",
+        },
+    ]
+    for case in browser_cases:
+        case["active"] = browser_active(case["providers"], case["configured"])
+
+    return {
+        "name": "provider_registry_selection",
+        "image_gen": {**image_lookup, "providers": image_lookup_providers, "resolution_cases": image_cases},
+        "web": {**web_lookup, "providers": web_lookup_providers, "resolution_cases": web_cases},
+        "browser": {**browser_lookup, "providers": browser_lookup_providers, "resolution_cases": browser_cases},
+    }
+
+
 def main() -> int:
     out = parse_out_arg()
     with isolated_hermes_home() as home:
@@ -279,6 +592,7 @@ def main() -> int:
                 "find_provider_dir": find_results,
                 "heuristics": heuristics,
             },
+            provider_registry_selection_case(),
         ]
 
     write_fixture(out, fixture(SCRIPT, cases))

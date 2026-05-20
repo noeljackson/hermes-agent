@@ -2329,6 +2329,27 @@ fn plugin_surfaces_match_python_fixture() {
     );
     assert_eq!(actual_memory["heuristics"], memory["heuristics"]);
     let _ = fs::remove_dir_all(memory_root);
+
+    let provider_registry = case(&fixture, "provider_registry_selection");
+    for kind in ["image_gen", "web", "browser"] {
+        let expected = &provider_registry[kind];
+        let actual = hermes_cli::provider_registry_selection(expected, kind);
+        assert_eq!(actual["list"], expected["list"], "{kind} list mismatch");
+        assert_eq!(
+            actual["get_provider"], expected["get_provider"],
+            "{kind} get_provider mismatch"
+        );
+        assert_eq!(
+            actual["resolution_cases"], expected["resolution_cases"],
+            "{kind} resolution mismatch"
+        );
+        if expected.get("legacy_preference").is_some() {
+            assert_eq!(
+                actual["legacy_preference"], expected["legacy_preference"],
+                "{kind} legacy preference mismatch"
+            );
+        }
+    }
 }
 
 #[test]

@@ -916,6 +916,225 @@ pub fn memory_provider_discovery(
     }))
 }
 
+pub fn provider_registry_selection(section: &Value, kind: &str) -> Value {
+    let providers = section
+        .get("providers")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let get_provider_inputs = section
+        .get("get_provider_inputs")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+
+    let mut get_provider = serde_json::Map::new();
+    for (name, input) in get_provider_inputs {
+        get_provider.insert(name, registry_get_provider(&providers, &input));
+    }
+
+    let resolution_cases = section
+        .get("resolution_cases")
+        .and_then(Value::as_array)
+        .map(|cases| {
+            cases
+                .iter()
+                .map(|case| {
+                    let providers = case
+                        .get("providers")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default();
+                    let configured = case.get("configured").and_then(Value::as_str);
+                    let active = match kind {
+                        "image_gen" => image_gen_active_provider(&providers, configured),
+                        "web" => web_active_provider(
+                            &providers,
+                            configured,
+                            case.get("capability")
+                                .and_then(Value::as_str)
+                                .unwrap_or("search"),
+                        ),
+                        "browser" => browser_active_provider(&providers, configured),
+                        _ => None,
+                    };
+                    let mut output = case.clone();
+                    output["active"] = active.map_or(Value::Null, Value::String);
+                    output
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let mut output = serde_json::Map::new();
+    output.insert("list".to_string(), json!(registry_sorted_names(&providers)));
+    output.insert("get_provider".to_string(), Value::Object(get_provider));
+    if kind == "web" {
+        output.insert(
+            "legacy_preference".to_string(),
+            json!(WEB_LEGACY_PREFERENCE),
+        );
+    } else if kind == "browser" {
+        output.insert(
+            "legacy_preference".to_string(),
+            json!(BROWSER_LEGACY_PREFERENCE),
+        );
+    }
+    output.insert(
+        "resolution_cases".to_string(),
+        Value::Array(resolution_cases),
+    );
+    Value::Object(output)
+}
+
+const WEB_LEGACY_PREFERENCE: &[&str] = &[
+    "firecrawl",
+    "parallel",
+    "tavily",
+    "exa",
+    "searxng",
+    "brave-free",
+    "ddgs",
+];
+
+const BROWSER_LEGACY_PREFERENCE: &[&str] = &["browser-use", "browserbase"];
+
+fn registry_sorted_names(providers: &[Value]) -> Vec<String> {
+    let mut names = providers
+        .iter()
+        .filter_map(|provider| provider.get("name").and_then(Value::as_str))
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    names.sort();
+    names
+}
+
+fn registry_get_provider(providers: &[Value], input: &Value) -> Value {
+    let Some(input) = input.as_str() else {
+        return Value::Null;
+    };
+    let normalized = input.trim();
+    providers
+        .iter()
+        .find_map(|provider| {
+            let name = provider.get("name").and_then(Value::as_str)?;
+            (name == normalized).then(|| Value::String(name.to_string()))
+        })
+        .unwrap_or(Value::Null)
+}
+
+fn provider_available(provider: &Value) -> bool {
+    provider
+        .get("available")
+        .and_then(Value::as_bool)
+        .unwrap_or(true)
+}
+
+fn image_gen_active_provider(providers: &[Value], configured: Option<&str>) -> Option<String> {
+    if let Some(configured) = configured.filter(|value| !value.trim().is_empty()) {
+        if let Some(provider) = provider_by_name(providers, configured) {
+            return provider_name(provider).map(str::to_string);
+        }
+    }
+
+    let available = providers
+        .iter()
+        .filter(|provider| provider_available(provider))
+        .collect::<Vec<_>>();
+    if available.len() == 1 {
+        return provider_name(available[0]).map(str::to_string);
+    }
+
+    let fal = provider_by_name(providers, "fal")?;
+    provider_available(fal)
+        .then(|| provider_name(fal).map(str::to_string))
+        .flatten()
+}
+
+fn web_active_provider(
+    providers: &[Value],
+    configured: Option<&str>,
+    capability: &str,
+) -> Option<String> {
+    if let Some(configured) = configured.filter(|value| !value.trim().is_empty()) {
+        if let Some(provider) = provider_by_name(providers, configured) {
+            if web_provider_capable(provider, capability) {
+                return provider_name(provider).map(str::to_string);
+            }
+        }
+    }
+
+    let eligible = providers
+        .iter()
+        .filter(|provider| {
+            web_provider_capable(provider, capability) && provider_available(provider)
+        })
+        .collect::<Vec<_>>();
+    if eligible.len() == 1 {
+        return provider_name(eligible[0]).map(str::to_string);
+    }
+
+    for legacy in WEB_LEGACY_PREFERENCE {
+        if let Some(provider) = provider_by_name(providers, legacy) {
+            if web_provider_capable(provider, capability) && provider_available(provider) {
+                return provider_name(provider).map(str::to_string);
+            }
+        }
+    }
+
+    None
+}
+
+fn browser_active_provider(providers: &[Value], configured: Option<&str>) -> Option<String> {
+    if configured == Some("local") {
+        return None;
+    }
+
+    if let Some(configured) = configured.filter(|value| !value.trim().is_empty()) {
+        if let Some(provider) = provider_by_name(providers, configured) {
+            return provider_name(provider).map(str::to_string);
+        }
+    }
+
+    for legacy in BROWSER_LEGACY_PREFERENCE {
+        if let Some(provider) = provider_by_name(providers, legacy) {
+            if provider_available(provider) {
+                return provider_name(provider).map(str::to_string);
+            }
+        }
+    }
+
+    None
+}
+
+fn provider_by_name<'a>(providers: &'a [Value], name: &str) -> Option<&'a Value> {
+    providers
+        .iter()
+        .find(|provider| provider.get("name").and_then(Value::as_str) == Some(name))
+}
+
+fn provider_name(provider: &Value) -> Option<&str> {
+    provider.get("name").and_then(Value::as_str)
+}
+
+fn web_provider_capable(provider: &Value, capability: &str) -> bool {
+    match capability {
+        "search" => provider
+            .get("search")
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
+        "extract" => provider
+            .get("extract")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        "crawl" => provider
+            .get("crawl")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        _ => false,
+    }
+}
+
 fn memory_provider_dirs(
     bundled_root: &Path,
     user_root: &Path,

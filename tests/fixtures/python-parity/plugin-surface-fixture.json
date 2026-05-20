@@ -281,6 +281,374 @@
           "path": "home/plugins/user-memory"
         }
       ]
+    },
+    {
+      "browser": {
+        "get_provider": {
+          "missing": null,
+          "non_string": null,
+          "trimmed": "browserbase"
+        },
+        "get_provider_inputs": {
+          "missing": "missing",
+          "non_string": 123,
+          "trimmed": " browserbase "
+        },
+        "legacy_preference": [
+          "browser-use",
+          "browserbase"
+        ],
+        "list": [
+          "browser-use",
+          "browserbase",
+          "firecrawl"
+        ],
+        "providers": [
+          {
+            "available": true,
+            "name": "firecrawl"
+          },
+          {
+            "available": true,
+            "name": "browserbase"
+          },
+          {
+            "available": false,
+            "name": "browser-use"
+          }
+        ],
+        "resolution_cases": [
+          {
+            "active": null,
+            "configured": "local",
+            "label": "explicit_local_disables_cloud",
+            "providers": [
+              {
+                "available": true,
+                "name": "browser-use"
+              }
+            ]
+          },
+          {
+            "active": "browserbase",
+            "configured": "browserbase",
+            "label": "explicit_unavailable_wins",
+            "providers": [
+              {
+                "available": false,
+                "name": "browserbase"
+              }
+            ]
+          },
+          {
+            "active": "browser-use",
+            "configured": null,
+            "label": "legacy_preference_order",
+            "providers": [
+              {
+                "available": true,
+                "name": "browserbase"
+              },
+              {
+                "available": true,
+                "name": "browser-use"
+              }
+            ]
+          },
+          {
+            "active": null,
+            "configured": null,
+            "label": "firecrawl_not_auto_selected",
+            "providers": [
+              {
+                "available": true,
+                "name": "firecrawl"
+              }
+            ]
+          },
+          {
+            "active": "browserbase",
+            "configured": "missing",
+            "label": "missing_configured_falls_back",
+            "providers": [
+              {
+                "available": true,
+                "name": "browserbase"
+              }
+            ]
+          }
+        ]
+      },
+      "image_gen": {
+        "get_provider": {
+          "missing": null,
+          "non_string": null,
+          "trimmed": "fal"
+        },
+        "get_provider_inputs": {
+          "missing": "missing",
+          "non_string": 123,
+          "trimmed": " fal "
+        },
+        "list": [
+          "alpha",
+          "fal",
+          "zeta"
+        ],
+        "providers": [
+          {
+            "available": true,
+            "name": "zeta"
+          },
+          {
+            "available": true,
+            "name": "fal"
+          },
+          {
+            "available": false,
+            "name": "alpha"
+          }
+        ],
+        "resolution_cases": [
+          {
+            "active": "alpha",
+            "configured": "alpha",
+            "label": "explicit_unavailable_wins",
+            "providers": [
+              {
+                "available": false,
+                "name": "alpha"
+              },
+              {
+                "available": true,
+                "name": "fal"
+              }
+            ]
+          },
+          {
+            "active": "fal",
+            "configured": "missing",
+            "label": "configured_missing_falls_back",
+            "providers": [
+              {
+                "available": true,
+                "name": "fal"
+              },
+              {
+                "available": false,
+                "name": "zeta"
+              }
+            ]
+          },
+          {
+            "active": "zeta",
+            "configured": null,
+            "label": "single_available_shortcut",
+            "providers": [
+              {
+                "available": false,
+                "name": "alpha"
+              },
+              {
+                "available": true,
+                "name": "zeta"
+              }
+            ]
+          },
+          {
+            "active": "fal",
+            "configured": null,
+            "label": "fal_legacy_preference",
+            "providers": [
+              {
+                "available": true,
+                "name": "fal"
+              },
+              {
+                "available": true,
+                "name": "zeta"
+              }
+            ]
+          },
+          {
+            "active": null,
+            "configured": null,
+            "label": "no_available_provider",
+            "providers": [
+              {
+                "available": false,
+                "name": "fal"
+              },
+              {
+                "available": false,
+                "name": "zeta"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "provider_registry_selection",
+      "web": {
+        "get_provider": {
+          "missing": null,
+          "non_string": null,
+          "trimmed": "tavily"
+        },
+        "get_provider_inputs": {
+          "missing": "missing",
+          "non_string": 123,
+          "trimmed": " tavily "
+        },
+        "legacy_preference": [
+          "firecrawl",
+          "parallel",
+          "tavily",
+          "exa",
+          "searxng",
+          "brave-free",
+          "ddgs"
+        ],
+        "list": [
+          "brave-free",
+          "exa",
+          "tavily"
+        ],
+        "providers": [
+          {
+            "available": true,
+            "crawl": true,
+            "extract": true,
+            "name": "tavily",
+            "search": true
+          },
+          {
+            "available": true,
+            "crawl": false,
+            "extract": false,
+            "name": "brave-free",
+            "search": true
+          },
+          {
+            "available": false,
+            "crawl": false,
+            "extract": true,
+            "name": "exa",
+            "search": true
+          }
+        ],
+        "resolution_cases": [
+          {
+            "active": "exa",
+            "capability": "extract",
+            "configured": "exa",
+            "label": "explicit_unavailable_capable_wins",
+            "providers": [
+              {
+                "available": false,
+                "crawl": false,
+                "extract": true,
+                "name": "exa",
+                "search": true
+              }
+            ]
+          },
+          {
+            "active": "tavily",
+            "capability": "extract",
+            "configured": "brave-free",
+            "label": "configured_incapable_falls_back",
+            "providers": [
+              {
+                "available": true,
+                "crawl": false,
+                "extract": false,
+                "name": "brave-free",
+                "search": true
+              },
+              {
+                "available": true,
+                "crawl": true,
+                "extract": true,
+                "name": "tavily",
+                "search": true
+              }
+            ]
+          },
+          {
+            "active": "zeta",
+            "capability": "extract",
+            "configured": null,
+            "label": "single_eligible_shortcut",
+            "providers": [
+              {
+                "available": true,
+                "crawl": false,
+                "extract": false,
+                "name": "alpha",
+                "search": true
+              },
+              {
+                "available": true,
+                "crawl": false,
+                "extract": true,
+                "name": "zeta",
+                "search": false
+              }
+            ]
+          },
+          {
+            "active": "firecrawl",
+            "capability": "search",
+            "configured": null,
+            "label": "legacy_preference_order",
+            "providers": [
+              {
+                "available": true,
+                "crawl": true,
+                "extract": true,
+                "name": "tavily",
+                "search": true
+              },
+              {
+                "available": true,
+                "crawl": true,
+                "extract": true,
+                "name": "firecrawl",
+                "search": true
+              },
+              {
+                "available": true,
+                "crawl": false,
+                "extract": false,
+                "name": "brave-free",
+                "search": true
+              }
+            ]
+          },
+          {
+            "active": "tavily",
+            "capability": "crawl",
+            "configured": null,
+            "label": "crawl_capability_filter",
+            "providers": [
+              {
+                "available": true,
+                "crawl": false,
+                "extract": false,
+                "name": "brave-free",
+                "search": true
+              },
+              {
+                "available": true,
+                "crawl": true,
+                "extract": true,
+                "name": "tavily",
+                "search": true
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "source": {
