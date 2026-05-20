@@ -418,6 +418,39 @@ pub fn search_files_handler(args: &Value, cwd: &Path) -> Value {
     json!({"total_count": 0})
 }
 
+pub fn memory_tool_handler(args: &Value, memory_dir: &Path) -> Value {
+    let mut store = match hermes_memory::MemoryStore::load_from_dir(memory_dir, 500, 500) {
+        Ok(store) => store,
+        Err(error) => {
+            return tool_error(
+                &format!(
+                    "Memory is not available. It may be disabled in config or this environment: {error}"
+                ),
+                &[],
+            );
+        }
+    };
+    let action = args.get("action").and_then(Value::as_str).unwrap_or("");
+    let target = args
+        .get("target")
+        .and_then(Value::as_str)
+        .unwrap_or("memory");
+    let content = args.get("content").and_then(Value::as_str);
+    let old_text = args.get("old_text").and_then(Value::as_str);
+    let result = hermes_memory::memory_tool(&mut store, action, target, content, old_text);
+    if result
+        .get("success")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+        && matches!(target, "memory" | "user")
+    {
+        if let Err(error) = store.save_to_dir(memory_dir, target) {
+            return tool_error(&format!("Failed to save memory: {error}"), &[]);
+        }
+    }
+    result
+}
+
 fn resolve_local_path(cwd: &Path, path: &str) -> PathBuf {
     let path = Path::new(path);
     if path.is_absolute() {

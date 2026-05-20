@@ -6,4 +6,5 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+hermes-memory = { path = "../hermes-memory" }
 serde_json.workspace = true

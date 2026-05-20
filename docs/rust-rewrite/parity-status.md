@@ -146,9 +146,11 @@ against those fixtures in `crates/hermes-parity`:
   Unicode-normalized matching.
 - Tool execution: selected pure dispatcher behavior for clarify validation,
   missing clarify callback errors, agent-loop-only tool blocking, unknown-tool
-  errors, and shared `tool_error` JSON shape. Deterministic local file-tool
-  handlers are also fixture-backed for `read_file`, `write_file` validation,
-  `write_file`, replace-mode `patch`, and `search_files` with `target=files`.
+  errors, and shared `tool_error` JSON shape. The direct `memory` tool handler
+  path is fixture-backed for add, replace, and missing-remove behavior through
+  durable local memory files. Deterministic local file-tool handlers are also
+  fixture-backed for `read_file`, `write_file` validation, `write_file`,
+  replace-mode `patch`, and `search_files` with `target=files`.
 - Toolsets: static toolset names, validation, selected composite/platform
   resolution, multiple-toolset union, and detailed toolset info for core
   deterministic toolsets.

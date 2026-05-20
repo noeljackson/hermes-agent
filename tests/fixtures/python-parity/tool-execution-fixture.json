@@ -33,6 +33,39 @@
       }
     },
     {
+      "name": "memory_handler_add",
+      "result": {
+        "entries": [
+          "Tool handler remembers durable facts."
+        ],
+        "entry_count": 1,
+        "message": "Entry added.",
+        "success": true,
+        "target": "memory",
+        "usage": "7% \u2014 37/500 chars"
+      }
+    },
+    {
+      "name": "memory_handler_replace",
+      "result": {
+        "entries": [
+          "Tool handler remembers Rust parity facts."
+        ],
+        "entry_count": 1,
+        "message": "Entry replaced.",
+        "success": true,
+        "target": "memory",
+        "usage": "8% \u2014 41/500 chars"
+      }
+    },
+    {
+      "name": "memory_handler_remove_missing",
+      "result": {
+        "error": "No entry matched 'not present'.",
+        "success": false
+      }
+    },
+    {
       "name": "read_file_handler",
       "result": {
         "content": "     2|beta\n     3|alpha beta\n     4|",

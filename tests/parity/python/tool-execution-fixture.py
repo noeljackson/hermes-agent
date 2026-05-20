@@ -43,6 +43,7 @@ def main() -> int:
         from tools.clarify_tool import clarify_tool
         from tools.file_operations import ShellFileOperations
         import tools.file_tools as file_tools
+        from tools.memory_tool import MemoryStore, memory_tool
         from tools.registry import tool_error
 
         cases = [
@@ -77,6 +78,47 @@ def main() -> int:
                 "result": parsed(tool_error("bad input", success=False, code=400)),
             },
         ]
+
+        memory_store = MemoryStore(memory_char_limit=500, user_char_limit=500)
+        memory_store.load_from_disk()
+        cases.extend(
+            [
+                {
+                    "name": "memory_handler_add",
+                    "result": parsed(
+                        memory_tool(
+                            "add",
+                            target="memory",
+                            content="Tool handler remembers durable facts.",
+                            store=memory_store,
+                        )
+                    ),
+                },
+                {
+                    "name": "memory_handler_replace",
+                    "result": parsed(
+                        memory_tool(
+                            "replace",
+                            target="memory",
+                            old_text="durable facts",
+                            content="Tool handler remembers Rust parity facts.",
+                            store=memory_store,
+                        )
+                    ),
+                },
+                {
+                    "name": "memory_handler_remove_missing",
+                    "result": parsed(
+                        memory_tool(
+                            "remove",
+                            target="memory",
+                            old_text="not present",
+                            store=memory_store,
+                        )
+                    ),
+                },
+            ]
+        )
 
         with tempfile.TemporaryDirectory(prefix="hermes-file-tools-") as tmp:
             workspace = Path(tmp)

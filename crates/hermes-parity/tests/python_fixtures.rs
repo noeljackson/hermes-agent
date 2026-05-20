@@ -1690,6 +1690,44 @@ fn tool_execution_matches_python_fixture() {
         case(&fixture, "tool_error_with_extra")["result"]
     );
 
+    let memory_dir = rust_temp_workspace("hermes-rust-memory-tool");
+    fs::create_dir_all(&memory_dir).unwrap();
+    assert_eq!(
+        hermes_tools::memory_tool_handler(
+            &json!({
+                "action": "add",
+                "target": "memory",
+                "content": "Tool handler remembers durable facts.",
+            }),
+            &memory_dir,
+        ),
+        case(&fixture, "memory_handler_add")["result"]
+    );
+    assert_eq!(
+        hermes_tools::memory_tool_handler(
+            &json!({
+                "action": "replace",
+                "target": "memory",
+                "old_text": "durable facts",
+                "content": "Tool handler remembers Rust parity facts.",
+            }),
+            &memory_dir,
+        ),
+        case(&fixture, "memory_handler_replace")["result"]
+    );
+    assert_eq!(
+        hermes_tools::memory_tool_handler(
+            &json!({
+                "action": "remove",
+                "target": "memory",
+                "old_text": "not present",
+            }),
+            &memory_dir,
+        ),
+        case(&fixture, "memory_handler_remove_missing")["result"]
+    );
+    fs::remove_dir_all(memory_dir).unwrap();
+
     let workspace = rust_temp_workspace("hermes-rust-file-tools");
     fs::create_dir_all(workspace.join("nested")).unwrap();
     fs::write(workspace.join("notes.txt"), "alpha\nbeta\nalpha beta\n").unwrap();

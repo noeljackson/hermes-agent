@@ -186,6 +186,7 @@ dependencies = [
 name = "hermes-tools"
 version = "0.1.0"
 dependencies = [
+ "hermes-memory",
  "serde_json",
 ]
 
