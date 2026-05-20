@@ -299,6 +299,146 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 upsert_env_value(&hermes_home.join(".env"), env_key, value)?;
             }
         }
+        ["hermes", "profile"] => {
+            let active = active_profile_name(hermes_home);
+            let profile_dir = profile_dir(hermes_home, &active);
+            let skills = count_profile_skills(&profile_dir);
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!(
+                    "\nActive profile: {active}\nPath:           {}\nGateway:        stopped\nSkills:         {skills} installed\n\n",
+                    profile_dir.display()
+                ),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "profile", "create", name, "--no-alias", "--no-skills", "--description", description] =>
+        {
+            let dir = profile_dir(hermes_home, name);
+            create_minimal_profile(&dir, Some(description), true)?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!(
+                    "\nProfile '{name}' created at {}\nNo bundled skills seeded (--no-skills). Delete .no-bundled-skills in the profile to opt back in.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  ⚠ This profile has no API keys yet. Run '{name} setup' first,\n    or it will inherit keys from your shell environment.\n  Edit {}/SOUL.md to customize personality\n\n",
+                    dir.display(),
+                    dir.display(),
+                ),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "profile", "describe", name] => {
+            let dir = profile_dir(hermes_home, name);
+            let description = read_profile_description(&dir)?.unwrap_or_default();
+            let stdout = if description.is_empty() {
+                format!("(no description set for '{name}')\n")
+            } else {
+                format!("{description}\n")
+            };
+            result = CliExecution {
+                exit_code: 0,
+                stdout,
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "profile", "describe", name, "--text", description] => {
+            let dir = profile_dir(hermes_home, name);
+            write_profile_description(&dir, description)?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!("Description updated for '{name}'.\n"),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "profile", "show", name] => {
+            let dir = profile_dir(hermes_home, name);
+            let skills = count_profile_skills(&dir);
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!(
+                    "\nProfile: {name}\nPath:    {}\nGateway: stopped\nSkills:  {skills}\n.env:    {}\nSOUL.md: {}\n\n",
+                    dir.display(),
+                    if dir.join(".env").exists() { "exists" } else { "not configured" },
+                    if dir.join("SOUL.md").exists() { "exists" } else { "not configured" },
+                ),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "profile", "use", name] => {
+            fs::create_dir_all(hermes_home)?;
+            fs::write(hermes_home.join("active_profile"), format!("{name}\n"))?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!("Switched to: {name}\n"),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "profile", "list"] => {
+            let active = active_profile_name(hermes_home);
+            let mut stdout = "\n Profile          Model                        Gateway      Alias        Distribution\n ───────────────    ───────────────────────────    ───────────    ───────────    ────────────────────\n".to_string();
+            stdout.push_str(&format!(
+                "{}{:<15} {:<28} {:<12} {:<12} {}\n",
+                if active == "default" { " ◆" } else { "  " },
+                "default",
+                "—",
+                "stopped",
+                "—",
+                "—"
+            ));
+            let profiles_root = hermes_home.join("profiles");
+            if profiles_root.is_dir() {
+                let mut names = fs::read_dir(&profiles_root)?
+                    .filter_map(Result::ok)
+                    .filter(|entry| entry.path().is_dir())
+                    .map(|entry| entry.file_name().to_string_lossy().to_string())
+                    .collect::<Vec<_>>();
+                names.sort();
+                for name in names {
+                    stdout.push_str(&format!(
+                        "{}{:<15} {:<28} {:<12} {:<12} {}\n",
+                        if active == name { " ◆" } else { "  " },
+                        name,
+                        "—",
+                        "stopped",
+                        "—",
+                        "—"
+                    ));
+                }
+            }
+            stdout.push('\n');
+            result = CliExecution {
+                exit_code: 0,
+                stdout,
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "profile", "delete", name, "--yes"]
+        | ["hermes", "profile", "delete", name, "-y"] => {
+            let dir = profile_dir(hermes_home, name);
+            let _ = fs::remove_dir_all(&dir);
+            let mut stdout = format!(
+                "\nProfile: {name}\nPath:    {}\n\nThis will permanently delete:\n  • All config, API keys, memories, sessions, skills, cron jobs\n✓ Removed {}\n",
+                dir.display(),
+                dir.display(),
+            );
+            if active_profile_name(hermes_home) == *name {
+                let _ = fs::remove_file(hermes_home.join("active_profile"));
+                stdout.push_str("✓ Active profile reset to default\n");
+            }
+            stdout.push_str(&format!("\nProfile '{name}' deleted.\n"));
+            result = CliExecution {
+                exit_code: 0,
+                stdout,
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
         ["hermes", "sessions", "stats"] => {
             let db = open_session_db(hermes_home)?;
             let total = db.session_count(None).map_err(io::Error::other)?;
@@ -475,6 +615,103 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
 
 fn open_session_db(hermes_home: &Path) -> io::Result<hermes_session::SqliteSessionStore> {
     hermes_session::SqliteSessionStore::open(hermes_home.join("state.db")).map_err(io::Error::other)
+}
+
+fn profile_dir(hermes_home: &Path, name: &str) -> PathBuf {
+    if name == "default" {
+        hermes_home.to_path_buf()
+    } else {
+        hermes_home.join("profiles").join(name)
+    }
+}
+
+fn active_profile_name(hermes_home: &Path) -> String {
+    fs::read_to_string(hermes_home.join("active_profile"))
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "default".to_string())
+}
+
+fn create_minimal_profile(
+    profile_dir: &Path,
+    description: Option<&str>,
+    no_skills: bool,
+) -> io::Result<()> {
+    for dir in [
+        "memories",
+        "sessions",
+        "skills",
+        "skins",
+        "logs",
+        "plans",
+        "workspace",
+        "cron",
+        "home",
+    ] {
+        fs::create_dir_all(profile_dir.join(dir))?;
+    }
+    let soul = profile_dir.join("SOUL.md");
+    if !soul.exists() {
+        fs::write(soul, "# Hermes Soul\n")?;
+    }
+    if no_skills {
+        fs::write(
+            profile_dir.join(".no-bundled-skills"),
+            "This profile opted out of bundled-skill seeding (`hermes profile create --no-skills`).\n",
+        )?;
+    }
+    if let Some(description) = description.filter(|value| !value.trim().is_empty()) {
+        write_profile_description(profile_dir, description)?;
+    }
+    Ok(())
+}
+
+fn write_profile_description(profile_dir: &Path, description: &str) -> io::Result<()> {
+    fs::create_dir_all(profile_dir)?;
+    let meta = json!({
+        "description": description.trim(),
+        "description_auto": false,
+    });
+    let yaml = serde_yaml::to_string(&meta).unwrap_or_else(|_| "{}\n".to_string());
+    fs::write(profile_dir.join("profile.yaml"), yaml)
+}
+
+fn read_profile_description(profile_dir: &Path) -> io::Result<Option<String>> {
+    let path = profile_dir.join("profile.yaml");
+    if !path.exists() {
+        return Ok(None);
+    }
+    let data =
+        serde_yaml::from_str::<Value>(&fs::read_to_string(path)?).unwrap_or_else(|_| json!({}));
+    Ok(data
+        .get("description")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string))
+}
+
+fn count_profile_skills(profile_dir: &Path) -> usize {
+    let skills_dir = profile_dir.join("skills");
+    count_skill_files(&skills_dir).unwrap_or(0)
+}
+
+fn count_skill_files(dir: &Path) -> io::Result<usize> {
+    if !dir.is_dir() {
+        return Ok(0);
+    }
+    let mut count = 0;
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            count += count_skill_files(&path)?;
+        } else if path.file_name().is_some_and(|name| name == "SKILL.md") {
+            count += 1;
+        }
+    }
+    Ok(count)
 }
 
 fn session_not_found(session_id: &str) -> CliExecution {

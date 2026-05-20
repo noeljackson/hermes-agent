@@ -286,6 +286,54 @@ fn cli_contract_matches_python_fixture() {
         .unwrap()
         .is_none());
     assert!(session_state["deleted_session"].is_null());
+
+    let profile_execution = case(&fixture, "safe_profile_command_execution");
+    for expected in profile_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &cli_home).unwrap();
+        actual.stdout = actual.stdout.replace(&cli_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&cli_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        if !expected["stdout"].as_str().unwrap_or("").is_empty() {
+            assert_eq!(actual.stdout, expected["stdout"], "{argv:?} stdout");
+        }
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let profile_state = &profile_execution["state"];
+    let active_profile_path = cli_home.join("active_profile");
+    let active_profile_value = if active_profile_path.exists() {
+        json!(fs::read_to_string(active_profile_path).unwrap().trim())
+    } else {
+        Value::Null
+    };
+    assert_eq!(
+        active_profile_value, profile_state["active_profile_file"],
+        "active profile marker"
+    );
+    assert_eq!(
+        cli_home.join("profiles").join("research").exists(),
+        profile_state["research_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        cli_home.join("profiles").exists(),
+        profile_state["profiles_root_exists"].as_bool().unwrap()
+    );
     let _ = fs::remove_dir_all(cli_home);
 }
 

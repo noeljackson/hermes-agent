@@ -554,6 +554,159 @@
         "renamed_title": "Renamed Session",
         "session_count": 1
       }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "profile"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Active profile: default": true,
+            "Gateway:": true,
+            "Path:": true,
+            "Skills:": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "create",
+            "research",
+            "--no-alias",
+            "--no-skills",
+            "--description",
+            "Research work"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Next steps:": true,
+            "No bundled skills seeded": true,
+            "Profile 'research' created": true,
+            "research setup": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "describe",
+            "research"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Research work": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "describe",
+            "research",
+            "--text",
+            "Updated role"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Description updated for 'research'.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "describe",
+            "research"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Updated role": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "show",
+            "research"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Gateway: stopped": true,
+            "Profile: research": true,
+            "SOUL.md: exists": true,
+            "Skills:": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "use",
+            "research"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Switched to: research": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile": true,
+            "default": true,
+            "research": true,
+            "stopped": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "delete",
+            "research",
+            "--yes"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Active profile reset to default": true,
+            "Profile 'research' deleted.": true
+          }
+        }
+      ],
+      "name": "safe_profile_command_execution",
+      "state": {
+        "active_profile_file": null,
+        "profiles_root_exists": true,
+        "research_exists": false
+      }
     }
   ],
   "source": {

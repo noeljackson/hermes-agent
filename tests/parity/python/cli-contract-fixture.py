@@ -218,6 +218,89 @@ def main() -> int:
         }
         final_db.close()
 
+        profile_commands = []
+        for argv, marker_list in [
+            (
+                ["profile"],
+                ["Active profile: default", "Path:", "Gateway:", "Skills:"],
+            ),
+            (
+                [
+                    "profile",
+                    "create",
+                    "research",
+                    "--no-alias",
+                    "--no-skills",
+                    "--description",
+                    "Research work",
+                ],
+                [
+                    "Profile 'research' created",
+                    "No bundled skills seeded",
+                    "Next steps:",
+                    "research setup",
+                ],
+            ),
+            (
+                ["profile", "describe", "research"],
+                ["Research work"],
+            ),
+            (
+                ["profile", "describe", "research", "--text", "Updated role"],
+                ["Description updated for 'research'."],
+            ),
+            (
+                ["profile", "describe", "research"],
+                ["Updated role"],
+            ),
+            (
+                ["profile", "show", "research"],
+                ["Profile: research", "Gateway: stopped", "Skills:", "SOUL.md: exists"],
+            ),
+            (
+                ["profile", "use", "research"],
+                ["Switched to: research"],
+            ),
+            (
+                ["profile", "list"],
+                ["Profile", "default", "research", "stopped"],
+            ),
+            (
+                ["profile", "delete", "research", "--yes"],
+                ["Profile 'research' deleted.", "Active profile reset to default"],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, home)
+            profile_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+
+        active_profile_file = home / "active_profile"
+        profile_state = {
+            "active_profile_file": (
+                active_profile_file.read_text(encoding="utf-8").strip()
+                if active_profile_file.exists()
+                else None
+            ),
+            "research_exists": (home / "profiles" / "research").exists(),
+            "profiles_root_exists": (home / "profiles").exists(),
+        }
+
         import yaml
 
         config_state = {}
@@ -261,6 +344,11 @@ def main() -> int:
                 "name": "safe_session_command_execution",
                 "commands": session_commands,
                 "state": session_state,
+            },
+            {
+                "name": "safe_profile_command_execution",
+                "commands": profile_commands,
+                "state": profile_state,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))

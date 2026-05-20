@@ -229,7 +229,10 @@ against those fixtures in `crates/hermes-parity`:
   session-management CLI subset is now executable and fixture-backed for
   `sessions list --limit`, `sessions stats`,
   `sessions export -`, `sessions export - --session-id`, `sessions rename`,
-  and `sessions delete --yes`.
+  and `sessions delete --yes`. A narrow profile-management CLI subset is
+  executable and fixture-backed for current-profile display, create with
+  `--no-alias --no-skills --description`, describe read/write, show, use,
+  list, and delete with active-profile reset.
 - TUI gateway contract: JSON-RPC method inventory, long-handler routing
   inventory, `_ok`/`_err`/unknown-method frame shapes, request normalization
   errors for malformed requests and params, event frame shape, dashboard PTY
