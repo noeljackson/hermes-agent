@@ -1630,6 +1630,10 @@ fn provider_request_shape_matches_python_fixture() {
             "anthropic_messages_standard",
             hermes_provider::anthropic_messages_standard_request(),
         ),
+        (
+            "chat_completions_service_tier_override",
+            hermes_provider::chat_completions_service_tier_override_request(),
+        ),
     ];
     for (name, rust_request) in expected {
         let request = &case(&fixture, name)["request"];
@@ -1756,6 +1760,19 @@ fn provider_request_shape_matches_python_fixture() {
         ),
         stream_diag["drop_emit"]
     );
+
+    let classifications = case(&fixture, "error_classification")["cases"]
+        .as_array()
+        .unwrap();
+    for classification in classifications {
+        let input = &classification["input"];
+        assert_eq!(
+            hermes_provider::classify_provider_error(input),
+            classification["result"],
+            "{}",
+            classification["name"].as_str().unwrap()
+        );
+    }
 }
 
 #[test]

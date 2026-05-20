@@ -227,6 +227,25 @@ pub fn anthropic_messages_standard_request() -> Value {
     })
 }
 
+pub fn chat_completions_service_tier_override_request() -> Value {
+    json!({
+        "extra_body": {
+            "provider": {
+                "allow_fallbacks": false
+            },
+            "trace": "yes"
+        },
+        "messages": [
+            {"content": "system", "role": "system"},
+            {"content": "hello", "role": "user"}
+        ],
+        "model": "fake/model",
+        "service_tier": "priority",
+        "temperature": 0.2,
+        "timeout": 5
+    })
+}
+
 pub fn normalized_transport_types_fixture() -> Value {
     json!({
         "finish_reason_map": {
@@ -640,6 +659,310 @@ pub fn stream_drop_emit_events(
     })
 }
 
+pub fn classify_provider_error(input: &Value) -> Value {
+    let error_type = get_str(input, "error_type");
+    let raw_message = get_str(input, "message");
+    let body = input.get("body").unwrap_or(&Value::Null);
+    let mut status_code = input.get("status_code").and_then(Value::as_i64);
+    if status_code.is_none() && error_type == "RateLimitError" {
+        status_code = Some(429);
+    }
+    let body_message = extract_body_message(body);
+    let body_code = extract_body_code(body);
+    let mut haystack = raw_message.to_ascii_lowercase();
+    if let Some(message) = body_message.as_ref() {
+        let lower = message.to_ascii_lowercase();
+        if !lower.is_empty() && !haystack.contains(&lower) {
+            haystack.push(' ');
+            haystack.push_str(&lower);
+        }
+    }
+    let result_message = body_message
+        .filter(|message| !message.trim().is_empty())
+        .unwrap_or_else(|| truncate_chars(raw_message, 500));
+    let approx_tokens = input
+        .get("approx_tokens")
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    let context_length = input
+        .get("context_length")
+        .and_then(Value::as_i64)
+        .unwrap_or(200000);
+    let num_messages = input
+        .get("num_messages")
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+
+    if status_code == Some(400) && haystack.contains("signature") && haystack.contains("thinking") {
+        return classified(
+            "thinking_signature",
+            status_code,
+            &result_message,
+            true,
+            false,
+            false,
+            false,
+        );
+    }
+    if status_code == Some(429)
+        && haystack.contains("extra usage")
+        && haystack.contains("long context")
+    {
+        return classified(
+            "long_context_tier",
+            status_code,
+            &result_message,
+            true,
+            true,
+            false,
+            false,
+        );
+    }
+    if status_code == Some(400)
+        && (haystack.contains("error parsing grammar")
+            || haystack.contains("json-schema-to-grammar")
+            || (haystack.contains("unable to generate parser") && haystack.contains("template")))
+    {
+        return classified(
+            "llama_cpp_grammar_pattern",
+            status_code,
+            &result_message,
+            true,
+            false,
+            false,
+            false,
+        );
+    }
+    if haystack.contains("do not have an active grok subscription")
+        || (haystack.contains("out of available resources") && haystack.contains("grok"))
+    {
+        return classified(
+            "auth",
+            status_code,
+            &result_message,
+            false,
+            false,
+            false,
+            true,
+        );
+    }
+
+    if let Some(status) = status_code {
+        let status_result = match status {
+            401 => Some(classified(
+                "auth",
+                status_code,
+                &result_message,
+                false,
+                false,
+                true,
+                true,
+            )),
+            403 if haystack.contains("key limit exceeded")
+                || haystack.contains("spending limit") =>
+            {
+                Some(classified(
+                    "billing",
+                    status_code,
+                    &result_message,
+                    false,
+                    false,
+                    true,
+                    true,
+                ))
+            }
+            403 => Some(classified(
+                "auth",
+                status_code,
+                &result_message,
+                false,
+                false,
+                false,
+                true,
+            )),
+            402 if has_any(&haystack, USAGE_LIMIT_PATTERNS)
+                && has_any(&haystack, USAGE_LIMIT_TRANSIENT_SIGNALS) =>
+            {
+                Some(classified(
+                    "rate_limit",
+                    status_code,
+                    &result_message,
+                    true,
+                    false,
+                    true,
+                    true,
+                ))
+            }
+            402 => Some(classified(
+                "billing",
+                status_code,
+                &result_message,
+                false,
+                false,
+                true,
+                true,
+            )),
+            404 if has_any(&haystack, PROVIDER_POLICY_BLOCKED_PATTERNS) => Some(classified(
+                "provider_policy_blocked",
+                status_code,
+                &result_message,
+                false,
+                false,
+                false,
+                false,
+            )),
+            404 if has_any(&haystack, MODEL_NOT_FOUND_PATTERNS) => Some(classified(
+                "model_not_found",
+                status_code,
+                &result_message,
+                false,
+                false,
+                false,
+                true,
+            )),
+            404 => Some(classified(
+                "unknown",
+                status_code,
+                &result_message,
+                true,
+                false,
+                false,
+                false,
+            )),
+            413 => Some(classified(
+                "payload_too_large",
+                status_code,
+                &result_message,
+                true,
+                true,
+                false,
+                false,
+            )),
+            429 => Some(classified(
+                "rate_limit",
+                status_code,
+                &result_message,
+                true,
+                false,
+                true,
+                true,
+            )),
+            400 => Some(classify_bad_request(
+                &haystack,
+                status_code,
+                &result_message,
+                body,
+                approx_tokens,
+                context_length,
+                num_messages,
+            )),
+            500 | 502 => Some(classified(
+                "server_error",
+                status_code,
+                &result_message,
+                true,
+                false,
+                false,
+                false,
+            )),
+            503 | 529 => Some(classified(
+                "overloaded",
+                status_code,
+                &result_message,
+                true,
+                false,
+                false,
+                false,
+            )),
+            code if (400..500).contains(&code) => Some(classified(
+                "format_error",
+                status_code,
+                &result_message,
+                false,
+                false,
+                false,
+                true,
+            )),
+            500..=599 => Some(classified(
+                "server_error",
+                status_code,
+                &result_message,
+                true,
+                false,
+                false,
+                false,
+            )),
+            _ => None,
+        };
+        if let Some(result) = status_result {
+            return result;
+        }
+    }
+
+    if let Some(result) = classify_by_error_code(&body_code, &result_message, status_code) {
+        return result;
+    }
+    if let Some(result) = classify_by_message(&haystack, status_code, &result_message) {
+        return result;
+    }
+    if has_any(&haystack, SSL_TRANSIENT_PATTERNS) {
+        return classified(
+            "timeout",
+            status_code,
+            &result_message,
+            true,
+            false,
+            false,
+            false,
+        );
+    }
+    if status_code.is_none() && has_any(&haystack, SERVER_DISCONNECT_PATTERNS) {
+        let is_large = approx_tokens as f64 > context_length as f64 * 0.6
+            || (context_length <= 256000 && (approx_tokens > 120000 || num_messages > 200));
+        return if is_large {
+            classified(
+                "context_overflow",
+                status_code,
+                &result_message,
+                true,
+                true,
+                false,
+                false,
+            )
+        } else {
+            classified(
+                "timeout",
+                status_code,
+                &result_message,
+                true,
+                false,
+                false,
+                false,
+            )
+        };
+    }
+    if TRANSPORT_ERROR_TYPES.contains(&error_type) {
+        return classified(
+            "timeout",
+            status_code,
+            &result_message,
+            true,
+            false,
+            false,
+            false,
+        );
+    }
+    classified(
+        "unknown",
+        status_code,
+        &result_message,
+        true,
+        false,
+        false,
+        false,
+    )
+}
+
 fn projection_result(
     messages: Vec<Value>,
     is_tool_iteration: bool,
@@ -763,6 +1086,302 @@ fn python_json_scalar(value: &Value) -> String {
     }
 }
 
+fn classified(
+    reason: &str,
+    status_code: Option<i64>,
+    message: &str,
+    retryable: bool,
+    should_compress: bool,
+    should_rotate_credential: bool,
+    should_fallback: bool,
+) -> Value {
+    json!({
+        "reason": reason,
+        "status_code": status_code,
+        "message": message,
+        "retryable": retryable,
+        "should_compress": should_compress,
+        "should_rotate_credential": should_rotate_credential,
+        "should_fallback": should_fallback,
+        "is_auth": matches!(reason, "auth" | "auth_permanent"),
+    })
+}
+
+fn classify_bad_request(
+    haystack: &str,
+    status_code: Option<i64>,
+    message: &str,
+    body: &Value,
+    approx_tokens: i64,
+    context_length: i64,
+    num_messages: i64,
+) -> Value {
+    let body_code = extract_body_code(body);
+    if has_any(haystack, IMAGE_TOO_LARGE_PATTERNS) {
+        return classified(
+            "image_too_large",
+            status_code,
+            message,
+            true,
+            false,
+            false,
+            false,
+        );
+    }
+    if has_any(haystack, CONTEXT_OVERFLOW_PATTERNS) {
+        return classified(
+            "context_overflow",
+            status_code,
+            message,
+            true,
+            true,
+            false,
+            false,
+        );
+    }
+    if has_any(haystack, PROVIDER_POLICY_BLOCKED_PATTERNS) {
+        return classified(
+            "provider_policy_blocked",
+            status_code,
+            message,
+            false,
+            false,
+            false,
+            false,
+        );
+    }
+    if has_any(haystack, MODEL_NOT_FOUND_PATTERNS) {
+        return classified(
+            "model_not_found",
+            status_code,
+            message,
+            false,
+            false,
+            false,
+            true,
+        );
+    }
+    if has_any(haystack, RATE_LIMIT_PATTERNS) || matches!(body_code.as_str(), "resource_exhausted")
+    {
+        return classified("rate_limit", status_code, message, true, false, true, true);
+    }
+    if has_any(haystack, BILLING_PATTERNS) {
+        return classified("billing", status_code, message, false, false, true, true);
+    }
+
+    let body_msg = extract_body_message(body)
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    let is_generic = body_msg.len() < 30 || matches!(body_msg.as_str(), "error" | "");
+    let is_large = approx_tokens as f64 > context_length as f64 * 0.4
+        || (context_length <= 256000 && (approx_tokens > 80000 || num_messages > 80));
+    if is_generic && is_large {
+        return classified(
+            "context_overflow",
+            status_code,
+            message,
+            true,
+            true,
+            false,
+            false,
+        );
+    }
+    classified(
+        "format_error",
+        status_code,
+        message,
+        false,
+        false,
+        false,
+        true,
+    )
+}
+
+fn classify_by_error_code(code: &str, message: &str, status_code: Option<i64>) -> Option<Value> {
+    let lower = code.to_ascii_lowercase();
+    match lower.as_str() {
+        "resource_exhausted" | "throttled" | "rate_limit_exceeded" => Some(classified(
+            "rate_limit",
+            status_code,
+            message,
+            true,
+            false,
+            true,
+            false,
+        )),
+        "insufficient_quota" | "billing_not_active" | "payment_required" => Some(classified(
+            "billing",
+            status_code,
+            message,
+            false,
+            false,
+            true,
+            true,
+        )),
+        "model_not_found" | "model_not_available" | "invalid_model" => Some(classified(
+            "model_not_found",
+            status_code,
+            message,
+            false,
+            false,
+            false,
+            true,
+        )),
+        "context_length_exceeded" | "max_tokens_exceeded" => Some(classified(
+            "context_overflow",
+            status_code,
+            message,
+            true,
+            true,
+            false,
+            false,
+        )),
+        _ => None,
+    }
+}
+
+fn classify_by_message(haystack: &str, status_code: Option<i64>, message: &str) -> Option<Value> {
+    if has_any(haystack, PAYLOAD_TOO_LARGE_PATTERNS) {
+        return Some(classified(
+            "payload_too_large",
+            status_code,
+            message,
+            true,
+            true,
+            false,
+            false,
+        ));
+    }
+    if has_any(haystack, IMAGE_TOO_LARGE_PATTERNS) {
+        return Some(classified(
+            "image_too_large",
+            status_code,
+            message,
+            true,
+            false,
+            false,
+            false,
+        ));
+    }
+    if has_any(haystack, USAGE_LIMIT_PATTERNS) {
+        return Some(if has_any(haystack, USAGE_LIMIT_TRANSIENT_SIGNALS) {
+            classified("rate_limit", status_code, message, true, false, true, true)
+        } else {
+            classified("billing", status_code, message, false, false, true, true)
+        });
+    }
+    if has_any(haystack, BILLING_PATTERNS) {
+        return Some(classified(
+            "billing",
+            status_code,
+            message,
+            false,
+            false,
+            true,
+            true,
+        ));
+    }
+    if has_any(haystack, RATE_LIMIT_PATTERNS) {
+        return Some(classified(
+            "rate_limit",
+            status_code,
+            message,
+            true,
+            false,
+            true,
+            true,
+        ));
+    }
+    if has_any(haystack, CONTEXT_OVERFLOW_PATTERNS) {
+        return Some(classified(
+            "context_overflow",
+            status_code,
+            message,
+            true,
+            true,
+            false,
+            false,
+        ));
+    }
+    if has_any(haystack, AUTH_PATTERNS) {
+        return Some(classified(
+            "auth",
+            status_code,
+            message,
+            false,
+            false,
+            true,
+            true,
+        ));
+    }
+    if has_any(haystack, PROVIDER_POLICY_BLOCKED_PATTERNS) {
+        return Some(classified(
+            "provider_policy_blocked",
+            status_code,
+            message,
+            false,
+            false,
+            false,
+            false,
+        ));
+    }
+    if has_any(haystack, MODEL_NOT_FOUND_PATTERNS) {
+        return Some(classified(
+            "model_not_found",
+            status_code,
+            message,
+            false,
+            false,
+            false,
+            true,
+        ));
+    }
+    if has_any(haystack, TIMEOUT_MESSAGE_PATTERNS) {
+        return Some(classified(
+            "timeout",
+            status_code,
+            message,
+            true,
+            false,
+            false,
+            false,
+        ));
+    }
+    None
+}
+
+fn extract_body_message(body: &Value) -> Option<String> {
+    body.get("error")
+        .and_then(|error| error.get("message"))
+        .and_then(Value::as_str)
+        .or_else(|| body.get("message").and_then(Value::as_str))
+        .map(|message| truncate_chars(message.trim(), 500))
+}
+
+fn extract_body_code(body: &Value) -> String {
+    body.get("error")
+        .and_then(|error| error.get("code").or_else(|| error.get("type")))
+        .and_then(|value| value.as_str().map(ToOwned::to_owned))
+        .or_else(|| {
+            body.get("code")
+                .or_else(|| body.get("error_code"))
+                .map(|value| {
+                    value
+                        .as_str()
+                        .map(ToOwned::to_owned)
+                        .unwrap_or_else(|| value.to_string())
+                })
+        })
+        .unwrap_or_default()
+        .trim()
+        .to_string()
+}
+
+fn has_any(haystack: &str, patterns: &[&str]) -> bool {
+    patterns.iter().any(|pattern| haystack.contains(pattern))
+}
+
 const STREAM_DIAG_HEADERS: &[&str] = &[
     "cf-ray",
     "cf-cache-status",
@@ -774,6 +1393,180 @@ const STREAM_DIAG_HEADERS: &[&str] = &[
     "via",
     "server",
     "x-forwarded-for",
+];
+
+const BILLING_PATTERNS: &[&str] = &[
+    "insufficient credits",
+    "insufficient_quota",
+    "insufficient balance",
+    "credit balance",
+    "credits have been exhausted",
+    "top up your credits",
+    "payment required",
+    "billing hard limit",
+    "exceeded your current quota",
+    "account is deactivated",
+    "plan does not include",
+];
+
+const RATE_LIMIT_PATTERNS: &[&str] = &[
+    "rate limit",
+    "rate_limit",
+    "too many requests",
+    "throttled",
+    "requests per minute",
+    "tokens per minute",
+    "requests per day",
+    "try again in",
+    "please retry after",
+    "resource_exhausted",
+    "rate increased too quickly",
+    "throttlingexception",
+    "too many concurrent requests",
+    "servicequotaexceededexception",
+];
+
+const USAGE_LIMIT_PATTERNS: &[&str] = &[
+    "usage limit",
+    "quota",
+    "limit exceeded",
+    "key limit exceeded",
+];
+
+const USAGE_LIMIT_TRANSIENT_SIGNALS: &[&str] = &[
+    "try again",
+    "retry",
+    "resets at",
+    "reset in",
+    "wait",
+    "requests remaining",
+    "periodic",
+    "window",
+];
+
+const PAYLOAD_TOO_LARGE_PATTERNS: &[&str] = &[
+    "request entity too large",
+    "payload too large",
+    "error code: 413",
+];
+
+const IMAGE_TOO_LARGE_PATTERNS: &[&str] = &[
+    "image exceeds",
+    "image too large",
+    "image_too_large",
+    "image size exceeds",
+];
+
+const CONTEXT_OVERFLOW_PATTERNS: &[&str] = &[
+    "context length",
+    "context size",
+    "maximum context",
+    "token limit",
+    "too many tokens",
+    "reduce the length",
+    "exceeds the limit",
+    "context window",
+    "prompt is too long",
+    "prompt exceeds max length",
+    "max_tokens",
+    "maximum number of tokens",
+    "exceeds the max_model_len",
+    "max_model_len",
+    "prompt length",
+    "input is too long",
+    "maximum model length",
+    "context length exceeded",
+    "truncating input",
+    "slot context",
+    "n_ctx_slot",
+    "max input token",
+    "input token",
+    "exceeds the maximum number of input tokens",
+];
+
+const MODEL_NOT_FOUND_PATTERNS: &[&str] = &[
+    "is not a valid model",
+    "invalid model",
+    "model not found",
+    "model_not_found",
+    "does not exist",
+    "no such model",
+    "unknown model",
+    "unsupported model",
+];
+
+const PROVIDER_POLICY_BLOCKED_PATTERNS: &[&str] = &[
+    "no endpoints available matching your guardrail",
+    "no endpoints available matching your data policy",
+    "no endpoints found matching your data policy",
+];
+
+const AUTH_PATTERNS: &[&str] = &[
+    "invalid api key",
+    "invalid_api_key",
+    "authentication",
+    "unauthorized",
+    "forbidden",
+    "invalid token",
+    "token expired",
+    "token revoked",
+    "access denied",
+];
+
+const TIMEOUT_MESSAGE_PATTERNS: &[&str] = &[
+    "timed out",
+    "turn timed out",
+    "request timed out",
+    "deadline exceeded",
+    "operation timed out",
+    "upstream timed out",
+];
+
+const TRANSPORT_ERROR_TYPES: &[&str] = &[
+    "ReadTimeout",
+    "ConnectTimeout",
+    "PoolTimeout",
+    "ConnectError",
+    "RemoteProtocolError",
+    "ConnectionError",
+    "ConnectionResetError",
+    "ConnectionAbortedError",
+    "BrokenPipeError",
+    "TimeoutError",
+    "ReadError",
+    "ServerDisconnectedError",
+    "SSLError",
+    "SSLZeroReturnError",
+    "SSLWantReadError",
+    "SSLWantWriteError",
+    "SSLEOFError",
+    "SSLSyscallError",
+    "APIConnectionError",
+    "APITimeoutError",
+];
+
+const SERVER_DISCONNECT_PATTERNS: &[&str] = &[
+    "server disconnected",
+    "peer closed connection",
+    "connection reset by peer",
+    "connection was closed",
+    "network connection lost",
+    "unexpected eof",
+    "incomplete chunked read",
+];
+
+const SSL_TRANSIENT_PATTERNS: &[&str] = &[
+    "bad record mac",
+    "ssl alert",
+    "tls alert",
+    "ssl handshake failure",
+    "tlsv1 alert",
+    "sslv3 alert",
+    "bad_record_mac",
+    "ssl_alert",
+    "tls_alert",
+    "tls_alert_internal_error",
+    "[ssl:",
 ];
 
 const PROVIDER_PROFILES: &[ProviderProfileSummary] = &[

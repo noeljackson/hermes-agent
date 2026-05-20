@@ -46,13 +46,19 @@ against those fixtures in `crates/hermes-parity`:
   chat-completions exception, OpenRouter GPT-5 routing, blank-provider fallback,
   and Copilot non-GPT-5 behavior. Max-token parameter routing is fixture-backed
   for direct OpenAI, Azure OpenAI, GitHub Copilot, OpenRouter, and local
-  OpenAI-compatible URLs. Codex app-server event projection is fixture-backed
-  for ignored streaming deltas, reasoning carry-forward, assistant/user
-  messages, command/file-change/MCP/dynamic tool-call materialization, tool
-  iteration counters, final-text capture, and opaque event fallback. Stream
-  retry diagnostics are fixture-backed for exception-chain formatting, selected
-  upstream response-header capture/truncation, and fixed-time user/activity
-  retry event text.
+  OpenAI-compatible URLs. Service-tier request overrides and extra-body merge
+  precedence are fixture-backed. Codex app-server event projection is
+  fixture-backed for ignored streaming deltas, reasoning carry-forward,
+  assistant/user messages, command/file-change/MCP/dynamic tool-call
+  materialization, tool iteration counters, final-text capture, and opaque
+  event fallback. Stream retry diagnostics are fixture-backed for
+  exception-chain formatting, selected upstream response-header
+  capture/truncation, and fixed-time user/activity retry event text. Selected
+  provider recovery classification is fixture-backed for auth, billing,
+  transient usage limits, model-not-found, policy blocks, payload/context
+  overflow, thinking-signature recovery, llama.cpp grammar retry, rate-limit
+  type coercion, remote disconnects, SSL transport retry, and Grok entitlement
+  failures.
 - Provider profiles: built-in provider inventory, aliases, API modes, auth
   types, environment key discovery metadata, base URLs, fallback counts,
   max-token defaults, fixed-temperature sentinels, and default header keys.

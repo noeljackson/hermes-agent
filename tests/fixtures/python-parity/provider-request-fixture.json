@@ -176,6 +176,31 @@
       }
     },
     {
+      "name": "chat_completions_service_tier_override",
+      "request": {
+        "extra_body": {
+          "provider": {
+            "allow_fallbacks": false
+          },
+          "trace": "yes"
+        },
+        "messages": [
+          {
+            "content": "system",
+            "role": "system"
+          },
+          {
+            "content": "hello",
+            "role": "user"
+          }
+        ],
+        "model": "fake/model",
+        "service_tier": "priority",
+        "temperature": 0.2,
+        "timeout": 5
+      }
+    },
+    {
       "finish_reason_map": {
         "known": "tool_calls",
         "none": "stop",
@@ -712,6 +737,379 @@
         }
       },
       "name": "stream_diagnostics"
+    },
+    {
+      "cases": [
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": {
+              "error": {
+                "message": "bad key"
+              }
+            },
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "unauthorized",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 401
+          },
+          "name": "http_401_auth",
+          "result": {
+            "is_auth": true,
+            "message": "bad key",
+            "reason": "auth",
+            "retryable": false,
+            "should_compress": false,
+            "should_fallback": true,
+            "should_rotate_credential": true,
+            "status_code": 401
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "key limit exceeded",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 403
+          },
+          "name": "http_403_key_limit_billing",
+          "result": {
+            "is_auth": false,
+            "message": "key limit exceeded",
+            "reason": "billing",
+            "retryable": false,
+            "should_compress": false,
+            "should_fallback": true,
+            "should_rotate_credential": true,
+            "status_code": 403
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": {
+              "error": {
+                "message": "Usage limit, try again in 5 minutes"
+              }
+            },
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "payment required",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 402
+          },
+          "name": "http_402_transient_usage_limit",
+          "result": {
+            "is_auth": false,
+            "message": "Usage limit, try again in 5 minutes",
+            "reason": "rate_limit",
+            "retryable": true,
+            "should_compress": false,
+            "should_fallback": true,
+            "should_rotate_credential": true,
+            "status_code": 402
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "Insufficient credits",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 402
+          },
+          "name": "http_402_billing",
+          "result": {
+            "is_auth": false,
+            "message": "Insufficient credits",
+            "reason": "billing",
+            "retryable": false,
+            "should_compress": false,
+            "should_fallback": true,
+            "should_rotate_credential": true,
+            "status_code": 402
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "model not found",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 404
+          },
+          "name": "http_404_model_not_found",
+          "result": {
+            "is_auth": false,
+            "message": "model not found",
+            "reason": "model_not_found",
+            "retryable": false,
+            "should_compress": false,
+            "should_fallback": true,
+            "should_rotate_credential": false,
+            "status_code": 404
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "No endpoints available matching your data policy. Configure: https://openrouter.ai/settings/privacy",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 404
+          },
+          "name": "http_404_policy_blocked",
+          "result": {
+            "is_auth": false,
+            "message": "No endpoints available matching your data policy. Configure: https://openrouter.ai/settings/privacy",
+            "reason": "provider_policy_blocked",
+            "retryable": false,
+            "should_compress": false,
+            "should_fallback": false,
+            "should_rotate_credential": false,
+            "status_code": 404
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "payload too large",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 413
+          },
+          "name": "http_413_payload_too_large",
+          "result": {
+            "is_auth": false,
+            "message": "payload too large",
+            "reason": "payload_too_large",
+            "retryable": true,
+            "should_compress": true,
+            "should_fallback": false,
+            "should_rotate_credential": false,
+            "status_code": 413
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "extra usage requires long context tier",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 429
+          },
+          "name": "http_429_long_context_tier",
+          "result": {
+            "is_auth": false,
+            "message": "extra usage requires long context tier",
+            "reason": "long_context_tier",
+            "retryable": true,
+            "should_compress": true,
+            "should_fallback": false,
+            "should_rotate_credential": false,
+            "status_code": 429
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "thinking block signature is invalid",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 400
+          },
+          "name": "http_400_thinking_signature",
+          "result": {
+            "is_auth": false,
+            "message": "thinking block signature is invalid",
+            "reason": "thinking_signature",
+            "retryable": true,
+            "should_compress": false,
+            "should_fallback": false,
+            "should_rotate_credential": false,
+            "status_code": 400
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "FakeAPIError",
+            "message": "json-schema-to-grammar error parsing grammar",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": 400
+          },
+          "name": "http_400_llama_cpp_grammar",
+          "result": {
+            "is_auth": false,
+            "message": "json-schema-to-grammar error parsing grammar",
+            "reason": "llama_cpp_grammar_pattern",
+            "retryable": true,
+            "should_compress": false,
+            "should_fallback": false,
+            "should_rotate_credential": false,
+            "status_code": 400
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "RateLimitError",
+            "message": "limit reached",
+            "model": "openai/gpt-5.4",
+            "num_messages": 0,
+            "provider": "openrouter",
+            "status_code": null
+          },
+          "name": "rate_limit_type_without_status",
+          "result": {
+            "is_auth": false,
+            "message": "limit reached",
+            "reason": "rate_limit",
+            "retryable": true,
+            "should_compress": false,
+            "should_fallback": true,
+            "should_rotate_credential": true,
+            "status_code": 429
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 130000,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "RemoteProtocolError",
+            "message": "server disconnected without sending response",
+            "model": "openai/gpt-5.4",
+            "num_messages": 210,
+            "provider": "openrouter",
+            "status_code": null
+          },
+          "name": "large_remote_disconnect_context_overflow",
+          "result": {
+            "is_auth": false,
+            "message": "server disconnected without sending response",
+            "reason": "context_overflow",
+            "retryable": true,
+            "should_compress": true,
+            "should_fallback": false,
+            "should_rotate_credential": false,
+            "status_code": null
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 1000,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "RemoteProtocolError",
+            "message": "server disconnected without sending response",
+            "model": "openai/gpt-5.4",
+            "num_messages": 3,
+            "provider": "openrouter",
+            "status_code": null
+          },
+          "name": "small_remote_disconnect_timeout",
+          "result": {
+            "is_auth": false,
+            "message": "server disconnected without sending response",
+            "reason": "timeout",
+            "retryable": true,
+            "should_compress": false,
+            "should_fallback": false,
+            "should_rotate_credential": false,
+            "status_code": null
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 180000,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "RuntimeError",
+            "message": "[SSL: BAD_RECORD_MAC] bad record mac",
+            "model": "openai/gpt-5.4",
+            "num_messages": 300,
+            "provider": "openrouter",
+            "status_code": null
+          },
+          "name": "ssl_alert_timeout_not_compression",
+          "result": {
+            "is_auth": false,
+            "message": "[SSL: BAD_RECORD_MAC] bad record mac",
+            "reason": "timeout",
+            "retryable": true,
+            "should_compress": false,
+            "should_fallback": false,
+            "should_rotate_credential": false,
+            "status_code": null
+          }
+        },
+        {
+          "input": {
+            "approx_tokens": 0,
+            "body": null,
+            "context_length": 200000,
+            "error_type": "RuntimeError",
+            "message": "You have either run out of available resources or do not have an active Grok subscription",
+            "model": "grok-4",
+            "num_messages": 0,
+            "provider": "xai",
+            "status_code": null
+          },
+          "name": "grok_subscription_entitlement",
+          "result": {
+            "is_auth": true,
+            "message": "You have either run out of available resources or do not have an active Grok subscription",
+            "reason": "auth",
+            "retryable": false,
+            "should_compress": false,
+            "should_fallback": true,
+            "should_rotate_credential": false,
+            "status_code": null
+          }
+        }
+      ],
+      "name": "error_classification"
     }
   ],
   "source": {

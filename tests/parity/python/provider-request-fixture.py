@@ -24,6 +24,7 @@ def main() -> int:
         )
         from agent.transports.codex_event_projector import CodexEventProjector
         import agent.stream_diag as stream_diag
+        from agent.error_classifier import classify_api_error
         from providers.base import ProviderProfile
         from run_agent import AIAgent
 
@@ -119,6 +120,18 @@ def main() -> int:
             max_tokens=1024,
             reasoning_config={"enabled": True, "effort": "high"},
             tool_choice="required",
+        )
+        service_tier_kwargs = chat_transport.build_kwargs(
+            "fake/model",
+            messages,
+            [],
+            provider_profile=profile,
+            timeout=5,
+            extra_body_additions={"trace": "yes"},
+            request_overrides={
+                "service_tier": "priority",
+                "extra_body": {"provider": {"allow_fallbacks": False}},
+            },
         )
         tool_call = build_tool_call(
             id="call_3",
@@ -410,12 +423,154 @@ def main() -> int:
             },
         }
 
+        class FakeAPIError(Exception):
+            def __init__(self, message, status_code=None, body=None):
+                super().__init__(message)
+                self.status_code = status_code
+                self.body = body
+
+        class RateLimitError(Exception):
+            pass
+
+        class RemoteProtocolError(Exception):
+            pass
+
+        def classified_case(
+            name,
+            error,
+            provider="openrouter",
+            model="openai/gpt-5.4",
+            approx_tokens=0,
+            context_length=200000,
+            num_messages=0,
+        ):
+            result = classify_api_error(
+                error,
+                provider=provider,
+                model=model,
+                approx_tokens=approx_tokens,
+                context_length=context_length,
+                num_messages=num_messages,
+            )
+            return {
+                "name": name,
+                "input": {
+                    "error_type": type(error).__name__,
+                    "message": str(error),
+                    "status_code": getattr(error, "status_code", None),
+                    "body": getattr(error, "body", None),
+                    "provider": provider,
+                    "model": model,
+                    "approx_tokens": approx_tokens,
+                    "context_length": context_length,
+                    "num_messages": num_messages,
+                },
+                "result": {
+                    "reason": result.reason.value,
+                    "status_code": result.status_code,
+                    "message": result.message,
+                    "retryable": result.retryable,
+                    "should_compress": result.should_compress,
+                    "should_rotate_credential": result.should_rotate_credential,
+                    "should_fallback": result.should_fallback,
+                    "is_auth": result.is_auth,
+                },
+            }
+
+        error_classification = [
+            classified_case(
+                "http_401_auth",
+                FakeAPIError(
+                    "unauthorized",
+                    401,
+                    {"error": {"message": "bad key"}},
+                ),
+            ),
+            classified_case(
+                "http_403_key_limit_billing",
+                FakeAPIError("key limit exceeded", 403),
+            ),
+            classified_case(
+                "http_402_transient_usage_limit",
+                FakeAPIError(
+                    "payment required",
+                    402,
+                    {"error": {"message": "Usage limit, try again in 5 minutes"}},
+                ),
+            ),
+            classified_case(
+                "http_402_billing",
+                FakeAPIError("Insufficient credits", 402),
+            ),
+            classified_case(
+                "http_404_model_not_found",
+                FakeAPIError("model not found", 404),
+            ),
+            classified_case(
+                "http_404_policy_blocked",
+                FakeAPIError(
+                    "No endpoints available matching your data policy. Configure: https://openrouter.ai/settings/privacy",
+                    404,
+                ),
+            ),
+            classified_case(
+                "http_413_payload_too_large",
+                FakeAPIError("payload too large", 413),
+            ),
+            classified_case(
+                "http_429_long_context_tier",
+                FakeAPIError("extra usage requires long context tier", 429),
+            ),
+            classified_case(
+                "http_400_thinking_signature",
+                FakeAPIError("thinking block signature is invalid", 400),
+            ),
+            classified_case(
+                "http_400_llama_cpp_grammar",
+                FakeAPIError("json-schema-to-grammar error parsing grammar", 400),
+            ),
+            classified_case(
+                "rate_limit_type_without_status",
+                RateLimitError("limit reached"),
+            ),
+            classified_case(
+                "large_remote_disconnect_context_overflow",
+                RemoteProtocolError("server disconnected without sending response"),
+                approx_tokens=130000,
+                context_length=200000,
+                num_messages=210,
+            ),
+            classified_case(
+                "small_remote_disconnect_timeout",
+                RemoteProtocolError("server disconnected without sending response"),
+                approx_tokens=1000,
+                context_length=200000,
+                num_messages=3,
+            ),
+            classified_case(
+                "ssl_alert_timeout_not_compression",
+                RuntimeError("[SSL: BAD_RECORD_MAC] bad record mac"),
+                approx_tokens=180000,
+                context_length=200000,
+                num_messages=300,
+            ),
+            classified_case(
+                "grok_subscription_entitlement",
+                RuntimeError(
+                    "You have either run out of available resources or do not have an active Grok subscription"
+                ),
+                provider="xai",
+                model="grok-4",
+            ),
+        ]
+
     cases = [
         {"name": "chat_completions_fake_provider", "request": kwargs},
         {"name": "chat_completions_strips_codex_leaks", "request": sanitized_chat_kwargs},
         {"name": "codex_responses_standard", "request": codex_kwargs},
         {"name": "codex_responses_xai_cache_routing", "request": codex_xai_kwargs},
         {"name": "anthropic_messages_standard", "request": anthropic_kwargs},
+        {"name": "chat_completions_service_tier_override", "request": service_tier_kwargs},
         {
             "name": "normalized_transport_types",
             "tool_call": {
@@ -460,6 +615,7 @@ def main() -> int:
             "results": codex_projection,
         },
         {"name": "stream_diagnostics", "cases": stream_diagnostics},
+        {"name": "error_classification", "cases": error_classification},
     ]
     write_fixture(out, fixture(SCRIPT, cases))
     return 0
