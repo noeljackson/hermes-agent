@@ -45,6 +45,7 @@ def main() -> int:
         import tools.file_tools as file_tools
         from tools.memory_tool import MemoryStore, memory_tool
         from tools.registry import tool_error
+        from tools.skills_tool import skills_list
 
         cases = [
             {
@@ -116,6 +117,44 @@ def main() -> int:
                             store=memory_store,
                         )
                     ),
+                },
+            ]
+        )
+
+        skills_root = Path(os.environ["HERMES_HOME"]) / "skills"
+        demo_skill = skills_root / "testing" / "demo-skill"
+        demo_skill.mkdir(parents=True)
+        (demo_skill / "SKILL.md").write_text(
+            """---
+name: Demo Skill
+description: Demonstrates tool handler listing.
+platforms: [linux, macos]
+---
+# Demo Skill
+""",
+            encoding="utf-8",
+        )
+        root_skill = skills_root / "root-skill"
+        root_skill.mkdir(parents=True)
+        (root_skill / "SKILL.md").write_text(
+            """---
+name: Root Skill
+---
+# Root Skill
+
+Fallback description for root skill.
+""",
+            encoding="utf-8",
+        )
+        cases.extend(
+            [
+                {
+                    "name": "skills_list_handler_all",
+                    "result": parsed(skills_list()),
+                },
+                {
+                    "name": "skills_list_handler_category",
+                    "result": parsed(skills_list(category="testing")),
                 },
             ]
         )

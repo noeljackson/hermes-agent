@@ -66,6 +66,47 @@
       }
     },
     {
+      "name": "skills_list_handler_all",
+      "result": {
+        "categories": [
+          "testing"
+        ],
+        "count": 2,
+        "hint": "Use skill_view(name) to see full content, tags, and linked files",
+        "skills": [
+          {
+            "category": null,
+            "description": "Fallback description for root skill.",
+            "name": "Root Skill"
+          },
+          {
+            "category": "testing",
+            "description": "Demonstrates tool handler listing.",
+            "name": "Demo Skill"
+          }
+        ],
+        "success": true
+      }
+    },
+    {
+      "name": "skills_list_handler_category",
+      "result": {
+        "categories": [
+          "testing"
+        ],
+        "count": 1,
+        "hint": "Use skill_view(name) to see full content, tags, and linked files",
+        "skills": [
+          {
+            "category": "testing",
+            "description": "Demonstrates tool handler listing.",
+            "name": "Demo Skill"
+          }
+        ],
+        "success": true
+      }
+    },
+    {
       "name": "read_file_handler",
       "result": {
         "content": "     2|beta\n     3|alpha beta\n     4|",

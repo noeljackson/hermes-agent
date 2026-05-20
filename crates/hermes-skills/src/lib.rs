@@ -56,6 +56,60 @@ pub fn command_map_json(commands: &[SkillCommand]) -> Value {
     Value::Object(map)
 }
 
+pub fn skills_list_json(root: impl AsRef<Path>, category: Option<&str>) -> io::Result<Value> {
+    let root = root.as_ref();
+    if !root.exists() {
+        fs::create_dir_all(root)?;
+        return Ok(json!({
+            "categories": [],
+            "message": "No skills found. Skills directory created at <HERMES_HOME>/skills/",
+            "skills": [],
+            "success": true,
+        }));
+    }
+
+    let mut skills = Vec::new();
+    let mut seen_names = BTreeSet::new();
+    collect_skill_list_items(root, root, &mut skills, &mut seen_names)?;
+    if let Some(category) = category.filter(|value| !value.is_empty()) {
+        skills.retain(|skill| skill["category"].as_str() == Some(category));
+    }
+    skills.sort_by(|left, right| {
+        let left_key = (
+            left["category"].as_str().unwrap_or_default(),
+            left["name"].as_str().unwrap_or_default(),
+        );
+        let right_key = (
+            right["category"].as_str().unwrap_or_default(),
+            right["name"].as_str().unwrap_or_default(),
+        );
+        left_key.cmp(&right_key)
+    });
+
+    if skills.is_empty() && category.is_none() {
+        return Ok(json!({
+            "categories": [],
+            "message": "No skills found in skills/ directory.",
+            "skills": [],
+            "success": true,
+        }));
+    }
+
+    let categories = skills
+        .iter()
+        .filter_map(|skill| skill["category"].as_str().map(str::to_string))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    Ok(json!({
+        "categories": categories,
+        "count": skills.len(),
+        "hint": "Use skill_view(name) to see full content, tags, and linked files",
+        "skills": skills,
+        "success": true,
+    }))
+}
+
 pub fn resolve_skill_command_key<'a>(
     command: &str,
     commands: &'a BTreeMap<String, SkillCommand>,
@@ -293,6 +347,68 @@ fn scan_dir(
         }
     }
     Ok(())
+}
+
+fn collect_skill_list_items(
+    root: &Path,
+    dir: &Path,
+    skills: &mut Vec<Value>,
+    seen_names: &mut BTreeSet<String>,
+) -> io::Result<()> {
+    if !dir.exists() {
+        return Ok(());
+    }
+    let mut entries = fs::read_dir(dir)?.collect::<Result<Vec<_>, _>>()?;
+    entries.sort_by_key(|entry| entry.path());
+    for entry in entries {
+        let path = entry.path();
+        if path_has_ignored_component(&path) {
+            continue;
+        }
+        if path.is_dir() {
+            collect_skill_list_items(root, &path, skills, seen_names)?;
+        } else if path.file_name().and_then(|name| name.to_str()) == Some("SKILL.md") {
+            let content = fs::read_to_string(&path)?;
+            let Some((frontmatter, body)) = frontmatter_and_body(&content) else {
+                continue;
+            };
+            if !platform_matches(frontmatter) {
+                continue;
+            }
+            let fallback_name = path
+                .parent()
+                .and_then(|parent| parent.file_name())
+                .and_then(|name| name.to_str())
+                .unwrap_or_default()
+                .to_string();
+            let name = frontmatter_value(frontmatter, "name")
+                .unwrap_or(fallback_name)
+                .chars()
+                .take(64)
+                .collect::<String>();
+            if !seen_names.insert(name.clone()) {
+                continue;
+            }
+            let mut description = frontmatter_value(frontmatter, "description")
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| fallback_description(body));
+            if description.chars().count() > 1024 {
+                description = format!("{}...", description.chars().take(1021).collect::<String>());
+            }
+            skills.push(json!({
+                "category": category_from_skill_path(root, &path),
+                "description": description,
+                "name": name,
+            }));
+        }
+    }
+    Ok(())
+}
+
+fn category_from_skill_path(root: &Path, skill_md: &Path) -> Option<String> {
+    let relative = skill_md.strip_prefix(root).ok()?;
+    let parts = relative.components().collect::<Vec<_>>();
+    (parts.len() >= 3).then(|| parts[0].as_os_str().to_string_lossy().to_string())
 }
 
 fn path_has_ignored_component(path: &Path) -> bool {

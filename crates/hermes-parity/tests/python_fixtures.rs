@@ -1728,6 +1728,43 @@ fn tool_execution_matches_python_fixture() {
     );
     fs::remove_dir_all(memory_dir).unwrap();
 
+    let skills_root = rust_temp_workspace("hermes-rust-skills-tool");
+    let demo_skill = skills_root.join("testing/demo-skill");
+    fs::create_dir_all(&demo_skill).unwrap();
+    fs::write(
+        demo_skill.join("SKILL.md"),
+        r#"---
+name: Demo Skill
+description: Demonstrates tool handler listing.
+platforms: [linux, macos]
+---
+# Demo Skill
+"#,
+    )
+    .unwrap();
+    let root_skill = skills_root.join("root-skill");
+    fs::create_dir_all(&root_skill).unwrap();
+    fs::write(
+        root_skill.join("SKILL.md"),
+        r#"---
+name: Root Skill
+---
+# Root Skill
+
+Fallback description for root skill.
+"#,
+    )
+    .unwrap();
+    assert_eq!(
+        hermes_tools::skills_list_handler(&json!({}), &skills_root),
+        case(&fixture, "skills_list_handler_all")["result"]
+    );
+    assert_eq!(
+        hermes_tools::skills_list_handler(&json!({"category": "testing"}), &skills_root),
+        case(&fixture, "skills_list_handler_category")["result"]
+    );
+    fs::remove_dir_all(skills_root).unwrap();
+
     let workspace = rust_temp_workspace("hermes-rust-file-tools");
     fs::create_dir_all(workspace.join("nested")).unwrap();
     fs::write(workspace.join("notes.txt"), "alpha\nbeta\nalpha beta\n").unwrap();

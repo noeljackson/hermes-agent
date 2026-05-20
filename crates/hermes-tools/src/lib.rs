@@ -451,6 +451,14 @@ pub fn memory_tool_handler(args: &Value, memory_dir: &Path) -> Value {
     result
 }
 
+pub fn skills_list_handler(args: &Value, skills_root: &Path) -> Value {
+    let category = args.get("category").and_then(Value::as_str);
+    match hermes_skills::skills_list_json(skills_root, category) {
+        Ok(value) => value,
+        Err(error) => tool_error(&error.to_string(), &[]),
+    }
+}
+
 fn resolve_local_path(cwd: &Path, path: &str) -> PathBuf {
     let path = Path::new(path);
     if path.is_absolute() {

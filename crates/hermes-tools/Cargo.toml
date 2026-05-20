@@ -7,4 +7,5 @@ repository.workspace = true
 
 [dependencies]
 hermes-memory = { path = "../hermes-memory" }
+hermes-skills = { path = "../hermes-skills" }
 serde_json.workspace = true
