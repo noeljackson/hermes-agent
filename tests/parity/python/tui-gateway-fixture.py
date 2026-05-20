@@ -44,6 +44,60 @@ def main() -> int:
                 return {"cols": int(match.group(1)), "rows": int(match.group(2))}
             return None
 
+        class FakeClient:
+            def __init__(self, host):
+                self.host = host
+
+        class FakeWs:
+            def __init__(self, host=None, channel=""):
+                self.client = FakeClient(host) if host is not None else None
+                self.query_params = {"channel": channel}
+
+        def sidecar_case(host, port, channel):
+            old_host = getattr(web_server.app.state, "bound_host", None)
+            old_port = getattr(web_server.app.state, "bound_port", None)
+            try:
+                if host is None:
+                    if hasattr(web_server.app.state, "bound_host"):
+                        delattr(web_server.app.state, "bound_host")
+                else:
+                    web_server.app.state.bound_host = host
+                if port is None:
+                    if hasattr(web_server.app.state, "bound_port"):
+                        delattr(web_server.app.state, "bound_port")
+                else:
+                    web_server.app.state.bound_port = port
+                url = web_server._build_sidecar_url(channel)
+                if isinstance(url, str):
+                    url = url.replace(web_server._SESSION_TOKEN, "<token>")
+                return url
+            finally:
+                if old_host is None:
+                    if hasattr(web_server.app.state, "bound_host"):
+                        delattr(web_server.app.state, "bound_host")
+                else:
+                    web_server.app.state.bound_host = old_host
+                if old_port is None:
+                    if hasattr(web_server.app.state, "bound_port"):
+                        delattr(web_server.app.state, "bound_port")
+                else:
+                    web_server.app.state.bound_port = old_port
+
+        def client_allowed_case(bound_host, client_host):
+            old_host = getattr(web_server.app.state, "bound_host", None)
+            try:
+                web_server.app.state.bound_host = bound_host
+                return web_server._ws_client_is_allowed(FakeWs(client_host))
+            finally:
+                if old_host is None:
+                    if hasattr(web_server.app.state, "bound_host"):
+                        delattr(web_server.app.state, "bound_host")
+                else:
+                    web_server.app.state.bound_host = old_host
+
+        def channel_case(value):
+            return web_server._channel_or_close_code(FakeWs("127.0.0.1", value))
+
         session_history = [
             {"role": "system", "content": "system prompt"},
             {
@@ -212,6 +266,40 @@ def main() -> int:
                     "too_long": bool(web_server._VALID_CHANNEL_RE.match("x" * 129)),
                 },
                 "loopback_hosts": sorted(web_server._LOOPBACK_HOSTS),
+            },
+            {
+                "name": "dashboard_ws_contract",
+                "sidecar_urls": {
+                    "unbound": sidecar_case(None, None, "chat_1"),
+                    "ipv4": sidecar_case("127.0.0.1", 8765, "chat_1"),
+                    "ipv6": sidecar_case("::1", 8765, "chat.1-side"),
+                    "bracketed_ipv6": sidecar_case("[::1]", 8765, "chat_1"),
+                },
+                "client_allowed": {
+                    "loopback": client_allowed_case("127.0.0.1", "127.0.0.1"),
+                    "testclient": client_allowed_case("127.0.0.1", "testclient"),
+                    "empty_client": client_allowed_case("127.0.0.1", None),
+                    "remote_rejected": client_allowed_case("127.0.0.1", "203.0.113.10"),
+                    "public_bind_allows_remote": client_allowed_case("0.0.0.0", "203.0.113.10"),
+                    "public_ipv6_allows_remote": client_allowed_case("::", "203.0.113.10"),
+                },
+                "channels": {
+                    "valid": channel_case("chat_1"),
+                    "dot_dash": channel_case("chat.1-side"),
+                    "missing": channel_case(""),
+                    "slash": channel_case("chat/1"),
+                    "too_long": channel_case("x" * 129),
+                },
+                "prefixes": {
+                    "none": web_server._normalise_prefix(None),
+                    "simple": web_server._normalise_prefix("hermes"),
+                    "trailing": web_server._normalise_prefix("/hermes/"),
+                    "nested": web_server._normalise_prefix("/ops/hermes"),
+                    "double_slash": web_server._normalise_prefix("/bad//path"),
+                    "dotdot": web_server._normalise_prefix("/bad/../path"),
+                    "space": web_server._normalise_prefix("/bad path"),
+                    "too_long": web_server._normalise_prefix("/" + "x" * 65),
+                },
             },
             {
                 "name": "command_resolution",

@@ -203,8 +203,10 @@ against those fixtures in `crates/hermes-parity`:
 - TUI gateway contract: JSON-RPC method inventory, long-handler routing
   inventory, `_ok`/`_err`/unknown-method frame shapes, request normalization
   errors for malformed requests and params, event frame shape, dashboard PTY
-  resize escape parsing, dashboard event-channel validation, and loopback host
-  allowlist. Higher-level TUI helpers are fixture-backed for command
+  resize escape parsing, dashboard event-channel validation, loopback host
+  allowlist, sidecar `/api/pub` URL construction, public-bind vs loopback
+  WebSocket client admission, channel extraction, and reverse-proxy prefix
+  normalization. Higher-level TUI helpers are fixture-backed for command
   resolution, headless CLI blocking hints, `/details` completion item shapes,
   and the `/details` slash-completion response envelope. Fake in-memory
   session RPCs are fixture-backed for missing-session errors, terminal resize,

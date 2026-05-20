@@ -277,6 +277,40 @@
       }
     },
     {
+      "channels": {
+        "dot_dash": "chat.1-side",
+        "missing": null,
+        "slash": null,
+        "too_long": null,
+        "valid": "chat_1"
+      },
+      "client_allowed": {
+        "empty_client": true,
+        "loopback": true,
+        "public_bind_allows_remote": true,
+        "public_ipv6_allows_remote": true,
+        "remote_rejected": false,
+        "testclient": true
+      },
+      "name": "dashboard_ws_contract",
+      "prefixes": {
+        "dotdot": "",
+        "double_slash": "",
+        "nested": "/ops/hermes",
+        "none": "",
+        "simple": "/hermes",
+        "space": "",
+        "too_long": "",
+        "trailing": "/hermes"
+      },
+      "sidecar_urls": {
+        "bracketed_ipv6": "ws://[::1]:8765/api/pub?token=<token>&channel=chat_1",
+        "ipv4": "ws://127.0.0.1:8765/api/pub?token=<token>&channel=chat_1",
+        "ipv6": "ws://[::1]:8765/api/pub?token=<token>&channel=chat.1-side",
+        "unbound": null
+      }
+    },
+    {
       "name": "command_resolution",
       "responses": {
         "alias_bg": {

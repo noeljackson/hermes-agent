@@ -602,6 +602,67 @@ pub fn valid_dashboard_event_channel(channel: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
 }
 
+pub fn dashboard_channel_or_none(channel: &str) -> Option<String> {
+    valid_dashboard_event_channel(channel).then(|| channel.to_string())
+}
+
+pub fn dashboard_build_sidecar_url(host: Option<&str>, port: Option<u16>, channel: &str) -> Value {
+    let (Some(host), Some(port)) = (host, port) else {
+        return Value::Null;
+    };
+    let netloc = if host.contains(':') && !host.starts_with('[') {
+        format!("[{host}]:{port}")
+    } else {
+        format!("{host}:{port}")
+    };
+    json!(format!(
+        "ws://{netloc}/api/pub?token=<token>&channel={}",
+        url_query_escape(channel)
+    ))
+}
+
+pub fn dashboard_ws_client_allowed(bound_host: &str, client_host: Option<&str>) -> bool {
+    if matches!(bound_host, "0.0.0.0" | "::") {
+        return true;
+    }
+    let Some(client_host) = client_host else {
+        return true;
+    };
+    if client_host.is_empty() {
+        return true;
+    }
+    matches!(
+        client_host,
+        "127.0.0.1" | "::1" | "localhost" | "testclient"
+    )
+}
+
+pub fn dashboard_normalise_prefix(raw: Option<&str>) -> String {
+    let Some(raw) = raw else {
+        return String::new();
+    };
+    let mut prefix = raw.trim().to_string();
+    if prefix.is_empty() {
+        return String::new();
+    }
+    if !prefix.starts_with('/') {
+        prefix.insert(0, '/');
+    }
+    while prefix.ends_with('/') {
+        prefix.pop();
+    }
+    if prefix.contains("//")
+        || prefix.contains("..")
+        || prefix
+            .chars()
+            .any(|ch| matches!(ch, '"' | '\'' | '<' | '>' | ' ' | '\n' | '\r' | '\t'))
+        || prefix.len() > 64
+    {
+        return String::new();
+    }
+    prefix
+}
+
 pub fn tui_cli_exec_blocked(argv: &[&str]) -> Option<&'static str> {
     if argv.is_empty() {
         return Some("bare `hermes` is interactive — use `/hermes chat -q …` or run `hermes` in another terminal");
@@ -1484,6 +1545,18 @@ fn details_root_completion_item(value: &str, meta: &str, needs_leading_space: bo
         value.to_string()
     };
     json!({"text": text, "display": text, "meta": meta})
+}
+
+fn url_query_escape(value: &str) -> String {
+    let mut out = String::new();
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-' | b'~') {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
 }
 
 fn split_once_byte(bytes: &[u8], needle: u8) -> Option<(&[u8], &[u8])> {

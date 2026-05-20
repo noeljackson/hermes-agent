@@ -4104,6 +4104,86 @@ fn tui_gateway_contract_matches_python_fixture() {
             .as_slice()
     );
 
+    let dashboard_ws = case(&fixture, "dashboard_ws_contract");
+    assert_eq!(
+        hermes_cli::dashboard_build_sidecar_url(None, None, "chat_1"),
+        dashboard_ws["sidecar_urls"]["unbound"]
+    );
+    assert_eq!(
+        hermes_cli::dashboard_build_sidecar_url(Some("127.0.0.1"), Some(8765), "chat_1"),
+        dashboard_ws["sidecar_urls"]["ipv4"]
+    );
+    assert_eq!(
+        hermes_cli::dashboard_build_sidecar_url(Some("::1"), Some(8765), "chat.1-side"),
+        dashboard_ws["sidecar_urls"]["ipv6"]
+    );
+    assert_eq!(
+        hermes_cli::dashboard_build_sidecar_url(Some("[::1]"), Some(8765), "chat_1"),
+        dashboard_ws["sidecar_urls"]["bracketed_ipv6"]
+    );
+    let client_allowed = &dashboard_ws["client_allowed"];
+    assert_eq!(
+        hermes_cli::dashboard_ws_client_allowed("127.0.0.1", Some("127.0.0.1")),
+        client_allowed["loopback"]
+    );
+    assert_eq!(
+        hermes_cli::dashboard_ws_client_allowed("127.0.0.1", Some("testclient")),
+        client_allowed["testclient"]
+    );
+    assert_eq!(
+        hermes_cli::dashboard_ws_client_allowed("127.0.0.1", None),
+        client_allowed["empty_client"]
+    );
+    assert_eq!(
+        hermes_cli::dashboard_ws_client_allowed("127.0.0.1", Some("203.0.113.10")),
+        client_allowed["remote_rejected"]
+    );
+    assert_eq!(
+        hermes_cli::dashboard_ws_client_allowed("0.0.0.0", Some("203.0.113.10")),
+        client_allowed["public_bind_allows_remote"]
+    );
+    assert_eq!(
+        hermes_cli::dashboard_ws_client_allowed("::", Some("203.0.113.10")),
+        client_allowed["public_ipv6_allows_remote"]
+    );
+    let dashboard_channels = &dashboard_ws["channels"];
+    for (input, key) in [
+        ("chat_1", "valid"),
+        ("chat.1-side", "dot_dash"),
+        ("", "missing"),
+        ("chat/1", "slash"),
+    ] {
+        assert_eq!(
+            hermes_cli::dashboard_channel_or_none(input)
+                .map(Value::String)
+                .unwrap_or(Value::Null),
+            dashboard_channels[key],
+            "{key}"
+        );
+    }
+    assert_eq!(
+        hermes_cli::dashboard_channel_or_none(&"x".repeat(129))
+            .map(Value::String)
+            .unwrap_or(Value::Null),
+        dashboard_channels["too_long"]
+    );
+    let prefixes = &dashboard_ws["prefixes"];
+    for (input, key) in [
+        (None, "none"),
+        (Some("hermes"), "simple"),
+        (Some("/hermes/"), "trailing"),
+        (Some("/ops/hermes"), "nested"),
+        (Some("/bad//path"), "double_slash"),
+        (Some("/bad/../path"), "dotdot"),
+        (Some("/bad path"), "space"),
+        (
+            Some("/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"),
+            "too_long",
+        ),
+    ] {
+        assert_eq!(hermes_cli::dashboard_normalise_prefix(input), prefixes[key]);
+    }
+
     let command_resolution = &case(&fixture, "command_resolution")["responses"];
     let expected_resolve = |id: &str, name: &str| -> Value {
         if let Some(canonical) = hermes_slash::resolve_command(name) {
