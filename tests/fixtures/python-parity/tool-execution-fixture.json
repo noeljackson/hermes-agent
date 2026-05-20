@@ -107,6 +107,46 @@
       }
     },
     {
+      "name": "skill_view_handler_main",
+      "result": {
+        "content": "---\nname: Demo Skill\ndescription: Demonstrates tool handler listing.\nplatforms: [linux, macos]\n---\n# Demo Skill\n",
+        "description": "Demonstrates tool handler listing.",
+        "linked_files": {
+          "references": [
+            "references/info.md"
+          ],
+          "scripts": [
+            "scripts/helper.sh"
+          ]
+        },
+        "missing_credential_files": [],
+        "missing_required_commands": [],
+        "missing_required_environment_variables": [],
+        "name": "Demo Skill",
+        "path": "testing/demo-skill/SKILL.md",
+        "readiness_status": "available",
+        "related_skills": [],
+        "required_commands": [],
+        "required_environment_variables": [],
+        "setup_needed": false,
+        "setup_skipped": false,
+        "skill_dir": "<HERMES_HOME>/skills/testing/demo-skill",
+        "success": true,
+        "tags": [],
+        "usage_hint": "To view linked files, call skill_view(name, file_path) where file_path is e.g. 'references/api.md' or 'assets/config.yaml'"
+      }
+    },
+    {
+      "name": "skill_view_handler_reference",
+      "result": {
+        "content": "Reference details.\n",
+        "file": "references/info.md",
+        "file_type": ".md",
+        "name": "demo-skill",
+        "success": true
+      }
+    },
+    {
       "name": "read_file_handler",
       "result": {
         "content": "     2|beta\n     3|alpha beta\n     4|",

@@ -110,6 +110,110 @@ pub fn skills_list_json(root: impl AsRef<Path>, category: Option<&str>) -> io::R
     }))
 }
 
+pub fn skill_view_json(
+    root: impl AsRef<Path>,
+    name: &str,
+    file_path: Option<&str>,
+) -> io::Result<Value> {
+    let root = root.as_ref();
+    let Some(skill_dir) = find_skill_dir(root, name)? else {
+        return Ok(json!({
+            "available_skills": available_skill_names(root)?,
+            "error": format!("Skill '{name}' not found."),
+            "hint": "Use skills_list to see all available skills",
+            "success": false,
+        }));
+    };
+    let skill_md = skill_dir.join("SKILL.md");
+    let content = fs::read_to_string(&skill_md)?;
+    let (frontmatter, _body) = frontmatter_and_body(&content).unwrap_or(("", ""));
+    if !platform_matches(frontmatter) {
+        return Ok(json!({
+            "error": format!("Skill '{name}' is not supported on this platform."),
+            "readiness_status": "unsupported",
+            "success": false,
+        }));
+    }
+
+    if let Some(file_path) = file_path.filter(|value| !value.is_empty()) {
+        if file_path
+            .split('/')
+            .any(|component| matches!(component, ".." | "." | ""))
+        {
+            return Ok(json!({
+                "error": "Path traversal ('..') is not allowed.",
+                "hint": "Use a relative path within the skill directory",
+                "success": false,
+            }));
+        }
+        let target = skill_dir.join(file_path);
+        if !target.exists() {
+            return Ok(json!({
+                "available_files": linked_files(&skill_dir)?,
+                "error": format!("File '{file_path}' not found in skill '{name}'."),
+                "hint": "Use one of the available file paths listed above",
+                "success": false,
+            }));
+        }
+        let content = fs::read_to_string(&target)?;
+        return Ok(json!({
+            "content": content,
+            "file": file_path,
+            "file_type": target.extension()
+                .and_then(|extension| extension.to_str())
+                .map(|extension| format!(".{extension}"))
+                .unwrap_or_default(),
+            "name": name,
+            "success": true,
+        }));
+    }
+
+    let linked_files = linked_files(&skill_dir)?;
+    let has_linked_files = linked_files
+        .as_object()
+        .is_some_and(|object| !object.is_empty());
+    let skill_name = frontmatter_value(frontmatter, "name").unwrap_or_else(|| name.to_string());
+    let metadata = metadata_hermes_block(frontmatter);
+    let tags_source = metadata
+        .get("tags")
+        .cloned()
+        .or_else(|| frontmatter_value(frontmatter, "tags"))
+        .unwrap_or_default();
+    let related_source = metadata
+        .get("related_skills")
+        .cloned()
+        .or_else(|| frontmatter_value(frontmatter, "related_skills"))
+        .unwrap_or_default();
+    Ok(json!({
+        "content": content,
+        "description": frontmatter_value(frontmatter, "description").unwrap_or_default(),
+        "linked_files": if has_linked_files { linked_files } else { Value::Null },
+        "missing_credential_files": [],
+        "missing_required_commands": [],
+        "missing_required_environment_variables": [],
+        "name": skill_name,
+        "path": skill_md
+            .strip_prefix(root)
+            .unwrap_or(&skill_md)
+            .to_string_lossy()
+            .to_string(),
+        "readiness_status": "available",
+        "related_skills": parse_tag_list(&related_source),
+        "required_commands": [],
+        "required_environment_variables": [],
+        "setup_needed": false,
+        "setup_skipped": false,
+        "skill_dir": skill_dir.to_string_lossy().to_string(),
+        "success": true,
+        "tags": parse_tag_list(&tags_source),
+        "usage_hint": if has_linked_files {
+            Value::String("To view linked files, call skill_view(name, file_path) where file_path is e.g. 'references/api.md' or 'assets/config.yaml'".to_string())
+        } else {
+            Value::Null
+        },
+    }))
+}
+
 pub fn resolve_skill_command_key<'a>(
     command: &str,
     commands: &'a BTreeMap<String, SkillCommand>,
@@ -403,6 +507,187 @@ fn collect_skill_list_items(
         }
     }
     Ok(())
+}
+
+fn find_skill_dir(root: &Path, name: &str) -> io::Result<Option<std::path::PathBuf>> {
+    let direct = root.join(name);
+    if direct.join("SKILL.md").exists() {
+        return Ok(Some(direct));
+    }
+    let mut matches = Vec::new();
+    collect_skill_dirs_by_name(root, name, &mut matches)?;
+    Ok((matches.len() == 1).then(|| matches.remove(0)))
+}
+
+fn collect_skill_dirs_by_name(
+    dir: &Path,
+    name: &str,
+    matches: &mut Vec<std::path::PathBuf>,
+) -> io::Result<()> {
+    if !dir.exists() {
+        return Ok(());
+    }
+    let mut entries = fs::read_dir(dir)?.collect::<Result<Vec<_>, _>>()?;
+    entries.sort_by_key(|entry| entry.path());
+    for entry in entries {
+        let path = entry.path();
+        if path_has_ignored_component(&path) {
+            continue;
+        }
+        if path.is_dir() {
+            if path.file_name().and_then(|part| part.to_str()) == Some(name)
+                && path.join("SKILL.md").exists()
+            {
+                matches.push(path.clone());
+            }
+            collect_skill_dirs_by_name(&path, name, matches)?;
+        }
+    }
+    Ok(())
+}
+
+fn available_skill_names(root: &Path) -> io::Result<Vec<String>> {
+    let mut skills = Vec::new();
+    let mut seen = BTreeSet::new();
+    collect_skill_list_items(root, root, &mut skills, &mut seen)?;
+    let mut names = skills
+        .iter()
+        .filter_map(|skill| skill["name"].as_str().map(str::to_string))
+        .take(20)
+        .collect::<Vec<_>>();
+    names.sort();
+    Ok(names)
+}
+
+fn linked_files(skill_dir: &Path) -> io::Result<Value> {
+    let mut object = serde_json::Map::new();
+    let references = collect_files_with_extensions(skill_dir, "references", &["md"], false)?;
+    if !references.is_empty() {
+        object.insert("references".to_string(), json!(references));
+    }
+    let templates = collect_files_with_extensions(
+        skill_dir,
+        "templates",
+        &["md", "py", "yaml", "yml", "json", "tex", "sh"],
+        true,
+    )?;
+    if !templates.is_empty() {
+        object.insert("templates".to_string(), json!(templates));
+    }
+    let assets = collect_all_files(skill_dir, "assets")?;
+    if !assets.is_empty() {
+        object.insert("assets".to_string(), json!(assets));
+    }
+    let scripts = collect_files_with_extensions(
+        skill_dir,
+        "scripts",
+        &["py", "sh", "bash", "js", "ts", "rb"],
+        false,
+    )?;
+    if !scripts.is_empty() {
+        object.insert("scripts".to_string(), json!(scripts));
+    }
+    Ok(Value::Object(object))
+}
+
+fn collect_files_with_extensions(
+    skill_dir: &Path,
+    subdir: &str,
+    extensions: &[&str],
+    recursive: bool,
+) -> io::Result<Vec<String>> {
+    let dir = skill_dir.join(subdir);
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut files = Vec::new();
+    collect_files_inner(skill_dir, &dir, extensions, recursive, &mut files)?;
+    files.sort();
+    Ok(files)
+}
+
+fn collect_all_files(skill_dir: &Path, subdir: &str) -> io::Result<Vec<String>> {
+    let dir = skill_dir.join(subdir);
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut files = Vec::new();
+    collect_files_inner(skill_dir, &dir, &[], true, &mut files)?;
+    files.sort();
+    Ok(files)
+}
+
+fn collect_files_inner(
+    skill_dir: &Path,
+    dir: &Path,
+    extensions: &[&str],
+    recursive: bool,
+    files: &mut Vec<String>,
+) -> io::Result<()> {
+    let mut entries = fs::read_dir(dir)?.collect::<Result<Vec<_>, _>>()?;
+    entries.sort_by_key(|entry| entry.path());
+    for entry in entries {
+        let path = entry.path();
+        if path.is_dir() {
+            if recursive {
+                collect_files_inner(skill_dir, &path, extensions, recursive, files)?;
+            }
+            continue;
+        }
+        if !path.is_file() {
+            continue;
+        }
+        let matches_extension = extensions.is_empty()
+            || path
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| extensions.contains(&extension));
+        if matches_extension {
+            files.push(
+                path.strip_prefix(skill_dir)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .to_string(),
+            );
+        }
+    }
+    Ok(())
+}
+
+fn metadata_hermes_block(frontmatter: &str) -> BTreeMap<String, String> {
+    let mut values = BTreeMap::new();
+    let mut in_metadata = false;
+    let mut in_hermes = false;
+    for line in frontmatter.lines() {
+        let trimmed = line.trim();
+        if trimmed == "metadata:" {
+            in_metadata = true;
+            in_hermes = false;
+            continue;
+        }
+        if in_metadata && trimmed == "hermes:" {
+            in_hermes = true;
+            continue;
+        }
+        if in_hermes {
+            if let Some((key, value)) = trimmed.split_once(':') {
+                values.insert(key.trim().to_string(), value.trim().to_string());
+            }
+        }
+    }
+    values
+}
+
+fn parse_tag_list(raw: &str) -> Vec<String> {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return Vec::new();
+    }
+    let raw = raw.trim_start_matches('[').trim_end_matches(']');
+    raw.split(',')
+        .map(|item| item.trim().trim_matches(['"', '\'']).to_string())
+        .filter(|item| !item.is_empty())
+        .collect()
 }
 
 fn category_from_skill_path(root: &Path, skill_md: &Path) -> Option<String> {

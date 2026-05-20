@@ -1728,9 +1728,22 @@ fn tool_execution_matches_python_fixture() {
     );
     fs::remove_dir_all(memory_dir).unwrap();
 
-    let skills_root = rust_temp_workspace("hermes-rust-skills-tool");
+    let skills_home = rust_temp_workspace("hermes-rust-skills-tool");
+    let skills_root = skills_home.join("skills");
     let demo_skill = skills_root.join("testing/demo-skill");
     fs::create_dir_all(&demo_skill).unwrap();
+    fs::create_dir_all(demo_skill.join("references")).unwrap();
+    fs::write(
+        demo_skill.join("references/info.md"),
+        "Reference details.\n",
+    )
+    .unwrap();
+    fs::create_dir_all(demo_skill.join("scripts")).unwrap();
+    fs::write(
+        demo_skill.join("scripts/helper.sh"),
+        "#!/bin/sh\necho helper\n",
+    )
+    .unwrap();
     fs::write(
         demo_skill.join("SKILL.md"),
         r#"---
@@ -1763,7 +1776,26 @@ Fallback description for root skill.
         hermes_tools::skills_list_handler(&json!({"category": "testing"}), &skills_root),
         case(&fixture, "skills_list_handler_category")["result"]
     );
-    fs::remove_dir_all(skills_root).unwrap();
+    assert_eq!(
+        normalize_value_path(
+            hermes_tools::skill_view_handler(&json!({"name": "demo-skill"}), &skills_root),
+            &skills_home,
+            "<HERMES_HOME>",
+        ),
+        case(&fixture, "skill_view_handler_main")["result"]
+    );
+    assert_eq!(
+        normalize_value_path(
+            hermes_tools::skill_view_handler(
+                &json!({"name": "demo-skill", "file_path": "references/info.md"}),
+                &skills_root,
+            ),
+            &skills_home,
+            "<HERMES_HOME>",
+        ),
+        case(&fixture, "skill_view_handler_reference")["result"]
+    );
+    fs::remove_dir_all(skills_home).unwrap();
 
     let workspace = rust_temp_workspace("hermes-rust-file-tools");
     fs::create_dir_all(workspace.join("nested")).unwrap();
@@ -1825,6 +1857,11 @@ fn rust_temp_workspace(prefix: &str) -> PathBuf {
         .unwrap()
         .as_nanos();
     std::env::temp_dir().join(format!("{prefix}-{}-{stamp}", std::process::id()))
+}
+
+fn normalize_value_path(value: Value, path: &std::path::Path, replacement: &str) -> Value {
+    let raw = serde_json::to_string(&value).unwrap();
+    serde_json::from_str(&raw.replace(&path.to_string_lossy().to_string(), replacement)).unwrap()
 }
 
 #[test]

@@ -16,6 +16,16 @@ def parsed(result: str):
     return json.loads(result)
 
 
+def normalize_home(value, home: Path):
+    if isinstance(value, dict):
+        return {key: normalize_home(item, home) for key, item in value.items()}
+    if isinstance(value, list):
+        return [normalize_home(item, home) for item in value]
+    if isinstance(value, str):
+        return value.replace(str(home), "<HERMES_HOME>")
+    return value
+
+
 class LocalFixtureEnv:
     def __init__(self, cwd: str):
         self.cwd = cwd
@@ -38,14 +48,14 @@ class LocalFixtureEnv:
 
 def main() -> int:
     out = parse_out_arg()
-    with isolated_hermes_home():
+    with isolated_hermes_home() as home:
         from model_tools import handle_function_call
         from tools.clarify_tool import clarify_tool
         from tools.file_operations import ShellFileOperations
         import tools.file_tools as file_tools
         from tools.memory_tool import MemoryStore, memory_tool
         from tools.registry import tool_error
-        from tools.skills_tool import skills_list
+        from tools.skills_tool import skill_view, skills_list
 
         cases = [
             {
@@ -124,6 +134,14 @@ def main() -> int:
         skills_root = Path(os.environ["HERMES_HOME"]) / "skills"
         demo_skill = skills_root / "testing" / "demo-skill"
         demo_skill.mkdir(parents=True)
+        (demo_skill / "references").mkdir()
+        (demo_skill / "references" / "info.md").write_text(
+            "Reference details.\n", encoding="utf-8"
+        )
+        (demo_skill / "scripts").mkdir()
+        (demo_skill / "scripts" / "helper.sh").write_text(
+            "#!/bin/sh\necho helper\n", encoding="utf-8"
+        )
         (demo_skill / "SKILL.md").write_text(
             """---
 name: Demo Skill
@@ -155,6 +173,16 @@ Fallback description for root skill.
                 {
                     "name": "skills_list_handler_category",
                     "result": parsed(skills_list(category="testing")),
+                },
+                {
+                    "name": "skill_view_handler_main",
+                    "result": normalize_home(parsed(skill_view("demo-skill")), home),
+                },
+                {
+                    "name": "skill_view_handler_reference",
+                    "result": normalize_home(
+                        parsed(skill_view("demo-skill", "references/info.md")), home
+                    ),
                 },
             ]
         )

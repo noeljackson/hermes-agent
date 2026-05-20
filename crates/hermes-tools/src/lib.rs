@@ -459,6 +459,15 @@ pub fn skills_list_handler(args: &Value, skills_root: &Path) -> Value {
     }
 }
 
+pub fn skill_view_handler(args: &Value, skills_root: &Path) -> Value {
+    let name = args.get("name").and_then(Value::as_str).unwrap_or("");
+    let file_path = args.get("file_path").and_then(Value::as_str);
+    match hermes_skills::skill_view_json(skills_root, name, file_path) {
+        Ok(value) => value,
+        Err(error) => tool_error(&error.to_string(), &[]),
+    }
+}
+
 fn resolve_local_path(cwd: &Path, path: &str) -> PathBuf {
     let path = Path::new(path);
     if path.is_absolute() {
