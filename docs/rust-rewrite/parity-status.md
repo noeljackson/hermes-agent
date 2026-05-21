@@ -75,7 +75,8 @@ against those fixtures in `crates/hermes-parity`:
   `--older-than`, `--source`, and `--yes`, including deletion of only ended
   sessions older than the cutoff, preservation of active/recent sessions,
   source-filter behavior, message row cleanup, and removal of transcript plus
-  `request_dump_*` files only for pruned sessions.
+  `request_dump_*` files only for pruned sessions. Session export-to-file is
+  fixture-backed for source filtering and JSONL output shape.
 - Logs: CLI `logs list`, bounded log tailing, and log filtering by minimum
   level, session substring, and component prefix are fixture-backed with
   synthetic `agent.log`, `errors.log`, and `gateway.log` files.

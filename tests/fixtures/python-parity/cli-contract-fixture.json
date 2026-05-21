@@ -607,6 +607,20 @@
           "argv": [
             "hermes",
             "sessions",
+            "export",
+            "<HERMES_HOME>/cli-session-export.jsonl",
+            "--source",
+            "cli"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "Exported 1 sessions to <HERMES_HOME>/cli-session-export.jsonl\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
             "rename",
             "cli-session-1",
             "Renamed",
@@ -634,6 +648,60 @@
       "name": "safe_session_command_execution",
       "state": {
         "deleted_session": null,
+        "file_export_lines": [
+          {
+            "actual_cost_usd": null,
+            "api_call_count": 0,
+            "billing_base_url": null,
+            "billing_mode": null,
+            "billing_provider": null,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_source": null,
+            "cost_status": null,
+            "end_reason": null,
+            "ended_at": null,
+            "estimated_cost_usd": null,
+            "handoff_error": null,
+            "handoff_platform": null,
+            "handoff_state": null,
+            "id": "cli-session-1",
+            "input_tokens": 0,
+            "last_active": "<timestamp>",
+            "message_count": 1,
+            "messages": [
+              {
+                "codex_message_items": null,
+                "codex_reasoning_items": null,
+                "content": "hello cli",
+                "finish_reason": null,
+                "id": 1,
+                "reasoning": null,
+                "reasoning_content": null,
+                "reasoning_details": null,
+                "role": "user",
+                "session_id": "cli-session-1",
+                "timestamp": "<timestamp>",
+                "token_count": null,
+                "tool_call_id": null,
+                "tool_calls": null,
+                "tool_name": null
+              }
+            ],
+            "model": "fake/model",
+            "model_config": "{\"provider\": \"fake\"}",
+            "output_tokens": 0,
+            "parent_session_id": null,
+            "pricing_version": null,
+            "reasoning_tokens": 0,
+            "source": "cli",
+            "started_at": "<timestamp>",
+            "system_prompt": "system",
+            "title": null,
+            "tool_call_count": 0,
+            "user_id": "user-cli"
+          }
+        ],
         "message_count": 1,
         "renamed_title": "Renamed Session",
         "session_count": 1

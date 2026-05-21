@@ -239,17 +239,23 @@ fn cli_contract_matches_python_fixture() {
             .as_array()
             .unwrap()
             .iter()
-            .map(|value| value.as_str().unwrap())
+            .map(|value| {
+                value
+                    .as_str()
+                    .unwrap()
+                    .replace("<HERMES_HOME>", &cli_home_display)
+            })
             .collect::<Vec<_>>();
-        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &cli_home).unwrap();
+        let argv_refs = argv.iter().map(String::as_str).collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv_refs, &cli_home).unwrap();
         actual.stdout = actual.stdout.replace(&cli_home_display, "<HERMES_HOME>");
         actual.stderr = actual.stderr.replace(&cli_home_display, "<HERMES_HOME>");
         assert_eq!(
             actual.exit_code,
             expected["exit_code"].as_i64().unwrap() as i32,
-            "{argv:?} exit"
+            "{argv_refs:?} exit"
         );
-        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        assert_eq!(actual.stderr, expected["stderr"], "{argv_refs:?} stderr");
         if let Some(exports) = expected.get("exports") {
             let actual_exports = actual
                 .stdout
@@ -257,18 +263,22 @@ fn cli_contract_matches_python_fixture() {
                 .filter(|line| !line.trim().is_empty())
                 .map(|line| serde_json::from_str::<Value>(line).unwrap())
                 .collect::<Vec<_>>();
-            assert_eq!(Value::Array(actual_exports), *exports, "{argv:?} exports");
+            assert_eq!(
+                Value::Array(actual_exports),
+                *exports,
+                "{argv_refs:?} exports"
+            );
         } else if let Some(export) = expected.get("export") {
             let actual_export: Value = serde_json::from_str(actual.stdout.trim()).unwrap();
-            assert_eq!(&actual_export, export, "{argv:?} export");
+            assert_eq!(&actual_export, export, "{argv_refs:?} export");
         } else if !expected["stdout"].as_str().unwrap_or("").is_empty() {
-            assert_eq!(actual.stdout, expected["stdout"], "{argv:?} stdout");
+            assert_eq!(actual.stdout, expected["stdout"], "{argv_refs:?} stdout");
         }
         for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
             assert_eq!(
                 actual.stdout.contains(marker),
                 present.as_bool().unwrap(),
-                "{argv:?} marker {marker}"
+                "{argv_refs:?} marker {marker}"
             );
         }
     }
@@ -293,6 +303,16 @@ fn cli_contract_matches_python_fixture() {
         .unwrap()
         .is_none());
     assert!(session_state["deleted_session"].is_null());
+    let file_export_lines = fs::read_to_string(cli_home.join("cli-session-export.jsonl"))
+        .unwrap()
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        Value::Array(file_export_lines),
+        session_state["file_export_lines"]
+    );
 
     let prune_home =
         std::env::temp_dir().join(format!("hermes-parity-cli-prune-{}", std::process::id()));

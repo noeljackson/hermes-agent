@@ -899,6 +899,26 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "sessions", "export", output, "--source", source] => {
+            let db = open_session_db(hermes_home)?;
+            let exported = db
+                .export_all_optional(Some(source))
+                .map_err(io::Error::other)?;
+            let mut body = String::new();
+            let mut count = 0usize;
+            for session in exported.as_array().into_iter().flatten() {
+                body.push_str(&serde_json::to_string(session).unwrap());
+                body.push('\n');
+                count += 1;
+            }
+            fs::write(output, body)?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!("Exported {count} sessions to {output}\n"),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
         ["hermes", "sessions", "export", "-", "--session-id", session_id] => {
             let db = open_session_db(hermes_home)?;
             let resolved = db

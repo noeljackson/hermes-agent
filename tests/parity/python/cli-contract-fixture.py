@@ -209,11 +209,13 @@ def main() -> int:
         db.close()
 
         session_commands = []
+        session_file_export = home / "cli-session-export.jsonl"
         for argv in [
             ["sessions", "list", "--limit", "5"],
             ["sessions", "export", "-"],
             ["sessions", "stats"],
             ["sessions", "export", "-", "--session-id", "cli-session-1"],
+            ["sessions", "export", str(session_file_export), "--source", "cli"],
             ["sessions", "rename", "cli-session-1", "Renamed", "Session"],
             ["sessions", "delete", "telegram-session-1", "--yes"],
         ]:
@@ -226,7 +228,10 @@ def main() -> int:
             )
             normalized_stdout = normalize_output(command_result.stdout, home)
             case = {
-                "argv": ["hermes", *argv],
+                "argv": [
+                    part.replace(str(home), "<HERMES_HOME>")
+                    for part in ["hermes", *argv]
+                ],
                 "exit_code": command_result.returncode,
                 "stderr": normalize_output(command_result.stderr, home),
                 "stdout": normalized_stdout,
@@ -277,6 +282,11 @@ def main() -> int:
             "message_count": final_db.message_count(),
             "renamed_title": final_db.get_session_title("cli-session-1"),
             "deleted_session": final_db.get_session("telegram-session-1"),
+            "file_export_lines": [
+                normalize_timestamps(json.loads(line))
+                for line in session_file_export.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ],
         }
         final_db.close()
 
