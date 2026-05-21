@@ -815,6 +815,36 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 result = session_not_found(session_id);
             }
         }
+        ["hermes", "sessions", "prune", "--older-than", days, "--source", source, "--yes"]
+        | ["hermes", "sessions", "prune", "--older-than", days, "--source", source, "-y"] => {
+            let db = open_session_db(hermes_home)?;
+            let days = days.parse::<i64>().unwrap_or(90);
+            let sessions_dir = hermes_home.join("sessions");
+            let count = db
+                .prune_sessions(days, Some(source), Some(&sessions_dir))
+                .map_err(io::Error::other)?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!("Pruned {count} session(s).\n"),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "sessions", "prune", "--older-than", days, "--yes"]
+        | ["hermes", "sessions", "prune", "--older-than", days, "-y"] => {
+            let db = open_session_db(hermes_home)?;
+            let days = days.parse::<i64>().unwrap_or(90);
+            let sessions_dir = hermes_home.join("sessions");
+            let count = db
+                .prune_sessions(days, None, Some(&sessions_dir))
+                .map_err(io::Error::other)?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!("Pruned {count} session(s).\n"),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
         _ => {}
     }
 

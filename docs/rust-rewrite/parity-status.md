@@ -61,6 +61,11 @@ against those fixtures in `crates/hermes-parity`:
   config, SOUL, memory, and skills are preserved while `.env` and `auth.json`
   are excluded, duplicate import is rejected, and missing-profile export
   returns the Python-compatible error contract.
+- Session maintenance: CLI `sessions prune` is fixture-backed for
+  `--older-than`, `--source`, and `--yes`, including deletion of only ended
+  sessions older than the cutoff, preservation of active/recent sessions,
+  source-filter behavior, message row cleanup, and removal of transcript plus
+  `request_dump_*` files only for pruned sessions.
 - Install/update: install-method stamp format, stamped-method detection, and
   recommended update command mapping for NixOS, Homebrew, Docker, pip, git,
   and unknown installs.

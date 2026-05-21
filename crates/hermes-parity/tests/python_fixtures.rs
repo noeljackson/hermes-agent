@@ -294,6 +294,166 @@ fn cli_contract_matches_python_fixture() {
         .is_none());
     assert!(session_state["deleted_session"].is_null());
 
+    let prune_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-prune-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&prune_home);
+    fs::create_dir_all(&prune_home).unwrap();
+    let prune_sessions_dir = prune_home.join("sessions");
+    fs::create_dir_all(&prune_sessions_dir).unwrap();
+    let prune_home_display = prune_home.to_string_lossy().to_string();
+    let prune_db = hermes_session::SqliteSessionStore::open(prune_home.join("state.db")).unwrap();
+    for (session_id, source, content) in [
+        ("old-ended-cli", "cli", "old cli"),
+        ("old-active-cli", "cli", "active cli"),
+        ("recent-ended-cli", "cli", "recent cli"),
+        ("old-ended-telegram", "telegram", "old telegram"),
+    ] {
+        prune_db
+            .create_session(
+                session_id,
+                source,
+                &format!("user-{source}"),
+                "fake/model",
+                "{\"provider\": \"fake\"}",
+                "system",
+            )
+            .unwrap();
+        prune_db
+            .append_message(session_id, "user", content, None, None, None, None)
+            .unwrap();
+        fs::write(
+            prune_sessions_dir.join(format!("{session_id}.jsonl")),
+            format!("{content}\n"),
+        )
+        .unwrap();
+        fs::write(
+            prune_sessions_dir.join(format!("request_dump_{session_id}_001.json")),
+            "{}",
+        )
+        .unwrap();
+    }
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f64();
+    let old = now - 120.0 * 86_400.0;
+    let recent = now - 5.0 * 86_400.0;
+    prune_db
+        .set_session_times_for_test("old-ended-cli", old, Some(old + 60.0))
+        .unwrap();
+    prune_db
+        .set_session_times_for_test("old-active-cli", old, None)
+        .unwrap();
+    prune_db
+        .set_session_times_for_test("recent-ended-cli", recent, Some(recent + 60.0))
+        .unwrap();
+    prune_db
+        .set_session_times_for_test("old-ended-telegram", old, Some(old + 60.0))
+        .unwrap();
+
+    let prune_execution = case(&fixture, "safe_session_prune_command_execution");
+    let prune_states = &prune_execution["states"];
+    let assert_prune_state = |state_name: &str| {
+        let expected_state = &prune_states[state_name];
+        assert_eq!(
+            prune_db.session_count(None).unwrap(),
+            expected_state["session_count"].as_i64().unwrap(),
+            "{state_name} session count"
+        );
+        assert_eq!(
+            prune_db.message_count(None).unwrap(),
+            expected_state["message_count"].as_i64().unwrap(),
+            "{state_name} message count"
+        );
+        let mut remaining_ids = [
+            "old-active-cli",
+            "old-ended-cli",
+            "old-ended-telegram",
+            "recent-ended-cli",
+        ]
+        .into_iter()
+        .filter(|id| prune_db.get_session(id).unwrap().is_some())
+        .map(|id| Value::String(id.to_string()))
+        .collect::<Vec<_>>();
+        remaining_ids.sort_by_key(|value| value.as_str().unwrap().to_string());
+        assert_eq!(
+            Value::Array(remaining_ids),
+            expected_state["remaining_ids"],
+            "{state_name} remaining ids"
+        );
+        assert_eq!(
+            prune_sessions_dir.join("old-ended-cli.jsonl").exists(),
+            expected_state["old_ended_cli_file_exists"]
+                .as_bool()
+                .unwrap(),
+            "{state_name} old-ended-cli transcript"
+        );
+        assert_eq!(
+            prune_sessions_dir
+                .join("request_dump_old-ended-cli_001.json")
+                .exists(),
+            expected_state["old_ended_cli_dump_exists"]
+                .as_bool()
+                .unwrap(),
+            "{state_name} old-ended-cli dump"
+        );
+        assert_eq!(
+            prune_sessions_dir.join("old-active-cli.jsonl").exists(),
+            expected_state["old_active_cli_file_exists"]
+                .as_bool()
+                .unwrap(),
+            "{state_name} old-active transcript"
+        );
+        assert_eq!(
+            prune_sessions_dir.join("recent-ended-cli.jsonl").exists(),
+            expected_state["recent_ended_cli_file_exists"]
+                .as_bool()
+                .unwrap(),
+            "{state_name} recent transcript"
+        );
+        assert_eq!(
+            prune_sessions_dir.join("old-ended-telegram.jsonl").exists(),
+            expected_state["old_ended_telegram_file_exists"]
+                .as_bool()
+                .unwrap(),
+            "{state_name} telegram transcript"
+        );
+    };
+    for (index, expected) in prune_execution["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .enumerate()
+    {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &prune_home).unwrap();
+        actual.stdout = actual.stdout.replace(&prune_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&prune_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+        assert_prune_state(if index == 0 {
+            "after_source_prune"
+        } else {
+            "after_all_prune"
+        });
+    }
+
     let profile_execution = case(&fixture, "safe_profile_command_execution");
     for expected in profile_execution["commands"].as_array().unwrap() {
         let argv = expected["argv"]

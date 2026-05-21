@@ -546,6 +546,75 @@ impl SqliteSessionStore {
         Ok(true)
     }
 
+    pub fn prune_sessions(
+        &self,
+        older_than_days: i64,
+        source: Option<&str>,
+        sessions_dir: Option<&Path>,
+    ) -> SqlResult<i64> {
+        let cutoff = (current_unix_timestamp() as f64) - (older_than_days as f64 * 86_400.0);
+        let session_ids = if let Some(source) = source {
+            let mut stmt = self.conn.prepare(
+                "SELECT id FROM sessions
+                 WHERE CAST(started_at AS REAL) < ?1
+                   AND ended_at IS NOT NULL
+                   AND source = ?2",
+            )?;
+            let ids = stmt
+                .query_map(params![cutoff, source], |row| row.get::<_, String>(0))?
+                .collect::<SqlResult<Vec<_>>>()?;
+            ids
+        } else {
+            let mut stmt = self.conn.prepare(
+                "SELECT id FROM sessions
+                 WHERE CAST(started_at AS REAL) < ?1
+                   AND ended_at IS NOT NULL",
+            )?;
+            let ids = stmt
+                .query_map(params![cutoff], |row| row.get::<_, String>(0))?
+                .collect::<SqlResult<Vec<_>>>()?;
+            ids
+        };
+
+        if session_ids.is_empty() {
+            return Ok(0);
+        }
+        for session_id in &session_ids {
+            self.conn.execute(
+                "UPDATE sessions SET parent_session_id = NULL WHERE parent_session_id = ?1",
+                params![session_id],
+            )?;
+        }
+        for session_id in &session_ids {
+            self.conn.execute(
+                "DELETE FROM messages WHERE session_id = ?1",
+                params![session_id],
+            )?;
+            self.conn
+                .execute("DELETE FROM sessions WHERE id = ?1", params![session_id])?;
+        }
+        if let Some(sessions_dir) = sessions_dir {
+            for session_id in &session_ids {
+                remove_session_files(sessions_dir, session_id);
+            }
+        }
+        Ok(session_ids.len() as i64)
+    }
+
+    #[doc(hidden)]
+    pub fn set_session_times_for_test(
+        &self,
+        session_id: &str,
+        started_at: f64,
+        ended_at: Option<f64>,
+    ) -> SqlResult<()> {
+        self.conn.execute(
+            "UPDATE sessions SET started_at = ?1, ended_at = ?2 WHERE id = ?3",
+            params![started_at, ended_at, session_id],
+        )?;
+        Ok(())
+    }
+
     pub fn schema_version(&self) -> SqlResult<i64> {
         self.conn
             .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| {
@@ -989,6 +1058,13 @@ fn remove_session_files(sessions_dir: &Path, session_id: &str) {
             let _ = fs::remove_file(entry.path());
         }
     }
+}
+
+fn current_unix_timestamp() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0)
 }
 
 fn snippet(content: &str, needle: &str, append_padding: bool) -> String {

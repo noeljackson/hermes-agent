@@ -622,6 +622,74 @@
         {
           "argv": [
             "hermes",
+            "sessions",
+            "prune",
+            "--older-than",
+            "90",
+            "--source",
+            "cli",
+            "--yes"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Pruned 1 session(s).": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "prune",
+            "--older-than",
+            "90",
+            "--yes"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Pruned 1 session(s).": true
+          }
+        }
+      ],
+      "name": "safe_session_prune_command_execution",
+      "states": {
+        "after_all_prune": {
+          "message_count": 2,
+          "old_active_cli_file_exists": true,
+          "old_ended_cli_dump_exists": false,
+          "old_ended_cli_file_exists": false,
+          "old_ended_telegram_file_exists": false,
+          "recent_ended_cli_file_exists": true,
+          "remaining_ids": [
+            "old-active-cli",
+            "recent-ended-cli"
+          ],
+          "session_count": 2
+        },
+        "after_source_prune": {
+          "message_count": 3,
+          "old_active_cli_file_exists": true,
+          "old_ended_cli_dump_exists": false,
+          "old_ended_cli_file_exists": false,
+          "old_ended_telegram_file_exists": true,
+          "recent_ended_cli_file_exists": true,
+          "remaining_ids": [
+            "old-active-cli",
+            "old-ended-telegram",
+            "recent-ended-cli"
+          ],
+          "session_count": 3
+        }
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "profile"
           ],
           "exit_code": 0,

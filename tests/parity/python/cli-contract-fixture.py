@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import os
 import json
+import sqlite3
 import subprocess
 import sys
 import tarfile
+import time
 
 from parity_common import (
     fixture,
@@ -261,6 +263,119 @@ def main() -> int:
             "deleted_session": final_db.get_session("telegram-session-1"),
         }
         final_db.close()
+
+        prune_home = home / "session-prune-home"
+        prune_env = env.copy()
+        prune_env["HERMES_HOME"] = str(prune_home)
+        prune_home.mkdir(parents=True, exist_ok=True)
+        prune_sessions_dir = prune_home / "sessions"
+        prune_sessions_dir.mkdir(parents=True, exist_ok=True)
+        prune_db = SessionDB(prune_home / "state.db")
+        for session_id, source, content in [
+            ("old-ended-cli", "cli", "old cli"),
+            ("old-active-cli", "cli", "active cli"),
+            ("recent-ended-cli", "cli", "recent cli"),
+            ("old-ended-telegram", "telegram", "old telegram"),
+        ]:
+            prune_db.create_session(
+                session_id,
+                source,
+                user_id=f"user-{source}",
+                model="fake/model",
+                model_config={"provider": "fake"},
+                system_prompt="system",
+            )
+            prune_db.append_message(session_id, "user", content)
+            (prune_sessions_dir / f"{session_id}.jsonl").write_text(
+                f"{content}\n", encoding="utf-8"
+            )
+            (prune_sessions_dir / f"request_dump_{session_id}_001.json").write_text(
+                "{}", encoding="utf-8"
+            )
+        prune_db.close()
+
+        now = time.time()
+        old = now - 120 * 86400
+        recent = now - 5 * 86400
+        with sqlite3.connect(prune_home / "state.db") as conn:
+            conn.execute(
+                "UPDATE sessions SET started_at = ?, ended_at = ? WHERE id = ?",
+                (old, old + 60, "old-ended-cli"),
+            )
+            conn.execute(
+                "UPDATE sessions SET started_at = ?, ended_at = NULL WHERE id = ?",
+                (old, "old-active-cli"),
+            )
+            conn.execute(
+                "UPDATE sessions SET started_at = ?, ended_at = ? WHERE id = ?",
+                (recent, recent + 60, "recent-ended-cli"),
+            )
+            conn.execute(
+                "UPDATE sessions SET started_at = ?, ended_at = ? WHERE id = ?",
+                (old, old + 60, "old-ended-telegram"),
+            )
+
+        prune_commands = []
+        prune_states = {}
+        for argv, marker_list, state_name in [
+            (
+                ["sessions", "prune", "--older-than", "90", "--source", "cli", "--yes"],
+                ["Pruned 1 session(s)."],
+                "after_source_prune",
+            ),
+            (
+                ["sessions", "prune", "--older-than", "90", "--yes"],
+                ["Pruned 1 session(s)."],
+                "after_all_prune",
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=prune_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, prune_home)
+            prune_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, prune_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+            state_db = SessionDB(prune_home / "state.db")
+            with sqlite3.connect(prune_home / "state.db") as conn:
+                remaining_ids = [
+                    row[0]
+                    for row in conn.execute("SELECT id FROM sessions ORDER BY id")
+                ]
+            prune_states[state_name] = {
+                "session_count": state_db.session_count(),
+                "message_count": state_db.message_count(),
+                "remaining_ids": remaining_ids,
+                "old_ended_cli_file_exists": (
+                    prune_sessions_dir / "old-ended-cli.jsonl"
+                ).exists(),
+                "old_ended_cli_dump_exists": any(
+                    path.name.startswith("request_dump_old-ended-cli_")
+                    for path in prune_sessions_dir.glob("request_dump_old-ended-cli_*.json")
+                ),
+                "old_active_cli_file_exists": (
+                    prune_sessions_dir / "old-active-cli.jsonl"
+                ).exists(),
+                "recent_ended_cli_file_exists": (
+                    prune_sessions_dir / "recent-ended-cli.jsonl"
+                ).exists(),
+                "old_ended_telegram_file_exists": (
+                    prune_sessions_dir / "old-ended-telegram.jsonl"
+                ).exists(),
+            }
+            state_db.close()
 
         profile_commands = []
         for argv, marker_list in [
@@ -622,6 +737,11 @@ def main() -> int:
                 "name": "safe_session_command_execution",
                 "commands": session_commands,
                 "state": session_state,
+            },
+            {
+                "name": "safe_session_prune_command_execution",
+                "commands": prune_commands,
+                "states": prune_states,
             },
             {
                 "name": "safe_profile_command_execution",
