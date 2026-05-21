@@ -863,6 +863,61 @@ fn cli_contract_matches_python_fixture() {
         json!("scheduled")
     );
     let _ = fs::remove_dir_all(cron_home);
+
+    let mcp_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-mcp-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&mcp_home);
+    fs::create_dir_all(&mcp_home).unwrap();
+    fs::write(
+        mcp_home.join("config.yaml"),
+        serde_yaml::to_string(&json!({
+            "mcp_servers": {
+                "remote-demo": {
+                    "url": "https://example.com/mcp",
+                    "enabled": true,
+                    "tools": {"include": ["search", "read_file"]},
+                },
+                "local-demo": {
+                    "command": "npx",
+                    "args": ["@modelcontextprotocol/server-filesystem", "/tmp/demo"],
+                    "env": {"DEMO_TOKEN": "fake-token"},
+                    "enabled": false,
+                    "tools": {"exclude": ["delete"]},
+                },
+            },
+            "model": {"name": "preserved-model"},
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let mcp_home_display = mcp_home.to_string_lossy().to_string();
+    let mcp_execution = case(&fixture, "safe_mcp_command_execution");
+    for expected in mcp_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &mcp_home).unwrap();
+        actual.stdout = actual.stdout.replace(&mcp_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&mcp_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    assert_eq!(read_cli_mcp_state(&mcp_home), mcp_execution["state"]);
+    let _ = fs::remove_dir_all(mcp_home);
     let _ = fs::remove_dir_all(cli_home);
 }
 
@@ -894,6 +949,28 @@ fn read_cli_cron_state(hermes_home: &Path) -> Value {
         })
         .collect::<Vec<_>>();
     json!({"job_count": simplified.len(), "jobs": simplified})
+}
+
+fn read_cli_mcp_state(hermes_home: &Path) -> Value {
+    let config_path = hermes_home.join("config.yaml");
+    let config: Value = serde_yaml::from_str(&fs::read_to_string(config_path).unwrap()).unwrap();
+    let servers = config
+        .get("mcp_servers")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    let mut server_names = servers.keys().cloned().collect::<Vec<_>>();
+    server_names.sort();
+    json!({
+        "server_names": server_names,
+        "remote_present": servers.contains_key("remote-demo"),
+        "local_config": servers.get("local-demo").cloned().unwrap_or(Value::Null),
+        "model_preserved": config
+            .get("model")
+            .and_then(|value| value.get("name"))
+            .cloned()
+            .unwrap_or(Value::Null),
+    })
 }
 
 #[test]

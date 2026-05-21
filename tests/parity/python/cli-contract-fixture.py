@@ -854,6 +854,102 @@ def main() -> int:
             if state_name:
                 cron_states[state_name] = cron_state(cron_home)
 
+        mcp_home = home / "mcp-command-home"
+        mcp_env = env.copy()
+        mcp_env["HERMES_HOME"] = str(mcp_home)
+        mcp_home.mkdir(parents=True, exist_ok=True)
+        (mcp_home / "config.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "mcp_servers": {
+                        "remote-demo": {
+                            "url": "https://example.com/mcp",
+                            "enabled": True,
+                            "tools": {"include": ["search", "read_file"]},
+                        },
+                        "local-demo": {
+                            "command": "npx",
+                            "args": [
+                                "@modelcontextprotocol/server-filesystem",
+                                "/tmp/demo",
+                            ],
+                            "env": {"DEMO_TOKEN": "fake-token"},
+                            "enabled": False,
+                            "tools": {"exclude": ["delete"]},
+                        },
+                    },
+                    "model": {"name": "preserved-model"},
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        mcp_commands = []
+        for argv, marker_map in [
+            (
+                ["mcp", "list"],
+                {
+                    "MCP Servers": True,
+                    "remote-demo": True,
+                    "https://example.com/mcp": True,
+                    "2 selected": True,
+                    "enabled": True,
+                    "local-demo": True,
+                    "npx @modelcontext": True,
+                    "-1 excluded": True,
+                    "disabled": True,
+                },
+            ),
+            (
+                ["mcp", "remove", "remote-demo"],
+                {"Removed 'remote-demo' from config": True},
+            ),
+            (
+                ["mcp", "list"],
+                {
+                    "local-demo": True,
+                    "remote-demo": False,
+                    "preserved-model": False,
+                },
+            ),
+            (
+                ["mcp", "add", "missing-transport"],
+                {"Must specify --url <endpoint>, --command <cmd>, or --preset <name>": True},
+            ),
+            (
+                ["mcp", "add", "bad-env", "--command", "node", "--env", "not-an-assignment"],
+                {"Invalid --env value 'not-an-assignment'": True},
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=mcp_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, mcp_home)
+            mcp_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, mcp_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+        mcp_config = yaml.safe_load((mcp_home / "config.yaml").read_text(encoding="utf-8")) or {}
+        mcp_state = {
+            "server_names": sorted((mcp_config.get("mcp_servers") or {}).keys()),
+            "remote_present": "remote-demo" in (mcp_config.get("mcp_servers") or {}),
+            "local_config": (mcp_config.get("mcp_servers") or {}).get("local-demo"),
+            "model_preserved": ((mcp_config.get("model") or {}).get("name")),
+        }
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -929,6 +1025,11 @@ def main() -> int:
                 "name": "safe_cron_command_execution",
                 "commands": cron_commands,
                 "states": cron_states,
+            },
+            {
+                "name": "safe_mcp_command_execution",
+                "commands": mcp_commands,
+                "state": mcp_state,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))

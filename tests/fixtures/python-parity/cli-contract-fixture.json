@@ -1404,6 +1404,141 @@
           ]
         }
       }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "-1 excluded": true,
+            "2 selected": true,
+            "MCP Servers": true,
+            "disabled": true,
+            "enabled": true,
+            "https://example.com/mcp": true,
+            "local-demo": true,
+            "npx @modelcontext": true,
+            "remote-demo": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "-1 excluded": true,
+            "2 selected": true,
+            "MCP Servers": true,
+            "disabled": true,
+            "enabled": true,
+            "https://example.com/mcp": true,
+            "local-demo": true,
+            "npx @modelcontext": true,
+            "remote-demo": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "remove",
+            "remote-demo"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Removed 'remote-demo' from config": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Removed 'remote-demo' from config": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "local-demo": true,
+            "preserved-model": false,
+            "remote-demo": false
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "local-demo": true,
+            "preserved-model": false,
+            "remote-demo": false
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "add",
+            "missing-transport"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Must specify --url <endpoint>, --command <cmd>, or --preset <name>": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Must specify --url <endpoint>, --command <cmd>, or --preset <name>": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "add",
+            "bad-env",
+            "--command",
+            "node",
+            "--env",
+            "not-an-assignment"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Invalid --env value 'not-an-assignment'": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Invalid --env value 'not-an-assignment'": true
+          }
+        }
+      ],
+      "name": "safe_mcp_command_execution",
+      "state": {
+        "local_config": {
+          "args": [
+            "@modelcontextprotocol/server-filesystem",
+            "/tmp/demo"
+          ],
+          "command": "npx",
+          "enabled": false,
+          "env": {
+            "DEMO_TOKEN": "fake-token"
+          },
+          "tools": {
+            "exclude": [
+              "delete"
+            ]
+          }
+        },
+        "model_preserved": "preserved-model",
+        "remote_present": false,
+        "server_names": [
+          "local-demo"
+        ]
+      }
     }
   ],
   "source": {

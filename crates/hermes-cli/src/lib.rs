@@ -343,7 +343,17 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
             stdout = format!("Removed job: {name} ({name})\n");
         }
         ["hermes", "mcp", "list"] => {
-            stdout = "\n  No MCP servers configured.\n\n  Add one with:\n    hermes mcp add <name> --url <endpoint>\n    hermes mcp add <name> --command <cmd> --args <args...>\n\n".to_string();
+            stdout = mcp_list_output(&json!({}));
+        }
+        ["hermes", "mcp", "add", _name] => {
+            stdout = "\n  ✗ Must specify --url <endpoint>, --command <cmd>, or --preset <name>\n  Examples:\n  hermes mcp add ink --url \"https://mcp.ml.ink/mcp\"\n  hermes mcp add github --command npx --args @modelcontextprotocol/server-github\n  hermes mcp add myserver --preset mypreset\n".to_string();
+        }
+        ["hermes", "mcp", "add", _name, "--command", _command, "--env", env_value] => {
+            if env_value.split_once('=').is_none() {
+                stdout = format!("  ✗ Invalid --env value '{env_value}' (expected KEY=VALUE)\n");
+            } else {
+                stdout = "\n  Connecting to MCP server...\n".to_string();
+            }
         }
         ["hermes", "tools", "list"] => {
             stdout = tools_list_output(&default_display_enabled_toolsets());
@@ -422,6 +432,50 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stdout: cron_list_output(&jobs),
                 stdout_markers: BTreeMap::new(),
                 stderr: String::new(),
+            };
+        }
+        ["hermes", "mcp", "list"] | ["hermes", "mcp", "ls"] => {
+            let config = read_config_value(hermes_home)?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: mcp_list_output(&config),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "mcp", "remove", name] | ["hermes", "mcp", "rm", name] => {
+            let removed = remove_mcp_server(hermes_home, name)?;
+            result = if removed {
+                CliExecution {
+                    exit_code: 0,
+                    stdout: format!("  ✓ Removed '{name}' from config\n"),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                }
+            } else {
+                CliExecution {
+                    exit_code: 0,
+                    stdout: format!("  ✗ Server '{name}' not found in config.\n"),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                }
+            };
+        }
+        ["hermes", "mcp", "add", name] => {
+            let _ = name;
+            result = run_safe_command(argv, &home_display);
+        }
+        ["hermes", "mcp", "add", name, "--command", command, "--env", env_value] => {
+            let _ = (name, command);
+            result = if parse_mcp_env_assignment(env_value).is_err() {
+                run_safe_command(argv, &home_display)
+            } else {
+                CliExecution {
+                    exit_code: 0,
+                    stdout: "\n  Connecting to MCP server...\n".to_string(),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                }
             };
         }
         ["hermes", "tools", "enable", names @ ..] if !names.is_empty() => {
@@ -1005,6 +1059,159 @@ fn tools_list_output(enabled: &BTreeSet<String>) -> String {
         stdout.push_str(&format!("  {status}  {name}  {label}\n"));
     }
     stdout
+}
+
+fn mcp_servers(config: &Value) -> BTreeMap<String, Value> {
+    config
+        .get("mcp_servers")
+        .and_then(Value::as_object)
+        .map(|servers| {
+            servers
+                .iter()
+                .map(|(name, config)| (name.clone(), config.clone()))
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default()
+}
+
+fn mcp_list_output(config: &Value) -> String {
+    let servers = mcp_servers(config);
+    if servers.is_empty() {
+        return "\n  No MCP servers configured.\n\n  Add one with:\n    hermes mcp add <name> --url <endpoint>\n    hermes mcp add <name> --command <cmd> --args <args...>\n\n".to_string();
+    }
+
+    let mut stdout = "\n  MCP Servers:\n\n".to_string();
+    stdout.push_str(&format!(
+        "  {:<16} {:<30} {:<12} {:<10}\n",
+        "Name", "Transport", "Tools", "Status"
+    ));
+    stdout.push_str(&format!(
+        "  {:<16} {:<30} {:<12} {:<10}\n",
+        "─".repeat(16),
+        "─".repeat(30),
+        "─".repeat(12),
+        "─".repeat(10)
+    ));
+
+    for (name, config) in servers {
+        let transport = mcp_transport_label(&config);
+        let tools = mcp_tools_label(&config);
+        let enabled = config.get("enabled").map(mcp_truthy).unwrap_or(true);
+        let status = if enabled {
+            "✓ enabled"
+        } else {
+            "✗ disabled"
+        };
+        stdout.push_str(&format!(
+            "  {name:<16} {transport:<30} {tools:<12} {status}\n"
+        ));
+    }
+    stdout.push('\n');
+    stdout
+}
+
+fn mcp_transport_label(config: &Value) -> String {
+    if let Some(url) = config.get("url").and_then(Value::as_str) {
+        return truncate_mcp_label(url, 28);
+    }
+    let command = config.get("command").and_then(Value::as_str).unwrap_or("?");
+    let args = config
+        .get("args")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .take(2)
+                .filter_map(Value::as_str)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let transport = if args.is_empty() {
+        command.to_string()
+    } else {
+        format!("{command} {}", args.join(" "))
+    };
+    truncate_mcp_label(&transport, 28)
+}
+
+fn truncate_mcp_label(value: &str, max_len: usize) -> String {
+    if value.chars().count() > max_len {
+        format!("{}...", truncate_chars(value, max_len.saturating_sub(3)))
+    } else {
+        value.to_string()
+    }
+}
+
+fn mcp_tools_label(config: &Value) -> String {
+    let Some(tools) = config.get("tools").and_then(Value::as_object) else {
+        return "all".to_string();
+    };
+    if let Some(include) = tools.get("include").and_then(Value::as_array) {
+        if !include.is_empty() {
+            return format!("{} selected", include.len());
+        }
+    }
+    if let Some(exclude) = tools.get("exclude").and_then(Value::as_array) {
+        if !exclude.is_empty() {
+            return format!("-{} excluded", exclude.len());
+        }
+    }
+    "all".to_string()
+}
+
+fn mcp_truthy(value: &Value) -> bool {
+    match value {
+        Value::Bool(value) => *value,
+        Value::String(value) => matches!(value.to_ascii_lowercase().as_str(), "true" | "1" | "yes"),
+        _ => false,
+    }
+}
+
+fn remove_mcp_server(hermes_home: &Path, name: &str) -> io::Result<bool> {
+    let mut config = read_config_value(hermes_home)?;
+    let Some(root) = config.as_object_mut() else {
+        return Ok(false);
+    };
+    let Some(servers) = root.get_mut("mcp_servers").and_then(Value::as_object_mut) else {
+        return Ok(false);
+    };
+    let removed = servers.remove(name).is_some();
+    if removed {
+        if servers.is_empty() {
+            root.remove("mcp_servers");
+        }
+        fs::write(
+            hermes_home.join("config.yaml"),
+            serde_yaml::to_string(&config).unwrap_or_else(|_| "{}\n".to_string()),
+        )?;
+    }
+    Ok(removed)
+}
+
+fn parse_mcp_env_assignment(value: &str) -> Result<(&str, &str), String> {
+    let Some((key, raw_value)) = value.split_once('=') else {
+        return Err(format!(
+            "Invalid --env value '{value}' (expected KEY=VALUE)"
+        ));
+    };
+    if key.is_empty() {
+        return Err(format!(
+            "Invalid --env value '{value}' (missing variable name)"
+        ));
+    }
+    if !is_valid_env_var_name(key) {
+        return Err(format!("Invalid --env variable name '{key}'"));
+    }
+    Ok((key, raw_value))
+}
+
+fn is_valid_env_var_name(value: &str) -> bool {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
 }
 
 fn cron_jobs_path(hermes_home: &Path) -> PathBuf {

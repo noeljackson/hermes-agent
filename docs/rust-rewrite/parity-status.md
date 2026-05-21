@@ -172,7 +172,10 @@ against those fixtures in `crates/hermes-parity`:
   registration for resources/prompts. MCP security/config helpers are also
   fixture-backed for safe subprocess environment filtering, credential
   redaction in MCP errors, remote HTTP(S) URL validation, and numeric config
-  coercion.
+  coercion. The deterministic MCP CLI config surface is fixture-backed for
+  listing persisted remote/stdio servers, include/exclude display labels,
+  enabled/disabled status, server removal without dropping unrelated config,
+  and non-network `mcp add` validation errors.
 - MCP schema normalization: draft-07 `definitions` to `$defs` rewriting,
   local `$ref` rewriting, nullable-union collapse, object-shape repair,
   dangling `required` pruning, and empty-schema defaults.
