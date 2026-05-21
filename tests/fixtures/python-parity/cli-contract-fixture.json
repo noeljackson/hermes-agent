@@ -769,6 +769,80 @@
         "profiles_root_exists": true,
         "research_exists": false
       }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "enable",
+            "video"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Enabled: video": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "disable",
+            "browser"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Disabled: browser": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Built-in toolsets (cli):": true,
+            "\u2713 enabled  terminal": true,
+            "\u2713 enabled  video": true,
+            "\u2717 disabled  browser": true
+          }
+        }
+      ],
+      "name": "safe_tools_command_execution",
+      "state": {
+        "browser_enabled": false,
+        "default_composite_present": false,
+        "platform_toolsets_cli": [
+          "clarify",
+          "code_execution",
+          "computer_use",
+          "cronjob",
+          "delegation",
+          "file",
+          "image_gen",
+          "kanban",
+          "memory",
+          "messaging",
+          "session_search",
+          "skills",
+          "terminal",
+          "todo",
+          "tts",
+          "video",
+          "vision",
+          "web"
+        ],
+        "video_enabled": true
+      }
     }
   ],
   "source": {

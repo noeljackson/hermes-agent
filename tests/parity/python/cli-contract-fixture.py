@@ -321,6 +321,61 @@ def main() -> int:
 
         import yaml
 
+        tool_home = home / "tools-command-home"
+        tool_env = env.copy()
+        tool_env["HERMES_HOME"] = str(tool_home)
+        tool_commands = []
+        for argv, marker_list in [
+            (["tools", "enable", "video"], ["Enabled: video"]),
+            (["tools", "disable", "browser"], ["Disabled: browser"]),
+            (
+                ["tools", "list"],
+                [
+                    "Built-in toolsets (cli):",
+                    "✗ disabled  browser",
+                    "✓ enabled  video",
+                    "✓ enabled  terminal",
+                ],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=tool_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, tool_home)
+            tool_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, tool_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+        tool_config = {}
+        tool_config_path = tool_home / "config.yaml"
+        if tool_config_path.exists():
+            tool_config = yaml.safe_load(tool_config_path.read_text(encoding="utf-8")) or {}
+        tool_state = {
+            "platform_toolsets_cli": sorted(
+                str(item)
+                for item in (
+                    (tool_config.get("platform_toolsets") or {}).get("cli") or []
+                )
+            ),
+            "browser_enabled": "browser"
+            in ((tool_config.get("platform_toolsets") or {}).get("cli") or []),
+            "video_enabled": "video"
+            in ((tool_config.get("platform_toolsets") or {}).get("cli") or []),
+            "default_composite_present": "hermes-cli"
+            in ((tool_config.get("platform_toolsets") or {}).get("cli") or []),
+        }
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -367,6 +422,11 @@ def main() -> int:
                 "name": "safe_profile_command_execution",
                 "commands": profile_commands,
                 "state": profile_state,
+            },
+            {
+                "name": "safe_tools_command_execution",
+                "commands": tool_commands,
+                "state": tool_state,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))

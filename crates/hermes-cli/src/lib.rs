@@ -88,6 +88,53 @@ Commands:
   setup
 ";
 
+const DEFAULT_CLI_SAVED_TOOLSETS: &[&str] = &[
+    "clarify",
+    "code_execution",
+    "computer_use",
+    "cronjob",
+    "delegation",
+    "file",
+    "image_gen",
+    "kanban",
+    "memory",
+    "messaging",
+    "session_search",
+    "skills",
+    "terminal",
+    "todo",
+    "tts",
+    "vision",
+    "web",
+];
+
+const DISPLAY_TOOLSETS: &[(&str, &str, bool)] = &[
+    ("web", "🔍 Web Search & Scraping", true),
+    ("browser", "🌐 Browser Automation", true),
+    ("terminal", "💻 Terminal & Processes", true),
+    ("file", "📁 File Operations", true),
+    ("code_execution", "⚡ Code Execution", true),
+    ("vision", "👁️  Vision / Image Analysis", true),
+    ("video", "🎬 Video Analysis", false),
+    ("image_gen", "🎨 Image Generation", true),
+    ("video_gen", "🎬 Video Generation", false),
+    ("x_search", "🐦 X (Twitter) Search", false),
+    ("moa", "🧠 Mixture of Agents", false),
+    ("tts", "🔊 Text-to-Speech", true),
+    ("skills", "📚 Skills", true),
+    ("todo", "📋 Task Planning", true),
+    ("memory", "💾 Memory", true),
+    ("session_search", "🔎 Session Search", true),
+    ("clarify", "❓ Clarifying Questions", true),
+    ("delegation", "👥 Task Delegation", true),
+    ("cronjob", "⏰ Cron Jobs", true),
+    ("messaging", "📨 Cross-Platform Messaging", true),
+    ("homeassistant", "🏠 Home Assistant", false),
+    ("spotify", "🎵 Spotify", false),
+    ("yuanbao", "🤖 Yuanbao", false),
+    ("computer_use", "🖱️  Computer Use (macOS)", true),
+];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubcommandHelpContract {
     pub argv: &'static [&'static str],
@@ -263,34 +310,13 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
             stdout = "\n  No MCP servers configured.\n\n  Add one with:\n    hermes mcp add <name> --url <endpoint>\n    hermes mcp add <name> --command <cmd> --args <args...>\n\n".to_string();
         }
         ["hermes", "tools", "list"] => {
-            stdout = "\
-Built-in toolsets (cli):
-  ✓ enabled  web  🔍 Web Search & Scraping
-  ✓ enabled  browser  🌐 Browser Automation
-  ✓ enabled  terminal  💻 Terminal & Processes
-  ✓ enabled  file  📁 File Operations
-  ✓ enabled  code_execution  ⚡ Code Execution
-  ✓ enabled  vision  👁️  Vision / Image Analysis
-  ✗ disabled  video  🎬 Video Analysis
-  ✓ enabled  image_gen  🎨 Image Generation
-  ✗ disabled  video_gen  🎬 Video Generation
-  ✗ disabled  x_search  🐦 X (Twitter) Search
-  ✗ disabled  moa  🧠 Mixture of Agents
-  ✓ enabled  tts  🔊 Text-to-Speech
-  ✓ enabled  skills  📚 Skills
-  ✓ enabled  todo  📋 Task Planning
-  ✓ enabled  memory  💾 Memory
-  ✓ enabled  session_search  🔎 Session Search
-  ✓ enabled  clarify  ❓ Clarifying Questions
-  ✓ enabled  delegation  👥 Task Delegation
-  ✓ enabled  cronjob  ⏰ Cron Jobs
-  ✓ enabled  messaging  📨 Cross-Platform Messaging
-  ✗ disabled  homeassistant  🏠 Home Assistant
-  ✗ disabled  spotify  🎵 Spotify
-  ✗ disabled  yuanbao  🤖 Yuanbao
-  ✓ enabled  computer_use  🖱️  Computer Use (macOS)
-"
-            .to_string();
+            stdout = tools_list_output(&default_display_enabled_toolsets());
+        }
+        ["hermes", "tools", "enable", names @ ..] if !names.is_empty() => {
+            stdout = format!("✓ Enabled: {}\n", names.join(", "));
+        }
+        ["hermes", "tools", "disable", names @ ..] if !names.is_empty() => {
+            stdout = format!("✓ Disabled: {}\n", names.join(", "));
         }
         _ => {
             exit_code = 2;
@@ -334,6 +360,23 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             if let Some(env_key) = hermes_config::terminal_env_sync_key(key) {
                 upsert_env_value(&hermes_home.join(".env"), env_key, value)?;
             }
+        }
+        ["hermes", "tools", "enable", names @ ..] if !names.is_empty() => {
+            apply_cli_toolset_change(hermes_home, names, true)?;
+            result = run_safe_command(argv, &home_display);
+        }
+        ["hermes", "tools", "disable", names @ ..] if !names.is_empty() => {
+            apply_cli_toolset_change(hermes_home, names, false)?;
+            result = run_safe_command(argv, &home_display);
+        }
+        ["hermes", "tools", "list"] => {
+            let enabled = read_cli_toolsets(hermes_home)?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: tools_list_output(&enabled),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
         }
         ["hermes", "profile"] => {
             let active = active_profile_name(hermes_home);
@@ -647,6 +690,112 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
     }
 
     Ok(result)
+}
+
+fn default_cli_saved_toolsets() -> BTreeSet<String> {
+    DEFAULT_CLI_SAVED_TOOLSETS
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect()
+}
+
+fn default_display_enabled_toolsets() -> BTreeSet<String> {
+    DISPLAY_TOOLSETS
+        .iter()
+        .filter_map(|(name, _, enabled)| enabled.then_some((*name).to_string()))
+        .collect()
+}
+
+fn read_config_value(hermes_home: &Path) -> io::Result<Value> {
+    let config_path = hermes_home.join("config.yaml");
+    if config_path.exists() {
+        Ok(
+            serde_yaml::from_str::<Value>(&fs::read_to_string(config_path)?)
+                .unwrap_or_else(|_| json!({})),
+        )
+    } else {
+        Ok(json!({}))
+    }
+}
+
+fn read_cli_toolsets(hermes_home: &Path) -> io::Result<BTreeSet<String>> {
+    let config = read_config_value(hermes_home)?;
+    Ok(cli_toolsets_from_config(&config).unwrap_or_else(default_display_enabled_toolsets))
+}
+
+fn cli_toolsets_from_config(config: &Value) -> Option<BTreeSet<String>> {
+    config
+        .get("platform_toolsets")
+        .and_then(|value| value.get("cli"))
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect::<BTreeSet<_>>()
+        })
+}
+
+fn apply_cli_toolset_change(hermes_home: &Path, names: &[&str], enable: bool) -> io::Result<()> {
+    fs::create_dir_all(hermes_home)?;
+    let mut config = read_config_value(hermes_home)?;
+    let mut enabled = cli_toolsets_from_config(&config).unwrap_or_else(default_cli_saved_toolsets);
+    for name in names {
+        if enable {
+            enabled.insert((*name).to_string());
+        } else {
+            enabled.remove(*name);
+        }
+    }
+
+    let Some(root) = config.as_object_mut() else {
+        config = json!({});
+        return apply_cli_toolset_change_with_config(hermes_home, config, enabled);
+    };
+    let platform_toolsets = root
+        .entry("platform_toolsets".to_string())
+        .or_insert_with(|| json!({}));
+    if !platform_toolsets.is_object() {
+        *platform_toolsets = json!({});
+    }
+    platform_toolsets.as_object_mut().unwrap().insert(
+        "cli".to_string(),
+        Value::Array(enabled.into_iter().map(Value::String).collect()),
+    );
+    fs::write(
+        hermes_home.join("config.yaml"),
+        serde_yaml::to_string(&config).unwrap_or_else(|_| "{}\n".to_string()),
+    )
+}
+
+fn apply_cli_toolset_change_with_config(
+    hermes_home: &Path,
+    mut config: Value,
+    enabled: BTreeSet<String>,
+) -> io::Result<()> {
+    let root = config.as_object_mut().unwrap();
+    root.insert(
+        "platform_toolsets".to_string(),
+        json!({"cli": enabled.into_iter().collect::<Vec<_>>()}),
+    );
+    fs::write(
+        hermes_home.join("config.yaml"),
+        serde_yaml::to_string(&config).unwrap_or_else(|_| "{}\n".to_string()),
+    )
+}
+
+fn tools_list_output(enabled: &BTreeSet<String>) -> String {
+    let mut stdout = "Built-in toolsets (cli):\n".to_string();
+    for (name, label, _) in DISPLAY_TOOLSETS {
+        let status = if enabled.contains(*name) {
+            "✓ enabled"
+        } else {
+            "✗ disabled"
+        };
+        stdout.push_str(&format!("  {status}  {name}  {label}\n"));
+    }
+    stdout
 }
 
 fn open_session_db(hermes_home: &Path) -> io::Result<hermes_session::SqliteSessionStore> {

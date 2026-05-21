@@ -242,7 +242,9 @@ against those fixtures in `crates/hermes-parity`:
   `--no-alias --no-skills --description`, describe read/write, show, use,
   list, and delete with active-profile reset. Additional deterministic
   subcommand dispatch is fixture-backed for `config check`, `mcp list`,
-  empty `sessions list --limit`, and `tools list` marker contracts.
+  empty `sessions list --limit`, `tools list` marker contracts, and
+  non-interactive `tools enable` / `tools disable` config mutation for the
+  CLI platform toolset list.
 - TUI gateway contract: JSON-RPC method inventory, long-handler routing
   inventory, `_ok`/`_err`/unknown-method frame shapes, request normalization
   errors for malformed requests and params, event frame shape, dashboard PTY

@@ -341,6 +341,75 @@ fn cli_contract_matches_python_fixture() {
         cli_home.join("profiles").exists(),
         profile_state["profiles_root_exists"].as_bool().unwrap()
     );
+
+    let tools_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-tools-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&tools_home);
+    fs::create_dir_all(&tools_home).unwrap();
+    let tools_home_display = tools_home.to_string_lossy().to_string();
+    let tools_execution = case(&fixture, "safe_tools_command_execution");
+    for expected in tools_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &tools_home).unwrap();
+        actual.stdout = actual.stdout.replace(&tools_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&tools_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let tools_config: Value =
+        serde_yaml::from_str(&fs::read_to_string(tools_home.join("config.yaml")).unwrap()).unwrap();
+    let tools_cli = tools_config["platform_toolsets"]["cli"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| json!(value.as_str().unwrap()))
+        .collect::<Vec<_>>();
+    let tools_state = &tools_execution["state"];
+    assert_eq!(
+        Value::Array(tools_cli),
+        tools_state["platform_toolsets_cli"]
+    );
+    assert_eq!(
+        tools_config["platform_toolsets"]["cli"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "browser"),
+        tools_state["browser_enabled"].as_bool().unwrap()
+    );
+    assert_eq!(
+        tools_config["platform_toolsets"]["cli"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "video"),
+        tools_state["video_enabled"].as_bool().unwrap()
+    );
+    assert_eq!(
+        tools_config["platform_toolsets"]["cli"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "hermes-cli"),
+        tools_state["default_composite_present"].as_bool().unwrap()
+    );
+    let _ = fs::remove_dir_all(tools_home);
     let _ = fs::remove_dir_all(cli_home);
 }
 
