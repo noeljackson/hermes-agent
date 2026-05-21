@@ -972,6 +972,69 @@
         {
           "argv": [
             "hermes",
+            "logs",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Log files in <HERMES_HOME>/logs/": true,
+            "agent.log": true,
+            "errors.log": true,
+            "gateway.log": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "logs",
+            "agent",
+            "-n",
+            "2"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "agent.log": true,
+            "gateway error": true,
+            "last 2": true,
+            "tool warn": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "logs",
+            "agent",
+            "-n",
+            "5",
+            "--level",
+            "WARNING",
+            "--session",
+            "sessA",
+            "--component",
+            "tools"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "component=tools": true,
+            "level>=WARNING": true,
+            "session=sessA": true,
+            "tool warn": true
+          }
+        }
+      ],
+      "name": "safe_logs_command_execution"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "profile",
             "create",
             "archive",

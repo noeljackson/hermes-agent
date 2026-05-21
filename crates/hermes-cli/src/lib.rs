@@ -441,6 +441,28 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "logs", "list"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: logs_list_output(hermes_home),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "logs", log_name, "-n", lines] => {
+            result = logs_tail_execution(hermes_home, log_name, lines, None, None, None);
+        }
+        ["hermes", "logs", log_name, "-n", lines, "--level", level, "--session", session, "--component", component] =>
+        {
+            result = logs_tail_execution(
+                hermes_home,
+                log_name,
+                lines,
+                Some(level),
+                Some(session),
+                Some(component),
+            );
+        }
         ["hermes", "profile"] => {
             let active = active_profile_name(hermes_home);
             let profile_dir = profile_dir(hermes_home, &active);
@@ -1182,6 +1204,154 @@ fn read_profile_description(profile_dir: &Path) -> io::Result<Option<String>> {
 fn count_profile_skills(profile_dir: &Path) -> usize {
     let skills_dir = profile_dir.join("skills");
     count_skill_files(&skills_dir).unwrap_or(0)
+}
+
+fn logs_list_output(hermes_home: &Path) -> String {
+    let logs_dir = hermes_home.join("logs");
+    if !logs_dir.exists() {
+        return format!("No logs directory at {}/logs/\n", hermes_home.display());
+    }
+    let mut stdout = format!("Log files in {}/logs/:\n\n", hermes_home.display());
+    let mut found = false;
+    if let Ok(entries) = fs::read_dir(&logs_dir) {
+        let mut names = entries
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().is_file())
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "log"))
+            .map(|entry| entry.file_name().to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        names.sort();
+        for name in names {
+            found = true;
+            let size = fs::metadata(logs_dir.join(&name))
+                .map(|metadata| metadata.len())
+                .unwrap_or(0);
+            stdout.push_str(&format!("  {name:<25} {size:>8}B   just now\n"));
+        }
+    }
+    if !found {
+        stdout.push_str("  (no log files yet — run 'hermes chat' to generate logs)\n");
+    }
+    stdout
+}
+
+fn logs_tail_execution(
+    hermes_home: &Path,
+    log_name: &str,
+    lines: &str,
+    level: Option<&str>,
+    session: Option<&str>,
+    component: Option<&str>,
+) -> CliExecution {
+    let Some(filename) = log_filename(log_name) else {
+        return CliExecution {
+            exit_code: 1,
+            stdout: format!("Unknown log: '{log_name}'. Available: agent, errors, gateway\n"),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        };
+    };
+    let path = hermes_home.join("logs").join(filename);
+    if !path.exists() {
+        return CliExecution {
+            exit_code: 1,
+            stdout: format!(
+                "Log file not found: {}\n(Logs are created when Hermes runs — try 'hermes chat' first)\n",
+                path.display()
+            ),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        };
+    }
+    let num_lines = lines.parse::<usize>().unwrap_or(50);
+    let mut all_lines = fs::read_to_string(&path)
+        .unwrap_or_default()
+        .lines()
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if let Some(level) = level {
+        all_lines.retain(|line| log_line_level_at_least(line, level));
+    }
+    if let Some(session) = session {
+        all_lines.retain(|line| line.contains(session));
+    }
+    if let Some(component) = component {
+        all_lines.retain(|line| log_line_component_matches(line, component));
+    }
+    let start = all_lines.len().saturating_sub(num_lines);
+    let mut filter_parts = Vec::new();
+    if let Some(level) = level {
+        filter_parts.push(format!("level>={}", level.to_ascii_uppercase()));
+    }
+    if let Some(session) = session {
+        filter_parts.push(format!("session={session}"));
+    }
+    if let Some(component) = component {
+        filter_parts.push(format!("component={component}"));
+    }
+    let filter_desc = if filter_parts.is_empty() {
+        String::new()
+    } else {
+        format!(" [{}]", filter_parts.join(", "))
+    };
+    let mut stdout = format!(
+        "--- {}/logs/{filename}{filter_desc} (last {num_lines}) ---\n",
+        hermes_home.display()
+    );
+    for line in &all_lines[start..] {
+        stdout.push_str(line);
+        stdout.push('\n');
+    }
+    CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    }
+}
+
+fn log_filename(name: &str) -> Option<&'static str> {
+    match name {
+        "agent" => Some("agent.log"),
+        "errors" => Some("errors.log"),
+        "gateway" => Some("gateway.log"),
+        _ => None,
+    }
+}
+
+fn log_line_level_at_least(line: &str, min_level: &str) -> bool {
+    let Some(level) = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        .into_iter()
+        .find(|level| line.contains(&format!(" {level} ")))
+    else {
+        return true;
+    };
+    log_level_rank(level) >= log_level_rank(&min_level.to_ascii_uppercase())
+}
+
+fn log_level_rank(level: &str) -> i32 {
+    match level {
+        "DEBUG" => 0,
+        "INFO" => 1,
+        "WARNING" => 2,
+        "ERROR" => 3,
+        "CRITICAL" => 4,
+        _ => 0,
+    }
+}
+
+fn log_line_component_matches(line: &str, component: &str) -> bool {
+    let prefixes: &[&str] = match component {
+        "gateway" => &["gateway", "hermes_plugins"],
+        "agent" => &["agent", "run_agent", "model_tools", "batch_runner"],
+        "tools" => &["tools"],
+        "cli" => &["hermes_cli", "cli"],
+        "cron" => &["cron"],
+        _ => return false,
+    };
+    prefixes
+        .iter()
+        .any(|prefix| line.contains(&format!(" {prefix}")) || line.contains(&format!("] {prefix}")))
 }
 
 fn rename_profile_dir(hermes_home: &Path, old_name: &str, new_name: &str) -> io::Result<PathBuf> {

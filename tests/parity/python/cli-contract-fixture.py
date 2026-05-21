@@ -550,6 +550,76 @@ def main() -> int:
             ).exists(),
         }
 
+        logs_home = home / "logs-command-home"
+        logs_env = env.copy()
+        logs_env["HERMES_HOME"] = str(logs_home)
+        logs_dir = logs_home / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        (logs_dir / "agent.log").write_text(
+            "\n".join(
+                [
+                    "2026-05-20 10:00:00,000 INFO [sessA] hermes_cli.main: boot",
+                    "2026-05-20 10:01:00,000 WARNING [sessA] tools.terminal_tool: tool warn",
+                    "2026-05-20 10:02:00,000 ERROR [sessB] gateway.run: gateway error",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (logs_dir / "errors.log").write_text(
+            "2026-05-20 10:03:00,000 ERROR [sessC] run_agent: failure\n",
+            encoding="utf-8",
+        )
+        (logs_dir / "gateway.log").write_text(
+            "2026-05-20 10:04:00,000 INFO [sessG] gateway.run: ready\n",
+            encoding="utf-8",
+        )
+        logs_commands = []
+        for argv, marker_list in [
+            (
+                ["logs", "list"],
+                ["Log files in <HERMES_HOME>/logs/", "agent.log", "errors.log", "gateway.log"],
+            ),
+            (
+                ["logs", "agent", "-n", "2"],
+                ["agent.log", "last 2", "tool warn", "gateway error"],
+            ),
+            (
+                [
+                    "logs",
+                    "agent",
+                    "-n",
+                    "5",
+                    "--level",
+                    "WARNING",
+                    "--session",
+                    "sessA",
+                    "--component",
+                    "tools",
+                ],
+                ["level>=WARNING", "session=sessA", "component=tools", "tool warn"],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=logs_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, logs_home)
+            logs_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, logs_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+
         archive_home = home / "profile-archive-home"
         archive_env = env.copy()
         archive_env["HERMES_HOME"] = str(archive_home)
@@ -840,6 +910,10 @@ def main() -> int:
                 "name": "safe_profile_rename_command_execution",
                 "commands": rename_commands,
                 "state": rename_state,
+            },
+            {
+                "name": "safe_logs_command_execution",
+                "commands": logs_commands,
             },
             {
                 "name": "safe_profile_archive_command_execution",

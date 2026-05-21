@@ -567,6 +567,59 @@ fn cli_contract_matches_python_fixture() {
             .unwrap()
     );
 
+    let logs_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-logs-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&logs_home);
+    let logs_dir = logs_home.join("logs");
+    fs::create_dir_all(&logs_dir).unwrap();
+    fs::write(
+        logs_dir.join("agent.log"),
+        [
+            "2026-05-20 10:00:00,000 INFO [sessA] hermes_cli.main: boot",
+            "2026-05-20 10:01:00,000 WARNING [sessA] tools.terminal_tool: tool warn",
+            "2026-05-20 10:02:00,000 ERROR [sessB] gateway.run: gateway error",
+        ]
+        .join("\n")
+            + "\n",
+    )
+    .unwrap();
+    fs::write(
+        logs_dir.join("errors.log"),
+        "2026-05-20 10:03:00,000 ERROR [sessC] run_agent: failure\n",
+    )
+    .unwrap();
+    fs::write(
+        logs_dir.join("gateway.log"),
+        "2026-05-20 10:04:00,000 INFO [sessG] gateway.run: ready\n",
+    )
+    .unwrap();
+    let logs_home_display = logs_home.to_string_lossy().to_string();
+    let logs_execution = case(&fixture, "safe_logs_command_execution");
+    for expected in logs_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &logs_home).unwrap();
+        actual.stdout = actual.stdout.replace(&logs_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&logs_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+
     let archive_home = std::env::temp_dir().join(format!(
         "hermes-parity-cli-profile-archive-{}",
         std::process::id()
