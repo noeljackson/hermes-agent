@@ -315,6 +315,12 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
             stdout = "No scheduled jobs.\nCreate one with 'hermes cron create ...' or the /cron command in chat.\n"
                 .to_string();
         }
+        ["hermes", "gateway", "status"] => {
+            stdout = gateway_status_output();
+        }
+        ["hermes", "gateway", "list"] => {
+            stdout = "Gateways:\n  ✗ default (current)       \n".to_string();
+        }
         ["hermes", "cron", "create", schedule, prompt, "--name", name, "--deliver", _deliver] => {
             let display = hermes_cron::parse_schedule(schedule)
                 .ok()
@@ -430,6 +436,22 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             result = CliExecution {
                 exit_code: 0,
                 stdout: cron_list_output(&jobs),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "gateway", "status"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: gateway_status_output(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "gateway", "list"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: gateway_list_output(hermes_home)?,
                 stdout_markers: BTreeMap::new(),
                 stderr: String::new(),
             };
@@ -1059,6 +1081,45 @@ fn tools_list_output(enabled: &BTreeSet<String>) -> String {
         stdout.push_str(&format!("  {status}  {name}  {label}\n"));
     }
     stdout
+}
+
+fn gateway_status_output() -> String {
+    "✗ Gateway is not running\n\nTo start:\n  hermes gateway run      # Run in foreground\n  hermes gateway install  # Install as user service\n  sudo hermes gateway install --system  # Install as boot-time system service\n"
+        .to_string()
+}
+
+fn gateway_list_output(hermes_home: &Path) -> io::Result<String> {
+    let active = active_profile_name(hermes_home);
+    let mut names = vec!["default".to_string()];
+    let profiles_root = hermes_home.join("profiles");
+    if profiles_root.is_dir() {
+        let mut profile_names = fs::read_dir(profiles_root)?
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().is_dir())
+            .map(|entry| entry.file_name().to_string_lossy().to_string())
+            .filter(|name| is_valid_profile_name(name))
+            .collect::<Vec<_>>();
+        profile_names.sort();
+        names.extend(profile_names);
+    }
+
+    let mut stdout = "Gateways:\n".to_string();
+    for name in names {
+        let mut label = name.clone();
+        if name == active {
+            label.push_str(" (current)");
+        }
+        stdout.push_str(&format!("  ✗ {label:<24}\n"));
+    }
+    Ok(stdout)
+}
+
+fn is_valid_profile_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 64
+        && name
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-'))
 }
 
 fn mcp_servers(config: &Value) -> BTreeMap<String, Value> {

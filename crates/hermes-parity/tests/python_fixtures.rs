@@ -918,6 +918,50 @@ fn cli_contract_matches_python_fixture() {
     }
     assert_eq!(read_cli_mcp_state(&mcp_home), mcp_execution["state"]);
     let _ = fs::remove_dir_all(mcp_home);
+
+    let gateway_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-gateway-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&gateway_home);
+    fs::create_dir_all(gateway_home.join("profiles").join("messenger")).unwrap();
+    fs::write(
+        gateway_home
+            .join("profiles")
+            .join("messenger")
+            .join("profile.yaml"),
+        "description: Messenger role\n",
+    )
+    .unwrap();
+    let gateway_home_display = gateway_home.to_string_lossy().to_string();
+    let gateway_execution = case(&fixture, "safe_gateway_command_execution");
+    for expected in gateway_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &gateway_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&gateway_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&gateway_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let _ = fs::remove_dir_all(gateway_home);
     let _ = fs::remove_dir_all(cli_home);
 }
 

@@ -950,6 +950,57 @@ def main() -> int:
             "model_preserved": ((mcp_config.get("model") or {}).get("name")),
         }
 
+        gateway_home = home / "gateway-command-home"
+        gateway_env = env.copy()
+        gateway_env["HERMES_HOME"] = str(gateway_home)
+        gateway_home.mkdir(parents=True, exist_ok=True)
+        messenger_profile = gateway_home / "profiles" / "messenger"
+        messenger_profile.mkdir(parents=True, exist_ok=True)
+        (messenger_profile / "profile.yaml").write_text(
+            "description: Messenger role\n", encoding="utf-8"
+        )
+        gateway_commands = []
+        for argv, marker_map in [
+            (
+                ["gateway", "status"],
+                {
+                    "Gateway is not running": True,
+                    "To start:": True,
+                    "hermes gateway run": True,
+                    "hermes gateway install": True,
+                },
+            ),
+            (
+                ["gateway", "list"],
+                {
+                    "Gateways:": True,
+                    "default (current)": True,
+                    "messenger": True,
+                },
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=gateway_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, gateway_home)
+            gateway_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, gateway_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -1030,6 +1081,10 @@ def main() -> int:
                 "name": "safe_mcp_command_execution",
                 "commands": mcp_commands,
                 "state": mcp_state,
+            },
+            {
+                "name": "safe_gateway_command_execution",
+                "commands": gateway_commands,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))

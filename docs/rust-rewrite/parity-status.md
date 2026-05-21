@@ -163,9 +163,12 @@ against those fixtures in `crates/hermes-parity`:
   gateway config bool/int/float/mode normalizers, delivery-target parsing and
   stringification with origin fallback, runtime-footer config/format/build
   behavior, restart drain-timeout parsing, channel-query normalization,
-  channel target labels, and session-derived channel-directory IDs/names. Live
-  platform adapters themselves remain opt-in/future
-  work until deterministic adapter fixtures cover each platform boundary.
+  channel target labels, and session-derived channel-directory IDs/names.
+  Gateway CLI status/list surfaces are fixture-backed for no-running-gateway
+  startup guidance and multi-profile status inventory without contacting
+  messaging platforms. Live platform adapters themselves remain
+  opt-in/future work until deterministic adapter fixtures cover each platform
+  boundary.
 - MCP filtering: server/tool name sanitization, include/exclude filtering
   including include precedence, string filters, invalid filter fallback,
   bool-ish resource/prompt utility gates, and capability-gated utility

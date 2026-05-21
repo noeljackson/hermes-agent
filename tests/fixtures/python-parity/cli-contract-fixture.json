@@ -1539,6 +1539,53 @@
           "local-demo"
         ]
       }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "gateway",
+            "status"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Gateway is not running": true,
+            "To start:": true,
+            "hermes gateway install": true,
+            "hermes gateway run": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Gateway is not running": true,
+            "To start:": true,
+            "hermes gateway install": true,
+            "hermes gateway run": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "gateway",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Gateways:": true,
+            "default (current)": true,
+            "messenger": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Gateways:": true,
+            "default (current)": true,
+            "messenger": true
+          }
+        }
+      ],
+      "name": "safe_gateway_command_execution"
     }
   ],
   "source": {
