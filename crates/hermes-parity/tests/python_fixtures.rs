@@ -666,6 +666,139 @@ fn cli_contract_matches_python_fixture() {
     );
     let _ = fs::remove_dir_all(clone_home);
 
+    let clone_all_home = std::env::temp_dir().join(format!(
+        "hermes-parity-cli-profile-clone-all-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&clone_all_home);
+    fs::create_dir_all(clone_all_home.join("skills").join("demo")).unwrap();
+    fs::create_dir_all(clone_all_home.join("memories")).unwrap();
+    fs::create_dir_all(clone_all_home.join("sessions")).unwrap();
+    fs::create_dir_all(clone_all_home.join("profiles").join("sibling")).unwrap();
+    fs::write(
+        clone_all_home.join("config.yaml"),
+        "model: clone-all-model\n",
+    )
+    .unwrap();
+    fs::write(
+        clone_all_home.join(".env"),
+        "OPENROUTER_API_KEY=sk-clone-all\n",
+    )
+    .unwrap();
+    fs::write(clone_all_home.join("SOUL.md"), "Clone all soul.\n").unwrap();
+    fs::write(
+        clone_all_home.join("skills").join("demo").join("SKILL.md"),
+        "# Demo Clone All Skill\n",
+    )
+    .unwrap();
+    fs::write(
+        clone_all_home.join("memories").join("MEMORY.md"),
+        "Remember clone all.\n",
+    )
+    .unwrap();
+    fs::write(
+        clone_all_home.join("sessions").join("session.jsonl"),
+        "{}\n",
+    )
+    .unwrap();
+    fs::write(clone_all_home.join("gateway.pid"), "12345\n").unwrap();
+    fs::write(clone_all_home.join("gateway_state.json"), "{}\n").unwrap();
+    fs::write(clone_all_home.join("processes.json"), "{}\n").unwrap();
+    let clone_all_home_display = clone_all_home.to_string_lossy().to_string();
+    let clone_all_execution = case(&fixture, "safe_profile_clone_all_command_execution");
+    for expected in clone_all_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &clone_all_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&clone_all_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&clone_all_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let clone_all_state = &clone_all_execution["state"];
+    let fullcopy_profile = clone_all_home.join("profiles").join("fullcopy");
+    assert_eq!(
+        fullcopy_profile.exists(),
+        clone_all_state["fullcopy_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(fullcopy_profile.join("config.yaml")).unwrap(),
+        clone_all_state["config"].as_str().unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(fullcopy_profile.join(".env")).unwrap(),
+        clone_all_state["env"].as_str().unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(fullcopy_profile.join("SOUL.md")).unwrap(),
+        clone_all_state["soul"].as_str().unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(fullcopy_profile.join("memories").join("MEMORY.md")).unwrap(),
+        clone_all_state["memory"].as_str().unwrap()
+    );
+    assert_eq!(
+        fullcopy_profile
+            .join("sessions")
+            .join("session.jsonl")
+            .exists(),
+        clone_all_state["session_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        fullcopy_profile
+            .join("skills")
+            .join("demo")
+            .join("SKILL.md")
+            .exists(),
+        clone_all_state["skill_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        fullcopy_profile.join("profiles").exists(),
+        clone_all_state["nested_profiles_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        fullcopy_profile.join("gateway.pid").exists(),
+        clone_all_state["gateway_pid_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        fullcopy_profile.join("gateway_state.json").exists(),
+        clone_all_state["gateway_state_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        fullcopy_profile.join("processes.json").exists(),
+        clone_all_state["processes_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        hermes_cli::run_safe_command_in_home(
+            &["hermes", "profile", "describe", "fullcopy"],
+            &clone_all_home,
+        )
+        .unwrap()
+        .stdout
+        .trim(),
+        clone_all_state["description"].as_str().unwrap()
+    );
+    let _ = fs::remove_dir_all(clone_all_home);
+
     let logs_home =
         std::env::temp_dir().join(format!("hermes-parity-cli-logs-{}", std::process::id()));
     let _ = fs::remove_dir_all(&logs_home);

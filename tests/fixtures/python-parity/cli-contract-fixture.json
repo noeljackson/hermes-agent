@@ -1009,6 +1009,46 @@
         {
           "argv": [
             "hermes",
+            "profile",
+            "create",
+            "fullcopy",
+            "--clone-all",
+            "--no-alias",
+            "--description",
+            "Full role"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Full copy from default.": true,
+            "Next steps:": true,
+            "Profile 'fullcopy' created": true,
+            "fullcopy setup": true
+          }
+        }
+      ],
+      "name": "safe_profile_clone_all_command_execution",
+      "state": {
+        "config": "model: clone-all-model\n",
+        "description": "Full role",
+        "env": "OPENROUTER_API_KEY=sk-clone-all\n",
+        "fullcopy_exists": true,
+        "gateway_pid_exists": false,
+        "gateway_state_exists": false,
+        "memory": "Remember clone all.\n",
+        "nested_profiles_exists": false,
+        "processes_exists": false,
+        "session_exists": true,
+        "skill_exists": true,
+        "soul": "Clone all soul.\n"
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "logs",
             "list"
           ],

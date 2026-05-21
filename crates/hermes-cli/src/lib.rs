@@ -586,6 +586,24 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "profile", "create", name, "--clone-all", "--no-alias", "--description", description] =>
+        {
+            let source_name = active_profile_name(hermes_home);
+            let source = profile_dir(hermes_home, &source_name);
+            let dir = profile_dir(hermes_home, name);
+            create_clone_all_profile(&source, &dir, Some(description))?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!(
+                    "\nProfile '{name}' created at {}\nFull copy from {source_name}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
+                    dir.display(),
+                    dir.display(),
+                    dir.display(),
+                ),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
         ["hermes", "profile", "describe", name] => {
             let dir = profile_dir(hermes_home, name);
             let description = read_profile_description(&dir)?.unwrap_or_default();
@@ -1493,6 +1511,47 @@ fn create_cloned_profile(
             }
             fs::copy(source, target)?;
         }
+    }
+    Ok(())
+}
+
+fn create_clone_all_profile(
+    source_dir: &Path,
+    profile_dir: &Path,
+    description: Option<&str>,
+) -> io::Result<()> {
+    if !source_dir.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Source profile does not exist at {}", source_dir.display()),
+        ));
+    }
+    if profile_dir.exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            format!("Profile already exists at {}", profile_dir.display()),
+        ));
+    }
+    fs::create_dir_all(profile_dir)?;
+    for entry in fs::read_dir(source_dir)? {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name == "profiles" {
+            continue;
+        }
+        let source_path = entry.path();
+        let target_path = profile_dir.join(entry.file_name());
+        if source_path.is_dir() {
+            copy_dir_contents(&source_path, &target_path)?;
+        } else if source_path.is_file() {
+            fs::copy(source_path, target_path)?;
+        }
+    }
+    for stale in ["gateway.pid", "gateway_state.json", "processes.json"] {
+        let _ = fs::remove_file(profile_dir.join(stale));
+    }
+    if let Some(description) = description.filter(|value| !value.trim().is_empty()) {
+        write_profile_description(profile_dir, description)?;
     }
     Ok(())
 }

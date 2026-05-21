@@ -67,7 +67,10 @@ against those fixtures in `crates/hermes-parity`:
   metadata preservation, `SOUL.md` preservation, and no-bundled-skills marker
   preservation. Profile creation with `--clone` is fixture-backed for copying
   config, `.env`, `SOUL.md`, installed skills, and curated memory files from
-  the active profile while preserving the new profile description.
+  the active profile while preserving the new profile description. Profile
+  creation with `--clone-all` is fixture-backed for broad profile-tree copy,
+  sibling-profile exclusion, runtime gateway/process file stripping, session
+  file preservation, and description override.
 - Session maintenance: CLI `sessions prune` is fixture-backed for
   `--older-than`, `--source`, and `--yes`, including deletion of only ended
   sessions older than the cutoff, preservation of active/recent sessions,

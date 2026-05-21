@@ -624,6 +624,90 @@ def main() -> int:
             ).exists(),
         }
 
+        clone_all_home = home / "profile-clone-all-home"
+        clone_all_env = env.copy()
+        clone_all_env["HERMES_HOME"] = str(clone_all_home)
+        (clone_all_home / "skills" / "demo").mkdir(parents=True, exist_ok=True)
+        (clone_all_home / "memories").mkdir(parents=True, exist_ok=True)
+        (clone_all_home / "sessions").mkdir(parents=True, exist_ok=True)
+        (clone_all_home / "profiles" / "sibling").mkdir(parents=True, exist_ok=True)
+        (clone_all_home / "config.yaml").write_text("model: clone-all-model\n", encoding="utf-8")
+        (clone_all_home / ".env").write_text(
+            "OPENROUTER_API_KEY=sk-clone-all\n", encoding="utf-8"
+        )
+        (clone_all_home / "SOUL.md").write_text("Clone all soul.\n", encoding="utf-8")
+        (clone_all_home / "skills" / "demo" / "SKILL.md").write_text(
+            "# Demo Clone All Skill\n", encoding="utf-8"
+        )
+        (clone_all_home / "memories" / "MEMORY.md").write_text(
+            "Remember clone all.\n", encoding="utf-8"
+        )
+        (clone_all_home / "sessions" / "session.jsonl").write_text(
+            "{}\n", encoding="utf-8"
+        )
+        (clone_all_home / "gateway.pid").write_text("12345\n", encoding="utf-8")
+        (clone_all_home / "gateway_state.json").write_text("{}\n", encoding="utf-8")
+        (clone_all_home / "processes.json").write_text("{}\n", encoding="utf-8")
+        clone_all_commands = []
+        for argv, marker_list in [
+            (
+                [
+                    "profile",
+                    "create",
+                    "fullcopy",
+                    "--clone-all",
+                    "--no-alias",
+                    "--description",
+                    "Full role",
+                ],
+                [
+                    "Profile 'fullcopy' created",
+                    "Full copy from default.",
+                    "Next steps:",
+                    "fullcopy setup",
+                ],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=clone_all_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, clone_all_home)
+            clone_all_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, clone_all_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+        fullcopy_profile = clone_all_home / "profiles" / "fullcopy"
+        clone_all_state = {
+            "fullcopy_exists": fullcopy_profile.exists(),
+            "config": (fullcopy_profile / "config.yaml").read_text(encoding="utf-8"),
+            "env": (fullcopy_profile / ".env").read_text(encoding="utf-8"),
+            "soul": (fullcopy_profile / "SOUL.md").read_text(encoding="utf-8"),
+            "memory": (fullcopy_profile / "memories" / "MEMORY.md").read_text(
+                encoding="utf-8"
+            ),
+            "session_exists": (fullcopy_profile / "sessions" / "session.jsonl").exists(),
+            "skill_exists": (fullcopy_profile / "skills" / "demo" / "SKILL.md").exists(),
+            "nested_profiles_exists": (fullcopy_profile / "profiles").exists(),
+            "gateway_pid_exists": (fullcopy_profile / "gateway.pid").exists(),
+            "gateway_state_exists": (fullcopy_profile / "gateway_state.json").exists(),
+            "processes_exists": (fullcopy_profile / "processes.json").exists(),
+            "description": (
+                yaml.safe_load((fullcopy_profile / "profile.yaml").read_text(encoding="utf-8"))
+                or {}
+            ).get("description"),
+        }
+
         logs_home = home / "logs-command-home"
         logs_env = env.copy()
         logs_env["HERMES_HOME"] = str(logs_home)
@@ -1136,6 +1220,11 @@ def main() -> int:
                 "name": "safe_profile_clone_command_execution",
                 "commands": clone_commands,
                 "state": clone_state,
+            },
+            {
+                "name": "safe_profile_clone_all_command_execution",
+                "commands": clone_all_commands,
+                "state": clone_all_state,
             },
             {
                 "name": "safe_logs_command_execution",
