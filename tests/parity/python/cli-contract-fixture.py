@@ -1088,6 +1088,13 @@ def main() -> int:
                 ["mcp", "add", "bad-env", "--command", "node", "--env", "not-an-assignment"],
                 {"Invalid --env value 'not-an-assignment'": True},
             ),
+            (
+                ["mcp", "test", "missing"],
+                {
+                    "Server 'missing' not found in config.": True,
+                    "Available: local-demo": True,
+                },
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],

@@ -364,6 +364,9 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
                 stdout = "\n  Connecting to MCP server...\n".to_string();
             }
         }
+        ["hermes", "mcp", "test", name] => {
+            stdout = format!("  ✗ Server '{name}' not found in config.\n");
+        }
         ["hermes", "tools", "list"] => {
             stdout = tools_list_output(&default_display_enabled_toolsets());
         }
@@ -506,6 +509,32 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 CliExecution {
                     exit_code: 0,
                     stdout: "\n  Connecting to MCP server...\n".to_string(),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                }
+            };
+        }
+        ["hermes", "mcp", "test", name] => {
+            let config = read_config_value(hermes_home)?;
+            let servers = mcp_servers(&config);
+            result = if servers.contains_key(*name) {
+                CliExecution {
+                    exit_code: 0,
+                    stdout: format!("\n  Testing '{name}'...\n"),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                }
+            } else {
+                let mut stdout = format!("  ✗ Server '{name}' not found in config.\n");
+                if !servers.is_empty() {
+                    stdout.push_str(&format!(
+                        "  Available: {}\n",
+                        servers.keys().cloned().collect::<Vec<_>>().join(", ")
+                    ));
+                }
+                CliExecution {
+                    exit_code: 0,
+                    stdout,
                     stdout_markers: BTreeMap::new(),
                     stderr: String::new(),
                 }

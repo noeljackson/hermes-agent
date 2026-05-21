@@ -1658,6 +1658,25 @@
           "stdout_markers": {
             "Invalid --env value 'not-an-assignment'": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "test",
+            "missing"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Available: local-demo": true,
+            "Server 'missing' not found in config.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Available: local-demo": true,
+            "Server 'missing' not found in config.": true
+          }
         }
       ],
       "name": "safe_mcp_command_execution",
