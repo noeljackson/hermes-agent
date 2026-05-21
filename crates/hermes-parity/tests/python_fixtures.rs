@@ -342,6 +342,130 @@ fn cli_contract_matches_python_fixture() {
         profile_state["profiles_root_exists"].as_bool().unwrap()
     );
 
+    let archive_home = std::env::temp_dir().join(format!(
+        "hermes-parity-cli-profile-archive-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&archive_home);
+    fs::create_dir_all(&archive_home).unwrap();
+    let archive_home_display = archive_home.to_string_lossy().to_string();
+    let archive_execution = case(&fixture, "safe_profile_archive_command_execution");
+    for expected in archive_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .unwrap()
+                    .replace("<HERMES_HOME>", &archive_home_display)
+            })
+            .collect::<Vec<_>>();
+        let argv_refs = argv.iter().map(String::as_str).collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv_refs, &archive_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&archive_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&archive_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv_refs:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv_refs:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv_refs:?} marker {marker}"
+            );
+        }
+
+        if argv_refs
+            == [
+                "hermes",
+                "profile",
+                "create",
+                "archive",
+                "--no-alias",
+                "--no-skills",
+                "--description",
+                "Archive role",
+            ]
+        {
+            let archive_profile = archive_home.join("profiles").join("archive");
+            fs::create_dir_all(archive_profile.join("memories")).unwrap();
+            fs::create_dir_all(archive_profile.join("skills").join("demo")).unwrap();
+            fs::write(
+                archive_profile.join("config.yaml"),
+                "model: archive-model\n",
+            )
+            .unwrap();
+            fs::write(
+                archive_profile.join(".env"),
+                "OPENROUTER_API_KEY=sk-secret-not-exported\n",
+            )
+            .unwrap();
+            fs::write(
+                archive_profile.join("auth.json"),
+                "{\"token\":\"secret-not-exported\"}\n",
+            )
+            .unwrap();
+            fs::write(archive_profile.join("SOUL.md"), "Archive soul.\n").unwrap();
+            fs::write(
+                archive_profile.join("memories").join("MEMORY.md"),
+                "Remember archive.\n",
+            )
+            .unwrap();
+            fs::write(
+                archive_profile.join("skills").join("demo").join("SKILL.md"),
+                "# Demo Skill\n",
+            )
+            .unwrap();
+        }
+    }
+    let archive_state = &archive_execution["state"];
+    let archive_members = hermes_cli::profile_archive_members(&archive_home.join("archive.tar.gz"))
+        .unwrap()
+        .into_iter()
+        .map(Value::String)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        Value::Array(archive_members),
+        archive_state["archive_members"]
+    );
+    assert_eq!(archive_state["contains_env"], json!(false));
+    assert_eq!(archive_state["contains_auth_json"], json!(false));
+    for key in [
+        "contains_config",
+        "contains_soul",
+        "contains_memory",
+        "contains_skill",
+        "restored_exists",
+    ] {
+        assert_eq!(archive_state[key], json!(true), "{key}");
+    }
+    let restored = archive_home.join("profiles").join("restored");
+    assert_eq!(
+        fs::read_to_string(restored.join("config.yaml")).unwrap(),
+        archive_state["restored_config"].as_str().unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(restored.join("memories").join("MEMORY.md")).unwrap(),
+        archive_state["restored_memory"].as_str().unwrap()
+    );
+    assert_eq!(
+        restored.join(".env").exists(),
+        archive_state["restored_env_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        restored.join("auth.json").exists(),
+        archive_state["restored_auth_exists"].as_bool().unwrap()
+    );
+
     let tools_home =
         std::env::temp_dir().join(format!("hermes-parity-cli-tools-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools_home);

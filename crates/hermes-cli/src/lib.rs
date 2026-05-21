@@ -3,7 +3,11 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use serde_json::{json, Value};
+use tar::{Archive, Builder, EntryType};
 
 pub const TOP_LEVEL_HELP: &str = "\
 Hermes Agent
@@ -572,6 +576,77 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "profile", "export", name, "-o", output]
+        | ["hermes", "profile", "export", name, "--output", output] => {
+            match export_profile_archive(hermes_home, name, Path::new(output)) {
+                Ok(path) => {
+                    result = CliExecution {
+                        exit_code: 0,
+                        stdout: format!("✓ Exported '{name}' to {}\n", path.display()),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
+                Err(error) => {
+                    result = CliExecution {
+                        exit_code: 1,
+                        stdout: format!("Error: {error}\n"),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
+            }
+        }
+        ["hermes", "profile", "import", archive, "--name", name] => {
+            match import_profile_archive(hermes_home, Path::new(archive), Some(name)) {
+                Ok(dir) => {
+                    result = CliExecution {
+                        exit_code: 0,
+                        stdout: format!(
+                            "✓ Imported profile '{}' at {}\n\n",
+                            dir.file_name()
+                                .and_then(|value| value.to_str())
+                                .unwrap_or(name),
+                            dir.display()
+                        ),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
+                Err(error) => {
+                    result = CliExecution {
+                        exit_code: 1,
+                        stdout: format!("Error: {error}\n"),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
+            }
+        }
+        ["hermes", "profile", "import", archive] => {
+            match import_profile_archive(hermes_home, Path::new(archive), None) {
+                Ok(dir) => {
+                    let name = dir
+                        .file_name()
+                        .and_then(|value| value.to_str())
+                        .unwrap_or("imported");
+                    result = CliExecution {
+                        exit_code: 0,
+                        stdout: format!("✓ Imported profile '{name}' at {}\n\n", dir.display()),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
+                Err(error) => {
+                    result = CliExecution {
+                        exit_code: 1,
+                        stdout: format!("Error: {error}\n"),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
+            }
+        }
         ["hermes", "sessions", "stats"] => {
             let db = open_session_db(hermes_home)?;
             let total = db.session_count(None).map_err(io::Error::other)?;
@@ -1049,6 +1124,265 @@ fn read_profile_description(profile_dir: &Path) -> io::Result<Option<String>> {
 fn count_profile_skills(profile_dir: &Path) -> usize {
     let skills_dir = profile_dir.join("skills");
     count_skill_files(&skills_dir).unwrap_or(0)
+}
+
+fn export_profile_archive(hermes_home: &Path, name: &str, output: &Path) -> io::Result<PathBuf> {
+    let dir = profile_dir(hermes_home, name);
+    if !dir.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Profile '{name}' does not exist."),
+        ));
+    }
+
+    if let Some(parent) = output
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        fs::create_dir_all(parent)?;
+    }
+    let file = fs::File::create(output)?;
+    let encoder = GzEncoder::new(file, Compression::default());
+    let mut builder = Builder::new(encoder);
+    let archive_root = if name == "default" { "default" } else { name };
+    builder.append_dir(archive_root, &dir)?;
+    append_profile_archive_entries(
+        &mut builder,
+        &dir,
+        Path::new(archive_root),
+        name == "default",
+        true,
+    )?;
+    builder.finish()?;
+    Ok(output.to_path_buf())
+}
+
+fn append_profile_archive_entries(
+    builder: &mut Builder<GzEncoder<fs::File>>,
+    source: &Path,
+    archive_prefix: &Path,
+    is_default_profile: bool,
+    at_root: bool,
+) -> io::Result<()> {
+    let mut entries = fs::read_dir(source)?
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
+    entries.sort_by_key(|entry| entry.file_name());
+    for entry in entries {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if should_skip_profile_export_entry(&name, is_default_profile, at_root) {
+            continue;
+        }
+        let path = entry.path();
+        let archive_path = archive_prefix.join(&name);
+        let metadata = entry.metadata()?;
+        if metadata.is_dir() {
+            builder.append_dir(&archive_path, &path)?;
+            append_profile_archive_entries(
+                builder,
+                &path,
+                &archive_path,
+                is_default_profile,
+                false,
+            )?;
+        } else if metadata.is_file() {
+            builder.append_path_with_name(&path, &archive_path)?;
+        }
+    }
+    Ok(())
+}
+
+fn should_skip_profile_export_entry(name: &str, is_default_profile: bool, at_root: bool) -> bool {
+    if !is_default_profile {
+        return matches!(name, ".env" | "auth.json");
+    }
+    if hermes_config::export_ignore(&[name], at_root)
+        .as_array()
+        .is_some_and(|values| !values.is_empty())
+    {
+        return true;
+    }
+    false
+}
+
+fn import_profile_archive(
+    hermes_home: &Path,
+    archive: &Path,
+    name: Option<&str>,
+) -> io::Result<PathBuf> {
+    if !archive.exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Archive not found: {}", archive.display()),
+        ));
+    }
+
+    let roots = inspect_profile_archive_roots(archive)?;
+    let archive_root = if roots.len() == 1 {
+        roots[0].clone()
+    } else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Profile archive must contain exactly one top-level directory.",
+        ));
+    };
+    let inferred = name.unwrap_or(&archive_root);
+    let canon = normalize_profile_name_for_cli(inferred)?;
+    validate_profile_name_for_cli(&canon)?;
+    if canon == "default" {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Cannot import as 'default' — that is the built-in root profile (~/.hermes). Specify a different name: hermes profile import <archive> --name <name>",
+        ));
+    }
+    let target = profile_dir(hermes_home, &canon);
+    if target.exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            format!("Profile '{canon}' already exists at {}", target.display()),
+        ));
+    }
+    fs::create_dir_all(
+        target
+            .parent()
+            .ok_or_else(|| io::Error::other("profile target has no parent"))?,
+    )?;
+
+    let file = fs::File::open(archive)?;
+    let decoder = GzDecoder::new(file);
+    let mut archive_reader = Archive::new(decoder);
+    for entry in archive_reader.entries()? {
+        let mut entry = entry?;
+        let parts = normalize_archive_member_parts(&entry.path()?.to_string_lossy())?;
+        if parts.first() != Some(&archive_root) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Profile archive must contain exactly one top-level directory.",
+            ));
+        }
+        let rel = parts.iter().skip(1).collect::<PathBuf>();
+        let destination = target.join(rel);
+        let entry_type = entry.header().entry_type();
+        if entry_type == EntryType::Directory {
+            fs::create_dir_all(&destination)?;
+        } else if entry_type == EntryType::Regular {
+            if let Some(parent) = destination.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let mut output = fs::File::create(&destination)?;
+            io::copy(&mut entry, &mut output)?;
+        } else {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Unsupported archive member type: {}", parts.join("/")),
+            ));
+        }
+    }
+    Ok(target)
+}
+
+pub fn profile_archive_members(path: &Path) -> io::Result<Vec<String>> {
+    let file = fs::File::open(path)?;
+    let decoder = GzDecoder::new(file);
+    let mut archive = Archive::new(decoder);
+    let mut names = Vec::new();
+    for entry in archive.entries()? {
+        let entry = entry?;
+        names.push(entry.path()?.to_string_lossy().replace('\\', "/"));
+    }
+    names.sort();
+    Ok(names)
+}
+
+fn inspect_profile_archive_roots(path: &Path) -> io::Result<Vec<String>> {
+    let file = fs::File::open(path)?;
+    let decoder = GzDecoder::new(file);
+    let mut archive = Archive::new(decoder);
+    let mut roots = BTreeSet::new();
+    for entry in archive.entries()? {
+        let entry = entry?;
+        let parts = normalize_archive_member_parts(&entry.path()?.to_string_lossy())?;
+        if let Some(root) = parts.first() {
+            roots.insert(root.clone());
+        }
+    }
+    Ok(roots.into_iter().collect())
+}
+
+fn normalize_archive_member_parts(member_name: &str) -> io::Result<Vec<String>> {
+    let normalized = member_name.replace('\\', "/");
+    if normalized.is_empty()
+        || normalized.starts_with('/')
+        || normalized
+            .as_bytes()
+            .get(1)
+            .is_some_and(|value| *value == b':')
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Unsafe archive member path: {member_name}"),
+        ));
+    }
+    let mut parts = Vec::new();
+    for part in normalized.split('/') {
+        if part.is_empty() || part == "." {
+            continue;
+        }
+        if part == ".." {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Unsafe archive member path: {member_name}"),
+            ));
+        }
+        parts.push(part.to_string());
+    }
+    if parts.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Unsafe archive member path: {member_name}"),
+        ));
+    }
+    Ok(parts)
+}
+
+fn normalize_profile_name_for_cli(name: &str) -> io::Result<String> {
+    let stripped = name.trim();
+    if stripped.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "profile name cannot be empty",
+        ));
+    }
+    if stripped.eq_ignore_ascii_case("default") {
+        return Ok("default".to_string());
+    }
+    Ok(stripped.to_ascii_lowercase())
+}
+
+fn validate_profile_name_for_cli(name: &str) -> io::Result<()> {
+    if name == "default" {
+        return Ok(());
+    }
+    let bytes = name.as_bytes();
+    let valid = !bytes.is_empty()
+        && bytes.len() <= 64
+        && (bytes[0].is_ascii_lowercase() || bytes[0].is_ascii_digit())
+        && bytes.iter().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-')
+        });
+    if !valid {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("Invalid profile name '{name}'. Must match [a-z0-9][a-z0-9_-]{{0,63}}"),
+        ));
+    }
+    if matches!(name, "hermes" | "test" | "tmp" | "root" | "sudo") {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("Profile name '{name}' is reserved — it collides with either the Hermes installation itself or a common system binary.  Pick a different name."),
+        ));
+    }
+    Ok(())
 }
 
 fn count_skill_files(dir: &Path) -> io::Result<usize> {

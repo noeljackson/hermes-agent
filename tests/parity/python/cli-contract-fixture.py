@@ -4,6 +4,7 @@ import os
 import json
 import subprocess
 import sys
+import tarfile
 
 from parity_common import (
     fixture,
@@ -344,6 +345,124 @@ def main() -> int:
             "profiles_root_exists": (home / "profiles").exists(),
         }
 
+        archive_home = home / "profile-archive-home"
+        archive_env = env.copy()
+        archive_env["HERMES_HOME"] = str(archive_home)
+        archive_commands = []
+        archive_path = archive_home / "archive.tar.gz"
+        for argv, marker_list in [
+            (
+                [
+                    "profile",
+                    "create",
+                    "archive",
+                    "--no-alias",
+                    "--no-skills",
+                    "--description",
+                    "Archive role",
+                ],
+                ["Profile 'archive' created", "No bundled skills seeded"],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=archive_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, archive_home)
+            archive_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, archive_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+
+        archive_profile = archive_home / "profiles" / "archive"
+        (archive_profile / "memories").mkdir(parents=True, exist_ok=True)
+        (archive_profile / "skills" / "demo").mkdir(parents=True, exist_ok=True)
+        (archive_profile / "config.yaml").write_text("model: archive-model\n", encoding="utf-8")
+        (archive_profile / ".env").write_text(
+            "OPENROUTER_API_KEY=sk-secret-not-exported\n", encoding="utf-8"
+        )
+        (archive_profile / "auth.json").write_text(
+            '{"token":"secret-not-exported"}\n', encoding="utf-8"
+        )
+        (archive_profile / "SOUL.md").write_text("Archive soul.\n", encoding="utf-8")
+        (archive_profile / "memories" / "MEMORY.md").write_text(
+            "Remember archive.\n", encoding="utf-8"
+        )
+        (archive_profile / "skills" / "demo" / "SKILL.md").write_text(
+            "# Demo Skill\n", encoding="utf-8"
+        )
+
+        for argv, marker_list in [
+            (
+                ["profile", "export", "archive", "-o", str(archive_path)],
+                ["Exported 'archive'"],
+            ),
+            (
+                ["profile", "import", str(archive_path), "--name", "restored"],
+                ["Imported profile 'restored'"],
+            ),
+            (
+                ["profile", "import", str(archive_path), "--name", "restored"],
+                ["Error:", "already exists"],
+            ),
+            (
+                ["profile", "export", "missing", "-o", str(archive_home / "missing.tar.gz")],
+                ["Error:", "does not exist"],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=archive_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, archive_home)
+            archive_commands.append(
+                {
+                    "argv": [
+                        part.replace(str(archive_home), "<HERMES_HOME>")
+                        for part in ["hermes", *argv]
+                    ],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, archive_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+
+        with tarfile.open(archive_path, "r:gz") as tf:
+            archive_members = sorted(tf.getnames())
+        restored = archive_home / "profiles" / "restored"
+        archive_state = {
+            "archive_members": archive_members,
+            "contains_env": any(name.endswith("/.env") for name in archive_members),
+            "contains_auth_json": any(name.endswith("/auth.json") for name in archive_members),
+            "contains_config": "archive/config.yaml" in archive_members,
+            "contains_soul": "archive/SOUL.md" in archive_members,
+            "contains_memory": "archive/memories/MEMORY.md" in archive_members,
+            "contains_skill": "archive/skills/demo/SKILL.md" in archive_members,
+            "restored_exists": restored.exists(),
+            "restored_config": (restored / "config.yaml").read_text(encoding="utf-8"),
+            "restored_memory": (restored / "memories" / "MEMORY.md").read_text(
+                encoding="utf-8"
+            ),
+            "restored_env_exists": (restored / ".env").exists(),
+            "restored_auth_exists": (restored / "auth.json").exists(),
+        }
+
         import yaml
 
         tool_home = home / "tools-command-home"
@@ -508,6 +627,11 @@ def main() -> int:
                 "name": "safe_profile_command_execution",
                 "commands": profile_commands,
                 "state": profile_state,
+            },
+            {
+                "name": "safe_profile_archive_command_execution",
+                "commands": archive_commands,
+                "state": archive_state,
             },
             {
                 "name": "safe_tools_command_execution",

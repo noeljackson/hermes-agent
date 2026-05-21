@@ -775,6 +775,128 @@
         {
           "argv": [
             "hermes",
+            "profile",
+            "create",
+            "archive",
+            "--no-alias",
+            "--no-skills",
+            "--description",
+            "Archive role"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No bundled skills seeded": true,
+            "Profile 'archive' created": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "export",
+            "archive",
+            "-o",
+            "<HERMES_HOME>/archive.tar.gz"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Exported 'archive'": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "import",
+            "<HERMES_HOME>/archive.tar.gz",
+            "--name",
+            "restored"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Imported profile 'restored'": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "import",
+            "<HERMES_HOME>/archive.tar.gz",
+            "--name",
+            "restored"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Error:": true,
+            "already exists": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "export",
+            "missing",
+            "-o",
+            "<HERMES_HOME>/missing.tar.gz"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Error:": true,
+            "does not exist": true
+          }
+        }
+      ],
+      "name": "safe_profile_archive_command_execution",
+      "state": {
+        "archive_members": [
+          "archive",
+          "archive/.no-bundled-skills",
+          "archive/SOUL.md",
+          "archive/config.yaml",
+          "archive/cron",
+          "archive/home",
+          "archive/logs",
+          "archive/memories",
+          "archive/memories/MEMORY.md",
+          "archive/plans",
+          "archive/profile.yaml",
+          "archive/sessions",
+          "archive/skills",
+          "archive/skills/demo",
+          "archive/skills/demo/SKILL.md",
+          "archive/skins",
+          "archive/workspace"
+        ],
+        "contains_auth_json": false,
+        "contains_config": true,
+        "contains_env": false,
+        "contains_memory": true,
+        "contains_skill": true,
+        "contains_soul": true,
+        "restored_auth_exists": false,
+        "restored_config": "model: archive-model\n",
+        "restored_env_exists": false,
+        "restored_exists": true,
+        "restored_memory": "Remember archive.\n"
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "tools",
             "enable",
             "video"

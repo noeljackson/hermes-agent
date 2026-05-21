@@ -56,7 +56,11 @@ against those fixtures in `crates/hermes-parity`:
   vs named profiles, portable export ignore behavior, and concrete synthetic
   profile-tree copy/export policy for durable user state, credentials, profile
   metadata, distribution metadata, install artifacts, caches, sockets, temp
-  files, root runtime files, and default-profile infrastructure.
+  files, root runtime files, and default-profile infrastructure. The CLI
+  profile archive path is fixture-backed for named-profile export/import:
+  config, SOUL, memory, and skills are preserved while `.env` and `auth.json`
+  are excluded, duplicate import is rejected, and missing-profile export
+  returns the Python-compatible error contract.
 - Install/update: install-method stamp format, stamped-method detection, and
   recommended update command mapping for NixOS, Homebrew, Docker, pip, git,
   and unknown installs.

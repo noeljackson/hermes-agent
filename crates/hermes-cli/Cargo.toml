@@ -13,5 +13,7 @@ path = "src/main.rs"
 hermes-config = { path = "../hermes-config" }
 hermes-cron = { path = "../hermes-cron" }
 hermes-session = { path = "../hermes-session" }
+flate2 = "1.1.5"
 serde_json.workspace = true
 serde_yaml.workspace = true
+tar = "0.4.44"
