@@ -2,11 +2,19 @@ REFERENCE_REPO ?= https://github.com/NousResearch/hermes-agent.git
 REFERENCE_REF ?= main
 PARITY_FIXTURES_DIR ?= tests/fixtures/python-parity
 PARITY_IMAGE ?= hermes-python-parity
+PREFIX ?= $(HOME)/.local
+BINDIR ?= $(PREFIX)/bin
 
-.PHONY: check coverage coverage-html coverage-lcov python-parity-build python-parity-fixtures python-parity-update python-parity-drift python-parity-agent tty-smoke real-provider-smoke real-gateway-smoke cutover-check
+.PHONY: check install coverage coverage-html coverage-lcov python-parity-build python-parity-fixtures python-parity-update python-parity-drift python-parity-agent tty-smoke real-provider-smoke real-gateway-smoke cutover-check
 
 check:
 	@if [ -f Cargo.toml ]; then cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace; else echo "No Rust workspace yet; skipping cargo test."; fi
+
+install:
+	cargo build --release -p hermes-cli --bin hermes
+	mkdir -p "$(DESTDIR)$(BINDIR)"
+	install -m 0755 target/release/hermes "$(DESTDIR)$(BINDIR)/hermes"
+	@echo "Installed hermes to $(DESTDIR)$(BINDIR)/hermes"
 
 coverage:
 	@if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
