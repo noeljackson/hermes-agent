@@ -131,6 +131,7 @@ name = "hermes-cli"
 version = "0.1.0"
 dependencies = [
  "hermes-config",
+ "hermes-cron",
  "hermes-session",
  "serde_json",
  "serde_yaml",

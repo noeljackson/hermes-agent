@@ -843,6 +843,185 @@
         ],
         "video_enabled": true
       }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "create",
+            "2026-06-01T09:00:00+00:00",
+            "check status",
+            "--name",
+            "demo",
+            "--deliver",
+            "local"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Created job:": true,
+            "Name: demo": true,
+            "Schedule: once at 2026-06-01 09:00": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "list",
+            "--all"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Deliver:   local": true,
+            "Scheduled Jobs": true,
+            "[active]": true,
+            "demo": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "pause",
+            "demo"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Paused job: demo": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "list",
+            "--all"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Scheduled Jobs": true,
+            "[paused]": true,
+            "demo": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "resume",
+            "demo"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Resumed job: demo": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "remove",
+            "demo"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Removed job: demo": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "list",
+            "--all"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No scheduled jobs.": true,
+            "hermes cron create": true
+          }
+        }
+      ],
+      "name": "safe_cron_command_execution",
+      "states": {
+        "after_create": {
+          "job_count": 1,
+          "jobs": [
+            {
+              "deliver": "local",
+              "enabled": true,
+              "id_present": true,
+              "name": "demo",
+              "next_run_at": "2026-06-01T09:00:00+00:00",
+              "prompt": "check status",
+              "repeat": {
+                "completed": 0,
+                "times": 1
+              },
+              "schedule_display": "once at 2026-06-01 09:00",
+              "state": "scheduled"
+            }
+          ]
+        },
+        "after_pause": {
+          "job_count": 1,
+          "jobs": [
+            {
+              "deliver": "local",
+              "enabled": false,
+              "id_present": true,
+              "name": "demo",
+              "next_run_at": "2026-06-01T09:00:00+00:00",
+              "prompt": "check status",
+              "repeat": {
+                "completed": 0,
+                "times": 1
+              },
+              "schedule_display": "once at 2026-06-01 09:00",
+              "state": "paused"
+            }
+          ]
+        },
+        "after_remove": {
+          "job_count": 0,
+          "jobs": []
+        },
+        "after_resume": {
+          "job_count": 1,
+          "jobs": [
+            {
+              "deliver": "local",
+              "enabled": true,
+              "id_present": true,
+              "name": "demo",
+              "next_run_at": "2026-06-01T09:00:00+00:00",
+              "prompt": "check status",
+              "repeat": {
+                "completed": 0,
+                "times": 1
+              },
+              "schedule_display": "once at 2026-06-01 09:00",
+              "state": "scheduled"
+            }
+          ]
+        }
+      }
     }
   ],
   "source": {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import subprocess
 import sys
 
@@ -18,6 +19,30 @@ SCRIPT = "cli-contract-fixture.py"
 
 def normalize_output(text: str, home) -> str:
     return text.replace("\r\n", "\n").replace(str(home), "<HERMES_HOME>")
+
+
+def cron_state(home):
+    jobs_path = home / "cron" / "jobs.json"
+    if not jobs_path.exists():
+        return {"job_count": 0, "jobs": []}
+    raw = json.loads(jobs_path.read_text(encoding="utf-8"))
+    jobs = raw.get("jobs", raw if isinstance(raw, list) else [])
+    simplified = []
+    for job in jobs:
+        simplified.append(
+            {
+                "id_present": bool(job.get("id")),
+                "name": job.get("name"),
+                "prompt": job.get("prompt"),
+                "schedule_display": job.get("schedule_display"),
+                "next_run_at": job.get("next_run_at"),
+                "enabled": job.get("enabled"),
+                "state": job.get("state"),
+                "deliver": job.get("deliver"),
+                "repeat": job.get("repeat"),
+            }
+        )
+    return {"job_count": len(simplified), "jobs": simplified}
 
 
 def main() -> int:
@@ -376,6 +401,67 @@ def main() -> int:
             in ((tool_config.get("platform_toolsets") or {}).get("cli") or []),
         }
 
+        cron_home = home / "cron-command-home"
+        cron_env = env.copy()
+        cron_env["HERMES_HOME"] = str(cron_home)
+        cron_commands = []
+        cron_states = {}
+        for argv, marker_list, state_name in [
+            (
+                [
+                    "cron",
+                    "create",
+                    "2026-06-01T09:00:00+00:00",
+                    "check status",
+                    "--name",
+                    "demo",
+                    "--deliver",
+                    "local",
+                ],
+                ["Created job:", "Name: demo", "Schedule: once at 2026-06-01 09:00"],
+                "after_create",
+            ),
+            (
+                ["cron", "list", "--all"],
+                ["Scheduled Jobs", "demo", "[active]", "Deliver:   local"],
+                None,
+            ),
+            (["cron", "pause", "demo"], ["Paused job: demo"], "after_pause"),
+            (
+                ["cron", "list", "--all"],
+                ["Scheduled Jobs", "demo", "[paused]"],
+                None,
+            ),
+            (["cron", "resume", "demo"], ["Resumed job: demo"], "after_resume"),
+            (["cron", "remove", "demo"], ["Removed job: demo"], "after_remove"),
+            (
+                ["cron", "list", "--all"],
+                ["No scheduled jobs.", "hermes cron create"],
+                None,
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=cron_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, cron_home)
+            cron_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, cron_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+            if state_name:
+                cron_states[state_name] = cron_state(cron_home)
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -427,6 +513,11 @@ def main() -> int:
                 "name": "safe_tools_command_execution",
                 "commands": tool_commands,
                 "state": tool_state,
+            },
+            {
+                "name": "safe_cron_command_execution",
+                "commands": cron_commands,
+                "states": cron_states,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))

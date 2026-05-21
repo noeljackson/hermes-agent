@@ -11,6 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 hermes-config = { path = "../hermes-config" }
+hermes-cron = { path = "../hermes-cron" }
 hermes-session = { path = "../hermes-session" }
 serde_json.workspace = true
 serde_yaml.workspace = true

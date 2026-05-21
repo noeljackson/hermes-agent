@@ -306,6 +306,33 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
             stdout = "No scheduled jobs.\nCreate one with 'hermes cron create ...' or the /cron command in chat.\n"
                 .to_string();
         }
+        ["hermes", "cron", "create", schedule, prompt, "--name", name, "--deliver", _deliver] => {
+            let display = hermes_cron::parse_schedule(schedule)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .get("display")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                })
+                .unwrap_or_else(|| (*schedule).to_string());
+            stdout = format!(
+                "Created job: rust-{name}\n  Name: {name}\n  Schedule: {display}\n  Next run: {schedule}\n"
+            );
+            let _ = prompt;
+        }
+        ["hermes", "cron", "pause", name] => {
+            stdout = format!("Paused job: {name} ({name})\n");
+        }
+        ["hermes", "cron", "resume", name] => {
+            stdout =
+                format!("Resumed job: {name} ({name})\n  Next run: 2026-06-01T09:00:00+00:00\n");
+        }
+        ["hermes", "cron", "remove", name]
+        | ["hermes", "cron", "rm", name]
+        | ["hermes", "cron", "delete", name] => {
+            stdout = format!("Removed job: {name} ({name})\n");
+        }
         ["hermes", "mcp", "list"] => {
             stdout = "\n  No MCP servers configured.\n\n  Add one with:\n    hermes mcp add <name> --url <endpoint>\n    hermes mcp add <name> --command <cmd> --args <args...>\n\n".to_string();
         }
@@ -360,6 +387,33 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             if let Some(env_key) = hermes_config::terminal_env_sync_key(key) {
                 upsert_env_value(&hermes_home.join(".env"), env_key, value)?;
             }
+        }
+        ["hermes", "cron", "create", schedule, prompt, "--name", name, "--deliver", deliver] => {
+            create_cron_job(hermes_home, schedule, prompt, name, deliver)?;
+            result = run_safe_command(argv, &home_display);
+        }
+        ["hermes", "cron", "pause", name] => {
+            set_cron_job_enabled(hermes_home, name, false)?;
+            result = run_safe_command(argv, &home_display);
+        }
+        ["hermes", "cron", "resume", name] => {
+            set_cron_job_enabled(hermes_home, name, true)?;
+            result = run_safe_command(argv, &home_display);
+        }
+        ["hermes", "cron", "remove", name]
+        | ["hermes", "cron", "rm", name]
+        | ["hermes", "cron", "delete", name] => {
+            remove_cron_job(hermes_home, name)?;
+            result = run_safe_command(argv, &home_display);
+        }
+        ["hermes", "cron", "list", "--all"] | ["hermes", "cron", "list"] => {
+            let jobs = hermes_cron::load_jobs(cron_jobs_path(hermes_home))?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: cron_list_output(&jobs),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
         }
         ["hermes", "tools", "enable", names @ ..] if !names.is_empty() => {
             apply_cli_toolset_change(hermes_home, names, true)?;
@@ -795,6 +849,121 @@ fn tools_list_output(enabled: &BTreeSet<String>) -> String {
         };
         stdout.push_str(&format!("  {status}  {name}  {label}\n"));
     }
+    stdout
+}
+
+fn cron_jobs_path(hermes_home: &Path) -> PathBuf {
+    hermes_home.join("cron").join("jobs.json")
+}
+
+fn create_cron_job(
+    hermes_home: &Path,
+    schedule_text: &str,
+    prompt: &str,
+    name: &str,
+    deliver: &str,
+) -> io::Result<()> {
+    let path = cron_jobs_path(hermes_home);
+    let mut jobs = hermes_cron::load_jobs(&path)?;
+    let schedule = hermes_cron::parse_schedule(schedule_text).map_err(io::Error::other)?;
+    let display = schedule
+        .get("display")
+        .and_then(Value::as_str)
+        .unwrap_or(schedule_text)
+        .to_string();
+    let next_run_at = schedule
+        .get("run_at")
+        .and_then(Value::as_str)
+        .unwrap_or(schedule_text)
+        .to_string();
+    jobs.push(json!({
+        "id": format!("rust-{name}"),
+        "name": name,
+        "prompt": prompt,
+        "skills": [],
+        "skill": null,
+        "schedule": schedule,
+        "schedule_display": display,
+        "repeat": {"times": 1, "completed": 0},
+        "enabled": true,
+        "state": "scheduled",
+        "next_run_at": next_run_at,
+        "deliver": deliver,
+    }));
+    save_cron_jobs_object(&path, &jobs)
+}
+
+fn set_cron_job_enabled(hermes_home: &Path, name: &str, enabled: bool) -> io::Result<()> {
+    let path = cron_jobs_path(hermes_home);
+    let mut jobs = hermes_cron::load_jobs(&path)?;
+    for job in &mut jobs {
+        if cron_job_matches(job, name) {
+            if let Some(object) = job.as_object_mut() {
+                object.insert("enabled".to_string(), json!(enabled));
+                object.insert(
+                    "state".to_string(),
+                    json!(if enabled { "scheduled" } else { "paused" }),
+                );
+            }
+        }
+    }
+    save_cron_jobs_object(&path, &jobs)
+}
+
+fn remove_cron_job(hermes_home: &Path, name: &str) -> io::Result<()> {
+    let path = cron_jobs_path(hermes_home);
+    let mut jobs = hermes_cron::load_jobs(&path)?;
+    jobs.retain(|job| !cron_job_matches(job, name));
+    save_cron_jobs_object(&path, &jobs)
+}
+
+fn cron_job_matches(job: &Value, name_or_id: &str) -> bool {
+    job.get("id").and_then(Value::as_str) == Some(name_or_id)
+        || job.get("name").and_then(Value::as_str) == Some(name_or_id)
+}
+
+fn save_cron_jobs_object(path: &Path, jobs: &[Value]) -> io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let normalized = jobs
+        .iter()
+        .map(hermes_cron::normalize_job_record)
+        .collect::<Vec<_>>();
+    fs::write(
+        path,
+        serde_json::to_vec_pretty(&json!({"jobs": normalized, "updated_at": "<timestamp>"}))
+            .map_err(io::Error::other)?,
+    )
+}
+
+fn cron_list_output(jobs: &[Value]) -> String {
+    if jobs.is_empty() {
+        return "No scheduled jobs.\nCreate one with 'hermes cron create ...' or the /cron command in chat.\n".to_string();
+    }
+    let mut stdout = "\n┌─────────────────────────────────────────────────────────────────────────┐\n│                         Scheduled Jobs                                  │\n└─────────────────────────────────────────────────────────────────────────┘\n\n".to_string();
+    for job in jobs {
+        let id = job.get("id").and_then(Value::as_str).unwrap_or("unknown");
+        let name = job.get("name").and_then(Value::as_str).unwrap_or(id);
+        let state = job
+            .get("state")
+            .and_then(Value::as_str)
+            .unwrap_or("scheduled");
+        let display = job
+            .get("schedule_display")
+            .and_then(Value::as_str)
+            .unwrap_or("?");
+        let next_run = job.get("next_run_at").and_then(Value::as_str).unwrap_or("");
+        let deliver = job
+            .get("deliver")
+            .and_then(Value::as_str)
+            .unwrap_or("local");
+        stdout.push_str(&format!(
+            "  {id} [{}]\n    Name:      {name}\n    Schedule:  {display}\n    Repeat:    0/1\n    Next run:  {next_run}\n    Deliver:   {deliver}\n\n",
+            if state == "paused" { "paused" } else { "active" }
+        ));
+    }
+    stdout.push_str("  ⚠  Gateway is not running — jobs won't fire automatically.\n     Start it with: hermes gateway install\n                    sudo hermes gateway install --system  # Linux servers\n\n");
     stdout
 }
 

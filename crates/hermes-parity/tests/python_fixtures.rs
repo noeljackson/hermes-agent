@@ -2,7 +2,7 @@ use hermes_parity::{case, cases, fixture_dir, load_fixture, object_keys};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const FIXTURES: &[&str] = &[
@@ -410,7 +410,88 @@ fn cli_contract_matches_python_fixture() {
         tools_state["default_composite_present"].as_bool().unwrap()
     );
     let _ = fs::remove_dir_all(tools_home);
+
+    let cron_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-cron-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&cron_home);
+    fs::create_dir_all(&cron_home).unwrap();
+    let cron_home_display = cron_home.to_string_lossy().to_string();
+    let cron_execution = case(&fixture, "safe_cron_command_execution");
+    for expected in cron_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &cron_home).unwrap();
+        actual.stdout = actual.stdout.replace(&cron_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&cron_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let cron_states = &cron_execution["states"];
+    assert_eq!(read_cli_cron_state(&cron_home), cron_states["after_remove"]);
+    assert_eq!(cron_states["after_create"]["job_count"], 1);
+    assert_eq!(
+        cron_states["after_create"]["jobs"][0]["name"],
+        json!("demo")
+    );
+    assert_eq!(
+        cron_states["after_create"]["jobs"][0]["schedule_display"],
+        json!("once at 2026-06-01 09:00")
+    );
+    assert_eq!(
+        cron_states["after_pause"]["jobs"][0]["state"],
+        json!("paused")
+    );
+    assert_eq!(
+        cron_states["after_resume"]["jobs"][0]["state"],
+        json!("scheduled")
+    );
+    let _ = fs::remove_dir_all(cron_home);
     let _ = fs::remove_dir_all(cli_home);
+}
+
+fn read_cli_cron_state(hermes_home: &Path) -> Value {
+    let path = hermes_home.join("cron").join("jobs.json");
+    if !path.exists() {
+        return json!({"job_count": 0, "jobs": []});
+    }
+    let raw: Value = serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+    let jobs = raw
+        .get("jobs")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let simplified = jobs
+        .iter()
+        .map(|job| {
+            json!({
+                "id_present": job.get("id").and_then(Value::as_str).is_some_and(|value| !value.is_empty()),
+                "name": job.get("name").cloned().unwrap_or(Value::Null),
+                "prompt": job.get("prompt").cloned().unwrap_or(Value::Null),
+                "schedule_display": job.get("schedule_display").cloned().unwrap_or(Value::Null),
+                "next_run_at": job.get("next_run_at").cloned().unwrap_or(Value::Null),
+                "enabled": job.get("enabled").cloned().unwrap_or(Value::Null),
+                "state": job.get("state").cloned().unwrap_or(Value::Null),
+                "deliver": job.get("deliver").cloned().unwrap_or(Value::Null),
+                "repeat": job.get("repeat").cloned().unwrap_or(Value::Null),
+            })
+        })
+        .collect::<Vec<_>>();
+    json!({"job_count": simplified.len(), "jobs": simplified})
 }
 
 #[test]

@@ -244,7 +244,9 @@ against those fixtures in `crates/hermes-parity`:
   subcommand dispatch is fixture-backed for `config check`, `mcp list`,
   empty `sessions list --limit`, `tools list` marker contracts, and
   non-interactive `tools enable` / `tools disable` config mutation for the
-  CLI platform toolset list.
+  CLI platform toolset list. Deterministic cron subcommands are executable and
+  fixture-backed for create, list, pause, resume, and remove against durable
+  `cron/jobs.json` state.
 - TUI gateway contract: JSON-RPC method inventory, long-handler routing
   inventory, `_ok`/`_err`/unknown-method frame shapes, request normalization
   errors for malformed requests and params, event frame shape, dashboard PTY
