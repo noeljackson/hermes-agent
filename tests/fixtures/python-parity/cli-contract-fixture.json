@@ -972,6 +972,43 @@
         {
           "argv": [
             "hermes",
+            "profile",
+            "create",
+            "cloned",
+            "--clone",
+            "--no-alias",
+            "--description",
+            "Cloned role"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Cloned config, .env, SOUL.md, and skills from default.": true,
+            "Next steps:": true,
+            "Profile 'cloned' created": true,
+            "cloned setup": true
+          }
+        }
+      ],
+      "name": "safe_profile_clone_command_execution",
+      "state": {
+        "cloned_exists": true,
+        "config": "model: clone-model\n",
+        "description": "Cloned role",
+        "env": "OPENROUTER_API_KEY=sk-clone\n",
+        "memory": "Remember clone.\n",
+        "no_bundled_skills_marker_exists": false,
+        "skill_exists": true,
+        "soul": "Clone soul.\n",
+        "user": "User clone.\n"
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "logs",
             "list"
           ],

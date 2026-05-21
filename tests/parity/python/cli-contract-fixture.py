@@ -550,6 +550,80 @@ def main() -> int:
             ).exists(),
         }
 
+        clone_home = home / "profile-clone-home"
+        clone_env = env.copy()
+        clone_env["HERMES_HOME"] = str(clone_home)
+        (clone_home / "skills" / "demo").mkdir(parents=True, exist_ok=True)
+        (clone_home / "memories").mkdir(parents=True, exist_ok=True)
+        (clone_home / "config.yaml").write_text("model: clone-model\n", encoding="utf-8")
+        (clone_home / ".env").write_text("OPENROUTER_API_KEY=sk-clone\n", encoding="utf-8")
+        (clone_home / "SOUL.md").write_text("Clone soul.\n", encoding="utf-8")
+        (clone_home / "skills" / "demo" / "SKILL.md").write_text(
+            "# Demo Clone Skill\n", encoding="utf-8"
+        )
+        (clone_home / "memories" / "MEMORY.md").write_text(
+            "Remember clone.\n", encoding="utf-8"
+        )
+        (clone_home / "memories" / "USER.md").write_text("User clone.\n", encoding="utf-8")
+        clone_commands = []
+        for argv, marker_list in [
+            (
+                [
+                    "profile",
+                    "create",
+                    "cloned",
+                    "--clone",
+                    "--no-alias",
+                    "--description",
+                    "Cloned role",
+                ],
+                [
+                    "Profile 'cloned' created",
+                    "Cloned config, .env, SOUL.md, and skills from default.",
+                    "Next steps:",
+                    "cloned setup",
+                ],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=clone_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, clone_home)
+            clone_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, clone_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+        cloned_profile = clone_home / "profiles" / "cloned"
+        clone_state = {
+            "cloned_exists": cloned_profile.exists(),
+            "config": (cloned_profile / "config.yaml").read_text(encoding="utf-8"),
+            "env": (cloned_profile / ".env").read_text(encoding="utf-8"),
+            "soul": (cloned_profile / "SOUL.md").read_text(encoding="utf-8"),
+            "memory": (cloned_profile / "memories" / "MEMORY.md").read_text(
+                encoding="utf-8"
+            ),
+            "user": (cloned_profile / "memories" / "USER.md").read_text(encoding="utf-8"),
+            "skill_exists": (cloned_profile / "skills" / "demo" / "SKILL.md").exists(),
+            "description": (
+                yaml.safe_load((cloned_profile / "profile.yaml").read_text(encoding="utf-8"))
+                or {}
+            ).get("description"),
+            "no_bundled_skills_marker_exists": (
+                cloned_profile / ".no-bundled-skills"
+            ).exists(),
+        }
+
         logs_home = home / "logs-command-home"
         logs_env = env.copy()
         logs_env["HERMES_HOME"] = str(logs_home)
@@ -1057,6 +1131,11 @@ def main() -> int:
                 "name": "safe_profile_rename_command_execution",
                 "commands": rename_commands,
                 "state": rename_state,
+            },
+            {
+                "name": "safe_profile_clone_command_execution",
+                "commands": clone_commands,
+                "state": clone_state,
             },
             {
                 "name": "safe_logs_command_execution",

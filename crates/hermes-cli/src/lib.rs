@@ -568,6 +568,24 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "profile", "create", name, "--clone", "--no-alias", "--description", description] =>
+        {
+            let source = profile_dir(hermes_home, &active_profile_name(hermes_home));
+            let dir = profile_dir(hermes_home, name);
+            create_cloned_profile(&source, &dir, Some(description))?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!(
+                    "\nProfile '{name}' created at {}\nCloned config, .env, SOUL.md, and skills from {}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
+                    dir.display(),
+                    active_profile_name(hermes_home),
+                    dir.display(),
+                    dir.display(),
+                ),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
         ["hermes", "profile", "describe", name] => {
             let dir = profile_dir(hermes_home, name);
             let description = read_profile_description(&dir)?.unwrap_or_default();
@@ -1440,6 +1458,59 @@ fn create_minimal_profile(
     }
     if let Some(description) = description.filter(|value| !value.trim().is_empty()) {
         write_profile_description(profile_dir, description)?;
+    }
+    Ok(())
+}
+
+fn create_cloned_profile(
+    source_dir: &Path,
+    profile_dir: &Path,
+    description: Option<&str>,
+) -> io::Result<()> {
+    if !source_dir.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Source profile does not exist at {}", source_dir.display()),
+        ));
+    }
+    create_minimal_profile(profile_dir, description, false)?;
+    for filename in ["config.yaml", ".env", "SOUL.md"] {
+        let source = source_dir.join(filename);
+        if source.exists() {
+            fs::copy(source, profile_dir.join(filename))?;
+        }
+    }
+    let source_skills = source_dir.join("skills");
+    if source_skills.is_dir() {
+        copy_dir_contents(&source_skills, &profile_dir.join("skills"))?;
+    }
+    for relpath in ["memories/MEMORY.md", "memories/USER.md"] {
+        let source = source_dir.join(relpath);
+        if source.exists() {
+            let target = profile_dir.join(relpath);
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(source, target)?;
+        }
+    }
+    Ok(())
+}
+
+fn copy_dir_contents(source: &Path, target: &Path) -> io::Result<()> {
+    fs::create_dir_all(target)?;
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+        if source_path.is_dir() {
+            copy_dir_contents(&source_path, &target_path)?;
+        } else if source_path.is_file() {
+            if let Some(parent) = target_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(source_path, target_path)?;
+        }
     }
     Ok(())
 }

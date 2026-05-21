@@ -65,7 +65,9 @@ against those fixtures in `crates/hermes-parity`:
   returns the Python-compatible error contract. Profile rename is
   fixture-backed for directory move, active-profile marker update, description
   metadata preservation, `SOUL.md` preservation, and no-bundled-skills marker
-  preservation.
+  preservation. Profile creation with `--clone` is fixture-backed for copying
+  config, `.env`, `SOUL.md`, installed skills, and curated memory files from
+  the active profile while preserving the new profile description.
 - Session maintenance: CLI `sessions prune` is fixture-backed for
   `--older-than`, `--source`, and `--yes`, including deletion of only ended
   sessions older than the cutoff, preservation of active/recent sessions,
