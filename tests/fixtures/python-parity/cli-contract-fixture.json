@@ -289,6 +289,28 @@
         {
           "argv": [
             "hermes",
+            "config",
+            "show"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "API Keys": true,
+            "Backend:": true,
+            "Config:": true,
+            "Context Compression": true,
+            "Hermes Configuration": true,
+            "Messaging Platforms": true,
+            "Model": true,
+            "Paths": true,
+            "Secrets:": true,
+            "Terminal": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
             "cron",
             "list"
           ],

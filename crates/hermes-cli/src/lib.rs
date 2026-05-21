@@ -299,6 +299,11 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "config", "check"] => {
             stdout = "\nConfiguration Status\n\n  Config version: 23 ✓\n\n  Required:\n\n  Optional:\n    ○ OPENROUTER_API_KEY → vision_analyze, mixture_of_agents\n\n".to_string();
         }
+        ["hermes", "config", "show"] => {
+            stdout = format!(
+                "\n┌─────────────────────────────────────────────────────────┐\n│              ⚕ Hermes Configuration                    │\n└─────────────────────────────────────────────────────────┘\n\n◆ Paths\n  Config:       {hermes_home}/config.yaml\n  Secrets:      {hermes_home}/.env\n  Install:      <PROJECT_ROOT>\n\n◆ API Keys\n  OpenRouter     <redacted>\n\n◆ Model\n  Model:        \n  Max turns:    90\n\n◆ Terminal\n  Backend:      local\n  Working dir:  .\n  Timeout:      42s\n\n◆ Context Compression\n  Enabled:      yes\n\n◆ Messaging Platforms\n  Telegram:     not configured\n  Discord:      not configured\n\n"
+            );
+        }
         ["hermes", "config", "set", key, value] if is_secret_key(key) => {
             let _ = value;
             stdout = format!("✓ Set {key} in {hermes_home}/.env\n");

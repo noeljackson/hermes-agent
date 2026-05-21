@@ -119,6 +119,18 @@ def main() -> int:
             "tools_list": ["Built-in toolsets (cli):", "web", "terminal", "memory", "computer_use"],
             "mcp_list": ["No MCP servers configured.", "hermes mcp add <name>"],
             "config_check": ["Configuration Status", "Config version:", "Optional:", "OPENROUTER_API_KEY"],
+            "config_show": [
+                "Hermes Configuration",
+                "Paths",
+                "Config:",
+                "Secrets:",
+                "API Keys",
+                "Model",
+                "Terminal",
+                "Backend:",
+                "Context Compression",
+                "Messaging Platforms",
+            ],
             "sessions_list_empty": ["No sessions found."],
         }
         for argv in [
@@ -130,6 +142,7 @@ def main() -> int:
             ["config", "set", "display.skin", "mono"],
             ["config", "set", "terminal.timeout", "42"],
             ["config", "set", "OPENROUTER_API_KEY", "sk-test-parity"],
+            ["config", "show"],
             ["cron", "list"],
             ["mcp", "list"],
             ["sessions", "list", "--limit", "5"],
@@ -152,6 +165,8 @@ def main() -> int:
                 marker_key = "mcp_list"
             elif argv == ["config", "check"]:
                 marker_key = "config_check"
+            elif argv == ["config", "show"]:
+                marker_key = "config_show"
             elif argv == ["sessions", "list", "--limit", "5"]:
                 marker_key = "sessions_list_empty"
             stdout_markers = None

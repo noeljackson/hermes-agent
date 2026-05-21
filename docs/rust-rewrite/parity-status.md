@@ -44,7 +44,9 @@ against those fixtures in `crates/hermes-parity`:
   unknown user sections, and supports config-set value coercion plus dotted
   list/object path updates without dropping sibling data or `${ENV}` templates.
   Terminal settings that Python mirrors into `.env` are fixture-backed for the
-  sync-key mapping.
+  sync-key mapping. The read-only `hermes config show` CLI surface is
+  fixture-backed with stable section markers for paths, secret location, API
+  key status, model, terminal, compression, and messaging platform sections.
 - Config defaults: top-level default config section inventory and selected
   high-value defaults for model, toolsets, agent limits/timeouts, terminal
   sandbox settings, browser safety defaults, memory, security, cron, logging,
