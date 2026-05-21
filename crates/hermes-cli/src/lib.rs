@@ -321,6 +321,9 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "gateway", "list"] => {
             stdout = "Gateways:\n  ✗ default (current)       \n".to_string();
         }
+        ["hermes", "gateway", "stop"] => {
+            stdout = "✗ No gateway running for this profile\n".to_string();
+        }
         ["hermes", "cron", "create", schedule, prompt, "--name", name, "--deliver", _deliver] => {
             let display = hermes_cron::parse_schedule(schedule)
                 .ok()
@@ -452,6 +455,14 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             result = CliExecution {
                 exit_code: 0,
                 stdout: gateway_list_output(hermes_home)?,
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "gateway", "stop"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: "✗ No gateway running for this profile\n".to_string(),
                 stdout_markers: BTreeMap::new(),
                 stderr: String::new(),
             };

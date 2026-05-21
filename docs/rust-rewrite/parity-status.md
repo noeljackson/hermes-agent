@@ -171,8 +171,8 @@ against those fixtures in `crates/hermes-parity`:
   behavior, restart drain-timeout parsing, channel-query normalization,
   channel target labels, and session-derived channel-directory IDs/names.
   Gateway CLI status/list surfaces are fixture-backed for no-running-gateway
-  startup guidance and multi-profile status inventory without contacting
-  messaging platforms. Live platform adapters themselves remain
+  startup guidance, no-running-gateway stop behavior, and multi-profile status
+  inventory without contacting messaging platforms. Live platform adapters themselves remain
   opt-in/future work until deterministic adapter fixtures cover each platform
   boundary.
 - MCP filtering: server/tool name sanitization, include/exclude filtering

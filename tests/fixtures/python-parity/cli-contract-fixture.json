@@ -1728,6 +1728,22 @@
             "default (current)": true,
             "messenger": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "gateway",
+            "stop"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "No gateway running for this profile": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No gateway running for this profile": true
+          }
         }
       ],
       "name": "safe_gateway_command_execution"

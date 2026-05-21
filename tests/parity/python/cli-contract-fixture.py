@@ -1146,6 +1146,12 @@ def main() -> int:
                     "messenger": True,
                 },
             ),
+            (
+                ["gateway", "stop"],
+                {
+                    "No gateway running for this profile": True,
+                },
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],
