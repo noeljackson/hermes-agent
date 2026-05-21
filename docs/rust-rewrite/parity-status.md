@@ -60,7 +60,10 @@ against those fixtures in `crates/hermes-parity`:
   profile archive path is fixture-backed for named-profile export/import:
   config, SOUL, memory, and skills are preserved while `.env` and `auth.json`
   are excluded, duplicate import is rejected, and missing-profile export
-  returns the Python-compatible error contract.
+  returns the Python-compatible error contract. Profile rename is
+  fixture-backed for directory move, active-profile marker update, description
+  metadata preservation, `SOUL.md` preservation, and no-bundled-skills marker
+  preservation.
 - Session maintenance: CLI `sessions prune` is fixture-backed for
   `--older-than`, `--source`, and `--yes`, including deletion of only ended
   sessions older than the cutoff, preservation of active/recent sessions,

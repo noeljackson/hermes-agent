@@ -576,6 +576,29 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "profile", "rename", old_name, new_name] => {
+            match rename_profile_dir(hermes_home, old_name, new_name) {
+                Ok(new_dir) => {
+                    result = CliExecution {
+                        exit_code: 0,
+                        stdout: format!(
+                            "✓ Renamed {old_name} → {new_name}\n\nProfile renamed: {old_name} → {new_name}\nPath: {}\n\n",
+                            new_dir.display()
+                        ),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
+                Err(error) => {
+                    result = CliExecution {
+                        exit_code: 1,
+                        stdout: format!("Error: {error}\n"),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
+            }
+        }
         ["hermes", "profile", "export", name, "-o", output]
         | ["hermes", "profile", "export", name, "--output", output] => {
             match export_profile_archive(hermes_home, name, Path::new(output)) {
@@ -1154,6 +1177,44 @@ fn read_profile_description(profile_dir: &Path) -> io::Result<Option<String>> {
 fn count_profile_skills(profile_dir: &Path) -> usize {
     let skills_dir = profile_dir.join("skills");
     count_skill_files(&skills_dir).unwrap_or(0)
+}
+
+fn rename_profile_dir(hermes_home: &Path, old_name: &str, new_name: &str) -> io::Result<PathBuf> {
+    let old_canon = normalize_profile_name_for_cli(old_name)?;
+    let new_canon = normalize_profile_name_for_cli(new_name)?;
+    validate_profile_name_for_cli(&old_canon)?;
+    validate_profile_name_for_cli(&new_canon)?;
+    if old_canon == "default" {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Cannot rename the default profile.",
+        ));
+    }
+    if new_canon == "default" {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Cannot rename to 'default' — it is reserved.",
+        ));
+    }
+    let old_dir = profile_dir(hermes_home, &old_canon);
+    let new_dir = profile_dir(hermes_home, &new_canon);
+    if !old_dir.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Profile '{old_canon}' does not exist."),
+        ));
+    }
+    if new_dir.exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            format!("Profile '{new_canon}' already exists."),
+        ));
+    }
+    fs::rename(&old_dir, &new_dir)?;
+    if active_profile_name(hermes_home) == old_canon {
+        fs::write(hermes_home.join("active_profile"), format!("{new_canon}\n"))?;
+    }
+    Ok(new_dir)
 }
 
 fn export_profile_archive(hermes_home: &Path, name: &str, output: &Path) -> io::Result<PathBuf> {

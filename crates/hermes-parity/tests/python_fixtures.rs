@@ -502,6 +502,71 @@ fn cli_contract_matches_python_fixture() {
         profile_state["profiles_root_exists"].as_bool().unwrap()
     );
 
+    let rename_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-rename-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&rename_home);
+    fs::create_dir_all(&rename_home).unwrap();
+    let rename_home_display = rename_home.to_string_lossy().to_string();
+    let rename_execution = case(&fixture, "safe_profile_rename_command_execution");
+    for expected in rename_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &rename_home).unwrap();
+        actual.stdout = actual.stdout.replace(&rename_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&rename_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let rename_state = &rename_execution["state"];
+    let rename_active_path = rename_home.join("active_profile");
+    let rename_active = if rename_active_path.exists() {
+        json!(fs::read_to_string(rename_active_path).unwrap().trim())
+    } else {
+        Value::Null
+    };
+    let renamed_profile = rename_home.join("profiles").join("renamed");
+    let renamed_meta: Value =
+        serde_yaml::from_str(&fs::read_to_string(renamed_profile.join("profile.yaml")).unwrap())
+            .unwrap();
+    assert_eq!(rename_active, rename_state["active_profile_file"]);
+    assert_eq!(
+        rename_home.join("profiles").join("rename-me").exists(),
+        rename_state["old_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        renamed_profile.exists(),
+        rename_state["new_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        renamed_meta["description"], rename_state["description"],
+        "renamed profile description"
+    );
+    assert_eq!(
+        renamed_profile.join("SOUL.md").exists(),
+        rename_state["soul_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        renamed_profile.join(".no-bundled-skills").exists(),
+        rename_state["no_bundled_skills_marker_exists"]
+            .as_bool()
+            .unwrap()
+    );
+
     let archive_home = std::env::temp_dir().join(format!(
         "hermes-parity-cli-profile-archive-{}",
         std::process::id()

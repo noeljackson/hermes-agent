@@ -845,6 +845,113 @@
             "hermes",
             "profile",
             "create",
+            "rename-me",
+            "--no-alias",
+            "--no-skills",
+            "--description",
+            "Rename role"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No bundled skills seeded": true,
+            "Profile 'rename-me' created": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "use",
+            "rename-me"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Switched to: rename-me": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "rename",
+            "rename-me",
+            "renamed"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile renamed: rename-me": true,
+            "Renamed rename-me": true,
+            "renamed": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "describe",
+            "renamed"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Rename role": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "show",
+            "renamed"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile: renamed": true,
+            "SOUL.md: exists": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile": true,
+            "renamed": true,
+            "stopped": true
+          }
+        }
+      ],
+      "name": "safe_profile_rename_command_execution",
+      "state": {
+        "active_profile_file": "renamed",
+        "description": "Rename role",
+        "new_exists": true,
+        "no_bundled_skills_marker_exists": true,
+        "old_exists": false,
+        "soul_exists": true
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "create",
             "archive",
             "--no-alias",
             "--no-skills",

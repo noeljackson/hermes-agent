@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import yaml
 
 from parity_common import (
     fixture,
@@ -460,6 +461,80 @@ def main() -> int:
             "profiles_root_exists": (home / "profiles").exists(),
         }
 
+        rename_home = home / "profile-rename-home"
+        rename_env = env.copy()
+        rename_env["HERMES_HOME"] = str(rename_home)
+        rename_commands = []
+        for argv, marker_list in [
+            (
+                [
+                    "profile",
+                    "create",
+                    "rename-me",
+                    "--no-alias",
+                    "--no-skills",
+                    "--description",
+                    "Rename role",
+                ],
+                ["Profile 'rename-me' created", "No bundled skills seeded"],
+            ),
+            (["profile", "use", "rename-me"], ["Switched to: rename-me"]),
+            (
+                ["profile", "rename", "rename-me", "renamed"],
+                ["Renamed rename-me", "Profile renamed: rename-me", "renamed"],
+            ),
+            (
+                ["profile", "describe", "renamed"],
+                ["Rename role"],
+            ),
+            (
+                ["profile", "show", "renamed"],
+                ["Profile: renamed", "SOUL.md: exists"],
+            ),
+            (
+                ["profile", "list"],
+                ["Profile", "renamed", "stopped"],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=rename_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, rename_home)
+            rename_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, rename_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+        rename_active_path = rename_home / "active_profile"
+        renamed_profile = rename_home / "profiles" / "renamed"
+        rename_state = {
+            "active_profile_file": (
+                rename_active_path.read_text(encoding="utf-8").strip()
+                if rename_active_path.exists()
+                else None
+            ),
+            "old_exists": (rename_home / "profiles" / "rename-me").exists(),
+            "new_exists": renamed_profile.exists(),
+            "description": (
+                yaml.safe_load((renamed_profile / "profile.yaml").read_text(encoding="utf-8"))
+                or {}
+            ).get("description"),
+            "soul_exists": (renamed_profile / "SOUL.md").exists(),
+            "no_bundled_skills_marker_exists": (
+                renamed_profile / ".no-bundled-skills"
+            ).exists(),
+        }
+
         archive_home = home / "profile-archive-home"
         archive_env = env.copy()
         archive_env["HERMES_HOME"] = str(archive_home)
@@ -577,8 +652,6 @@ def main() -> int:
             "restored_env_exists": (restored / ".env").exists(),
             "restored_auth_exists": (restored / "auth.json").exists(),
         }
-
-        import yaml
 
         tool_home = home / "tools-command-home"
         tool_env = env.copy()
@@ -747,6 +820,11 @@ def main() -> int:
                 "name": "safe_profile_command_execution",
                 "commands": profile_commands,
                 "state": profile_state,
+            },
+            {
+                "name": "safe_profile_rename_command_execution",
+                "commands": rename_commands,
+                "state": rename_state,
             },
             {
                 "name": "safe_profile_archive_command_execution",
