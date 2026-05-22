@@ -466,6 +466,95 @@
         {
           "argv": [
             "hermes",
+            "auth",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "auth",
+            "list",
+            "openrouter"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "auth",
+            "status",
+            "openrouter"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "openrouter: logged out\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "auth",
+            "status",
+            "nous"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "nous: logged out\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "auth",
+            "logout",
+            "openrouter"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "Unknown provider: openrouter\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "auth",
+            "reset",
+            "openrouter"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "Reset status on 0 openrouter credentials\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "auth",
+            "remove",
+            "openrouter",
+            "missing"
+          ],
+          "exit_code": 1,
+          "stderr": "No credential matching \"missing\". Provider: openrouter.\n",
+          "stdout": "",
+          "stdout_markers": {}
+        }
+      ],
+      "name": "safe_auth_command_execution"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",

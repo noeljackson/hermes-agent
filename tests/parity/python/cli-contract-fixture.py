@@ -204,6 +204,43 @@ def main() -> int:
                 }
             )
 
+        auth_home = home / "auth-command-home"
+        auth_env = env.copy()
+        auth_env["HERMES_HOME"] = str(auth_home)
+        for secret_name in [
+            "OPENROUTER_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "OPENAI_API_KEY",
+            "NOUS_API_KEY",
+        ]:
+            auth_env.pop(secret_name, None)
+        auth_commands = []
+        for argv in [
+            ["auth", "list"],
+            ["auth", "list", "openrouter"],
+            ["auth", "status", "openrouter"],
+            ["auth", "status", "nous"],
+            ["auth", "logout", "openrouter"],
+            ["auth", "reset", "openrouter"],
+            ["auth", "remove", "openrouter", "missing"],
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=auth_env,
+            )
+            auth_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stdout": normalize_output(command_result.stdout, auth_home),
+                    "stdout_markers": {},
+                    "stderr": normalize_output(command_result.stderr, auth_home),
+                }
+            )
+
         from hermes_state import SessionDB
 
         db = SessionDB(home / "state.db")
@@ -1834,6 +1871,10 @@ def main() -> int:
                 "name": "safe_command_file_state",
                 "config": config_state,
                 "env_lines": env_lines,
+            },
+            {
+                "name": "safe_auth_command_execution",
+                "commands": auth_commands,
             },
             {
                 "name": "safe_session_command_execution",

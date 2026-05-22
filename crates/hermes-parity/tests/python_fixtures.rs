@@ -197,6 +197,32 @@ fn cli_contract_matches_python_fixture() {
         .collect::<Vec<_>>();
     assert_eq!(Value::Array(env_lines), file_state["env_lines"]);
 
+    let auth_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-auth-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&auth_home);
+    fs::create_dir_all(&auth_home).unwrap();
+    let auth_home_display = auth_home.to_string_lossy().to_string();
+    let auth_execution = case(&fixture, "safe_auth_command_execution");
+    for expected in auth_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command(&argv, &auth_home_display);
+        actual.stdout = actual.stdout.replace(&auth_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&auth_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stdout, expected["stdout"], "{argv:?} stdout");
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+    }
+    let _ = fs::remove_dir_all(auth_home);
+
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db
         .create_session(

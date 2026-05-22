@@ -266,7 +266,8 @@ against those fixtures in `crates/hermes-parity`:
   subcommand inventory, and selected subcommand help markers
   for config, tools, MCP, sessions, cron, and gateway. The selected
   subcommand help contracts are executable through the Rust CLI dispatch layer.
-  Safe command execution is also fixture-backed for version markers, config
+  Safe command execution is also fixture-backed for version markers,
+  no-credential auth list/status/reset/remove/logout behavior, config
   path/env-path, config
   writes, and secret `.env` writes with fake credentials, including durable
   file-state checks that config values land in `config.yaml` while secrets land

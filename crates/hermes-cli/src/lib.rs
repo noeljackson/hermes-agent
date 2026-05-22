@@ -319,6 +319,21 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "logout"] => {
             stdout = "No provider is currently logged in.\n".to_string();
         }
+        ["hermes", "auth", "list"] | ["hermes", "auth", "list", _] => {}
+        ["hermes", "auth", "status", provider] => {
+            stdout = format!("{provider}: logged out\n");
+        }
+        ["hermes", "auth", "logout", "openrouter"] => {
+            exit_code = 1;
+            stdout = "Unknown provider: openrouter\n".to_string();
+        }
+        ["hermes", "auth", "reset", provider] => {
+            stdout = format!("Reset status on 0 {provider} credentials\n");
+        }
+        ["hermes", "auth", "remove", provider, target] => {
+            exit_code = 1;
+            stderr = format!("No credential matching \"{target}\". Provider: {provider}.\n");
+        }
         ["hermes", command, "--help"] => {
             if let Some(help) = subcommand_help(command) {
                 stdout = help.to_string();
