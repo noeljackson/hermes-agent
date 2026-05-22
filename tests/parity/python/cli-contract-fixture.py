@@ -312,6 +312,62 @@ def main() -> int:
         }
         final_db.close()
 
+        ambiguous_home = home / "session-ambiguous-home"
+        ambiguous_env = env.copy()
+        ambiguous_env["HERMES_HOME"] = str(ambiguous_home)
+        ambiguous_home.mkdir(parents=True, exist_ok=True)
+        ambiguous_db = SessionDB(ambiguous_home / "state.db")
+        for session_id, content in [
+            ("abc111-session", "first ambiguous"),
+            ("abc222-session", "second ambiguous"),
+        ]:
+            ambiguous_db.create_session(
+                session_id,
+                "cli",
+                user_id="ambiguous-user",
+                model="fake/model",
+                model_config={"provider": "fake"},
+                system_prompt="system",
+            )
+            ambiguous_db.append_message(session_id, "user", content)
+        ambiguous_db.close()
+        ambiguous_commands = []
+        for argv in [
+            ["sessions", "export", "-", "--session-id", "abc"],
+            ["sessions", "rename", "abc", "Ambiguous", "Name"],
+            ["sessions", "delete", "abc", "--yes"],
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=ambiguous_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, ambiguous_home)
+            ambiguous_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, ambiguous_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        "Session 'abc' not found.": "Session 'abc' not found."
+                        in normalized_stdout
+                    },
+                }
+            )
+        ambiguous_final_db = SessionDB(ambiguous_home / "state.db")
+        ambiguous_state = {
+            "session_count": ambiguous_final_db.session_count(),
+            "message_count": ambiguous_final_db.message_count(),
+            "first_title": ambiguous_final_db.get_session_title("abc111-session"),
+            "second_title": ambiguous_final_db.get_session_title("abc222-session"),
+            "first_exists": ambiguous_final_db.get_session("abc111-session") is not None,
+            "second_exists": ambiguous_final_db.get_session("abc222-session") is not None,
+        }
+        ambiguous_final_db.close()
+
         prune_home = home / "session-prune-home"
         prune_env = env.copy()
         prune_env["HERMES_HOME"] = str(prune_home)
@@ -1477,6 +1533,11 @@ def main() -> int:
                 "name": "safe_session_command_execution",
                 "commands": session_commands,
                 "state": session_state,
+            },
+            {
+                "name": "safe_session_ambiguous_prefix_command_execution",
+                "commands": ambiguous_commands,
+                "state": ambiguous_state,
             },
             {
                 "name": "safe_session_prune_command_execution",

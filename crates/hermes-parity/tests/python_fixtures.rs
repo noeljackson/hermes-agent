@@ -314,6 +314,95 @@ fn cli_contract_matches_python_fixture() {
         session_state["file_export_lines"]
     );
 
+    let ambiguous_home = std::env::temp_dir().join(format!(
+        "hermes-parity-cli-ambiguous-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&ambiguous_home);
+    fs::create_dir_all(&ambiguous_home).unwrap();
+    let ambiguous_home_display = ambiguous_home.to_string_lossy().to_string();
+    let ambiguous_db =
+        hermes_session::SqliteSessionStore::open(ambiguous_home.join("state.db")).unwrap();
+    for (session_id, content) in [
+        ("abc111-session", "first ambiguous"),
+        ("abc222-session", "second ambiguous"),
+    ] {
+        ambiguous_db
+            .create_session(
+                session_id,
+                "cli",
+                "ambiguous-user",
+                "fake/model",
+                "{\"provider\": \"fake\"}",
+                "system",
+            )
+            .unwrap();
+        ambiguous_db
+            .append_message(session_id, "user", content, None, None, None, None)
+            .unwrap();
+    }
+    let ambiguous_execution = case(&fixture, "safe_session_ambiguous_prefix_command_execution");
+    for expected in ambiguous_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &ambiguous_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&ambiguous_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&ambiguous_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let ambiguous_state = &ambiguous_execution["state"];
+    assert_eq!(
+        ambiguous_db.session_count(None).unwrap(),
+        ambiguous_state["session_count"].as_i64().unwrap()
+    );
+    assert_eq!(
+        ambiguous_db.message_count(None).unwrap(),
+        ambiguous_state["message_count"].as_i64().unwrap()
+    );
+    assert_eq!(
+        ambiguous_db.get_session_title("abc111-session").unwrap(),
+        ambiguous_state["first_title"].as_str().map(str::to_string)
+    );
+    assert_eq!(
+        ambiguous_db.get_session_title("abc222-session").unwrap(),
+        ambiguous_state["second_title"].as_str().map(str::to_string)
+    );
+    assert_eq!(
+        ambiguous_db
+            .get_session("abc111-session")
+            .unwrap()
+            .is_some(),
+        ambiguous_state["first_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        ambiguous_db
+            .get_session("abc222-session")
+            .unwrap()
+            .is_some(),
+        ambiguous_state["second_exists"].as_bool().unwrap()
+    );
+    let _ = fs::remove_dir_all(ambiguous_home);
+
     let prune_home =
         std::env::temp_dir().join(format!("hermes-parity-cli-prune-{}", std::process::id()));
     let _ = fs::remove_dir_all(&prune_home);

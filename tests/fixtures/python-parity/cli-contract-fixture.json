@@ -774,6 +774,66 @@
           "argv": [
             "hermes",
             "sessions",
+            "export",
+            "-",
+            "--session-id",
+            "abc"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Session 'abc' not found.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "rename",
+            "abc",
+            "Ambiguous",
+            "Name"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Session 'abc' not found.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "delete",
+            "abc",
+            "--yes"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Session 'abc' not found.": true
+          }
+        }
+      ],
+      "name": "safe_session_ambiguous_prefix_command_execution",
+      "state": {
+        "first_exists": true,
+        "first_title": null,
+        "message_count": 2,
+        "second_exists": true,
+        "second_title": null,
+        "session_count": 2
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "sessions",
             "prune",
             "--older-than",
             "90",
