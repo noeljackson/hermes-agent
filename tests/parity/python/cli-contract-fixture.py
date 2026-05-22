@@ -1314,6 +1314,21 @@ def main() -> int:
         tool_home = home / "tools-command-home"
         tool_env = env.copy()
         tool_env["HERMES_HOME"] = str(tool_home)
+        tool_home.mkdir(parents=True, exist_ok=True)
+        (tool_home / "config.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "mcp_servers": {
+                        "demo": {
+                            "command": "node",
+                            "enabled": True,
+                        }
+                    }
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
         tool_commands = []
         for argv, marker_list in [
             (["tools", "enable", "no-such-toolset"], ["Unknown toolset 'no-such-toolset'"]),
@@ -1359,6 +1374,22 @@ def main() -> int:
             (
                 ["tools", "list", "--platform", "bad"],
                 ["Unknown platform 'bad'"],
+            ),
+            (
+                ["tools", "disable", "demo:delete_file"],
+                ["Disabled: demo:delete_file"],
+            ),
+            (
+                ["tools", "list"],
+                ["MCP servers:", "demo", "excluded: delete_file"],
+            ),
+            (
+                ["tools", "enable", "demo:delete_file"],
+                ["Enabled: demo:delete_file"],
+            ),
+            (
+                ["tools", "disable", "missing:tool"],
+                ["MCP server 'missing' not found in config"],
             ),
         ]:
             command_result = subprocess.run(
@@ -1409,6 +1440,12 @@ def main() -> int:
             in ((tool_config.get("platform_toolsets") or {}).get("telegram") or []),
             "telegram_browser_enabled": "browser"
             in ((tool_config.get("platform_toolsets") or {}).get("telegram") or []),
+            "demo_exclude": (
+                ((tool_config.get("mcp_servers") or {}).get("demo") or {})
+                .get("tools", {})
+                .get("exclude", [])
+            ),
+            "missing_server_present": "missing" in (tool_config.get("mcp_servers") or {}),
         }
 
         cron_home = home / "cron-command-home"

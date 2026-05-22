@@ -421,6 +421,12 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "tools", "list"] => {
             stdout = tools_list_output("cli", &default_display_enabled_toolsets());
         }
+        ["hermes", "tools", "enable", target] if target.contains(':') => {
+            stdout = format!("✓ Enabled: {target}\n");
+        }
+        ["hermes", "tools", "disable", target] if target.contains(':') => {
+            stdout = format!("✓ Disabled: {target}\n");
+        }
         ["hermes", "tools", "enable", names @ ..] if !names.is_empty() => {
             stdout = format!("✓ Enabled: {}\n", names.join(", "));
         }
@@ -664,14 +670,21 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             result = if !is_valid_toolset_platform(platform) {
                 unknown_toolset_platform_output(platform)
             } else {
+                let config = read_config_value(hermes_home)?;
                 let enabled = read_platform_toolsets(hermes_home, platform)?;
                 CliExecution {
                     exit_code: 0,
-                    stdout: tools_list_output(platform, &enabled),
+                    stdout: tools_list_output_with_mcp(platform, &enabled, &config),
                     stdout_markers: BTreeMap::new(),
                     stderr: String::new(),
                 }
             };
+        }
+        ["hermes", "tools", "enable", target] if target.contains(':') => {
+            result = mcp_tool_change_output(hermes_home, target, true)?;
+        }
+        ["hermes", "tools", "disable", target] if target.contains(':') => {
+            result = mcp_tool_change_output(hermes_home, target, false)?;
         }
         ["hermes", "tools", "enable", names @ ..] if !names.is_empty() => {
             let valid = filter_valid_toolset_names(names);
@@ -684,10 +697,11 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             result = toolset_change_output(names, false);
         }
         ["hermes", "tools", "list"] => {
+            let config = read_config_value(hermes_home)?;
             let enabled = read_platform_toolsets(hermes_home, "cli")?;
             result = CliExecution {
                 exit_code: 0,
-                stdout: tools_list_output("cli", &enabled),
+                stdout: tools_list_output_with_mcp("cli", &enabled, &config),
                 stdout_markers: BTreeMap::new(),
                 stderr: String::new(),
             };
@@ -1459,6 +1473,117 @@ fn tools_list_output(platform: &str, enabled: &BTreeSet<String>) -> String {
         stdout.push_str(&format!("  {status}  {name}  {label}\n"));
     }
     stdout
+}
+
+fn tools_list_output_with_mcp(
+    platform: &str,
+    enabled: &BTreeSet<String>,
+    config: &Value,
+) -> String {
+    let mut stdout = tools_list_output(platform, enabled);
+    let servers = mcp_servers(config);
+    if servers.is_empty() {
+        return stdout;
+    }
+    stdout.push_str("\nMCP servers:\n");
+    for (name, server_config) in servers {
+        let Some(tools) = server_config.get("tools").and_then(Value::as_object) else {
+            stdout.push_str(&format!("  {name}  all tools enabled\n"));
+            continue;
+        };
+        let include = tools
+            .get("include")
+            .and_then(Value::as_array)
+            .map(|items| items.iter().filter_map(Value::as_str).collect::<Vec<_>>())
+            .unwrap_or_default();
+        if !include.is_empty() {
+            stdout.push_str(&format!(
+                "  {name}  [include only: {}]\n",
+                include.join(", ")
+            ));
+            continue;
+        }
+        let exclude = tools
+            .get("exclude")
+            .and_then(Value::as_array)
+            .map(|items| items.iter().filter_map(Value::as_str).collect::<Vec<_>>())
+            .unwrap_or_default();
+        if exclude.is_empty() {
+            stdout.push_str(&format!("  {name}  all tools enabled\n"));
+        } else {
+            stdout.push_str(&format!("  {name}  [excluded: {}]\n", exclude.join(", ")));
+        }
+    }
+    stdout
+}
+
+fn mcp_tool_change_output(
+    hermes_home: &Path,
+    target: &str,
+    enable: bool,
+) -> io::Result<CliExecution> {
+    let changed = apply_mcp_tool_change(hermes_home, target, enable)?;
+    let stdout = if changed {
+        format!(
+            "✓ {}: {target}\n",
+            if enable { "Enabled" } else { "Disabled" }
+        )
+    } else {
+        let server = target
+            .split_once(':')
+            .map(|(server, _)| server)
+            .unwrap_or(target);
+        format!("✗ MCP server '{server}' not found in config\n")
+    };
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn apply_mcp_tool_change(hermes_home: &Path, target: &str, enable: bool) -> io::Result<bool> {
+    let Some((server_name, tool_name)) = target.split_once(':') else {
+        return Ok(false);
+    };
+    let mut config = read_config_value(hermes_home)?;
+    let Some(root) = config.as_object_mut() else {
+        return Ok(false);
+    };
+    let Some(servers) = root.get_mut("mcp_servers").and_then(Value::as_object_mut) else {
+        return Ok(false);
+    };
+    let Some(server) = servers.get_mut(server_name).and_then(Value::as_object_mut) else {
+        return Ok(false);
+    };
+    let tools = server
+        .entry("tools".to_string())
+        .or_insert_with(|| json!({}));
+    if !tools.is_object() {
+        *tools = json!({});
+    }
+    let tools = tools.as_object_mut().unwrap();
+    let exclude = tools
+        .entry("exclude".to_string())
+        .or_insert_with(|| Value::Array(Vec::new()));
+    if !exclude.is_array() {
+        *exclude = Value::Array(Vec::new());
+    }
+    let exclude = exclude.as_array_mut().unwrap();
+    if enable {
+        exclude.retain(|value| value.as_str() != Some(tool_name));
+    } else if !exclude
+        .iter()
+        .any(|value| value.as_str() == Some(tool_name))
+    {
+        exclude.push(Value::String(tool_name.to_string()));
+    }
+    fs::write(
+        hermes_home.join("config.yaml"),
+        serde_yaml::to_string(&config).unwrap_or_else(|_| "{}\n".to_string()),
+    )?;
+    Ok(true)
 }
 
 fn filter_valid_toolset_names(names: &[&str]) -> Vec<String> {

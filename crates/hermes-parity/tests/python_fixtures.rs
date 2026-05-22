@@ -1315,6 +1315,19 @@ fn cli_contract_matches_python_fixture() {
         std::env::temp_dir().join(format!("hermes-parity-cli-tools-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools_home);
     fs::create_dir_all(&tools_home).unwrap();
+    fs::write(
+        tools_home.join("config.yaml"),
+        serde_yaml::to_string(&json!({
+            "mcp_servers": {
+                "demo": {
+                    "command": "node",
+                    "enabled": true,
+                },
+            },
+        }))
+        .unwrap(),
+    )
+    .unwrap();
     let tools_home_display = tools_home.to_string_lossy().to_string();
     let tools_execution = case(&fixture, "safe_tools_command_execution");
     for expected in tools_execution["commands"].as_array().unwrap() {
@@ -1411,6 +1424,14 @@ fn cli_contract_matches_python_fixture() {
             .iter()
             .any(|value| value == "browser"),
         tools_state["telegram_browser_enabled"].as_bool().unwrap()
+    );
+    assert_eq!(
+        tools_config["mcp_servers"]["demo"]["tools"]["exclude"],
+        tools_state["demo_exclude"]
+    );
+    assert_eq!(
+        tools_config["mcp_servers"].get("missing").is_some(),
+        tools_state["missing_server_present"].as_bool().unwrap()
     );
     let _ = fs::remove_dir_all(tools_home);
 

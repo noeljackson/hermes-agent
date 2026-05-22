@@ -306,6 +306,8 @@ against those fixtures in `crates/hermes-parity`:
   CLI platform toolset list, including unknown-toolset diagnostics without
   persisting invalid names. Platform-scoped `tools list/enable/disable`
   behavior is fixture-backed for Telegram and invalid platform diagnostics.
+  MCP per-tool `tools enable/disable server:tool` behavior is fixture-backed
+  for exclude-list mutation, list display, and missing-server diagnostics.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, and missing-job
   pause/resume/remove diagnostics against durable `cron/jobs.json` state.

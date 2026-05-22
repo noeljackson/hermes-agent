@@ -2176,12 +2176,71 @@
           "stdout_markers": {
             "Unknown platform 'bad'": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "disable",
+            "demo:delete_file"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Disabled: demo:delete_file": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "MCP servers:": true,
+            "demo": true,
+            "excluded: delete_file": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "enable",
+            "demo:delete_file"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Enabled: demo:delete_file": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "disable",
+            "missing:tool"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "MCP server 'missing' not found in config": true
+          }
         }
       ],
       "name": "safe_tools_command_execution",
       "state": {
         "browser_enabled": false,
         "default_composite_present": false,
+        "demo_exclude": [],
+        "missing_server_present": false,
         "platform_toolsets_cli": [
           "clarify",
           "code_execution",
