@@ -688,18 +688,30 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             let source_name = active_profile_name(hermes_home);
             let source = profile_dir(hermes_home, &source_name);
             let dir = profile_dir(hermes_home, name);
-            create_clone_all_profile(&source, &dir, Some(description))?;
-            result = CliExecution {
-                exit_code: 0,
-                stdout: format!(
-                    "\nProfile '{name}' created at {}\nFull copy from {source_name}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
-                    dir.display(),
-                    dir.display(),
-                    dir.display(),
-                ),
-                stdout_markers: BTreeMap::new(),
-                stderr: String::new(),
-            };
+            if dir.exists() {
+                result = CliExecution {
+                    exit_code: 1,
+                    stdout: format!(
+                        "Error: Profile '{name}' already exists at {}\n",
+                        dir.display()
+                    ),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            } else {
+                create_clone_all_profile(&source, &dir, Some(description))?;
+                result = CliExecution {
+                    exit_code: 0,
+                    stdout: format!(
+                        "\nProfile '{name}' created at {}\nFull copy from {source_name}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
+                        dir.display(),
+                        dir.display(),
+                        dir.display(),
+                    ),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            }
         }
         ["hermes", "profile", "describe", name] => {
             let dir = profile_dir(hermes_home, name);

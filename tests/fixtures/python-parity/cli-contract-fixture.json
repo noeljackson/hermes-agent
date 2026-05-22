@@ -1161,6 +1161,24 @@
             "Profile 'fullcopy' created": true,
             "fullcopy setup": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "create",
+            "fullcopy",
+            "--clone-all",
+            "--no-alias",
+            "--description",
+            "Duplicate full"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'fullcopy' already exists at <HERMES_HOME>/profiles/fullcopy": true
+          }
         }
       ],
       "name": "safe_profile_clone_all_command_execution",

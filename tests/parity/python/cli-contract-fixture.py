@@ -715,6 +715,18 @@ def main() -> int:
                     "fullcopy setup",
                 ],
             ),
+            (
+                [
+                    "profile",
+                    "create",
+                    "fullcopy",
+                    "--clone-all",
+                    "--no-alias",
+                    "--description",
+                    "Duplicate full",
+                ],
+                ["Profile 'fullcopy' already exists at <HERMES_HOME>/profiles/fullcopy"],
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],
