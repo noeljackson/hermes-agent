@@ -278,6 +278,19 @@
             "hermes",
             "config",
             "set",
+            "terminal.cwd",
+            "/workspace/project"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\u2713 Set terminal.cwd = /workspace/project in <HERMES_HOME>/config.yaml\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
+            "set",
             "OPENROUTER_API_KEY",
             "sk-test-parity"
           ],
@@ -374,6 +387,7 @@
           "skin": "mono"
         },
         "terminal": {
+          "cwd": "/workspace/project",
           "timeout": 42
         }
       },

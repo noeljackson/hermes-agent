@@ -141,6 +141,7 @@ def main() -> int:
             ["config", "check"],
             ["config", "set", "display.skin", "mono"],
             ["config", "set", "terminal.timeout", "42"],
+            ["config", "set", "terminal.cwd", "/workspace/project"],
             ["config", "set", "OPENROUTER_API_KEY", "sk-test-parity"],
             ["config", "show"],
             ["cron", "list"],
