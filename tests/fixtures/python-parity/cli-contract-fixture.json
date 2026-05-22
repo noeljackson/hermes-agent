@@ -1506,12 +1506,50 @@
           "stdout_markers": {
             "Invalid profile name '../escape'": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "create",
+            "../clone-escape",
+            "--clone",
+            "--no-alias",
+            "--description",
+            "Bad"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Invalid profile name '../clone-escape'": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "create",
+            "../clone-all-escape",
+            "--clone-all",
+            "--no-alias",
+            "--description",
+            "Bad"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Invalid profile name '../clone-all-escape'": true
+          }
         }
       ],
       "name": "safe_profile_validation_command_execution",
       "state": {
         "active_profile_file": null,
         "badname_exists": false,
+        "clone_all_escape_exists": false,
+        "clone_escape_exists": false,
         "escape_exists": false,
         "raw_badname_exists": false
       }

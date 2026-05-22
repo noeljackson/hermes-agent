@@ -812,6 +812,30 @@ def main() -> int:
                 ],
                 ["Invalid profile name '../escape'"],
             ),
+            (
+                [
+                    "profile",
+                    "create",
+                    "../clone-escape",
+                    "--clone",
+                    "--no-alias",
+                    "--description",
+                    "Bad",
+                ],
+                ["Invalid profile name '../clone-escape'"],
+            ),
+            (
+                [
+                    "profile",
+                    "create",
+                    "../clone-all-escape",
+                    "--clone-all",
+                    "--no-alias",
+                    "--description",
+                    "Bad",
+                ],
+                ["Invalid profile name '../clone-all-escape'"],
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],
@@ -848,6 +872,12 @@ def main() -> int:
                 profile_validation_home / "profiles" / "BadName"
             ).exists(),
             "escape_exists": (profile_validation_home.parent / "escape").exists(),
+            "clone_escape_exists": (
+                profile_validation_home.parent / "clone-escape"
+            ).exists(),
+            "clone_all_escape_exists": (
+                profile_validation_home.parent / "clone-all-escape"
+            ).exists(),
         }
 
         clone_home = home / "profile-clone-home"

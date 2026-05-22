@@ -834,6 +834,26 @@ fn cli_contract_matches_python_fixture() {
             .exists(),
         profile_validation_state["escape_exists"].as_bool().unwrap()
     );
+    assert_eq!(
+        profile_validation_home
+            .parent()
+            .unwrap()
+            .join("clone-escape")
+            .exists(),
+        profile_validation_state["clone_escape_exists"]
+            .as_bool()
+            .unwrap()
+    );
+    assert_eq!(
+        profile_validation_home
+            .parent()
+            .unwrap()
+            .join("clone-all-escape")
+            .exists(),
+        profile_validation_state["clone_all_escape_exists"]
+            .as_bool()
+            .unwrap()
+    );
     let _ = fs::remove_dir_all(profile_validation_home);
 
     let clone_home = std::env::temp_dir().join(format!(
