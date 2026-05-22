@@ -767,6 +767,14 @@ def main() -> int:
                 ],
                 ["level>=WARNING", "session=sessA", "component=tools", "tool warn"],
             ),
+            (
+                ["logs", "errors", "-n", "1"],
+                ["errors.log", "last 1", "failure"],
+            ),
+            (
+                ["logs", "gateway", "-n", "1"],
+                ["gateway.log", "last 1", "ready"],
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],

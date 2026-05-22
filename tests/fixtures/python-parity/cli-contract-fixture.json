@@ -1171,6 +1171,40 @@
             "session=sessA": true,
             "tool warn": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "logs",
+            "errors",
+            "-n",
+            "1"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "errors.log": true,
+            "failure": true,
+            "last 1": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "logs",
+            "gateway",
+            "-n",
+            "1"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "gateway.log": true,
+            "last 1": true,
+            "ready": true
+          }
         }
       ],
       "name": "safe_logs_command_execution"
