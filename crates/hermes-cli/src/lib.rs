@@ -304,6 +304,24 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
                 "\n┌─────────────────────────────────────────────────────────┐\n│              ⚕ Hermes Configuration                    │\n└─────────────────────────────────────────────────────────┘\n\n◆ Paths\n  Config:       {hermes_home}/config.yaml\n  Secrets:      {hermes_home}/.env\n  Install:      <PROJECT_ROOT>\n\n◆ API Keys\n  OpenRouter     <redacted>\n\n◆ Model\n  Model:        \n  Max turns:    90\n\n◆ Terminal\n  Backend:      local\n  Working dir:  .\n  Timeout:      42s\n\n◆ Context Compression\n  Enabled:      yes\n\n◆ Messaging Platforms\n  Telegram:     not configured\n  Discord:      not configured\n\n"
             );
         }
+        ["hermes", "config", "edit"] => {
+            let config_path = Path::new(hermes_home).join("config.yaml");
+            if !config_path.exists() {
+                if let Err(error) = fs::write(&config_path, "{}\n") {
+                    exit_code = 1;
+                    stderr = format!("Failed to create config: {error}\n");
+                } else {
+                    stdout.push_str(&format!("Created {hermes_home}/config.yaml\n"));
+                }
+            }
+            stdout.push_str(&format!(
+                "No editor found. Config file is at:\n  {hermes_home}/config.yaml\n"
+            ));
+        }
+        ["hermes", "config", "set"] | ["hermes", "config", "set", _] => {
+            exit_code = 1;
+            stdout = "Usage: hermes config set <key> <value>\n\nExamples:\n  hermes config set model anthropic/claude-sonnet-4\n  hermes config set terminal.backend docker\n  hermes config set OPENROUTER_API_KEY sk-or-...\n".to_string();
+        }
         ["hermes", "config", "set", key, value] if is_secret_key(key) => {
             let _ = value;
             stdout = format!("✓ Set {key} in {hermes_home}/.env\n");

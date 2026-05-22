@@ -303,6 +303,40 @@
           "argv": [
             "hermes",
             "config",
+            "set"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "Usage: hermes config set <key> <value>\n\nExamples:\n  hermes config set model anthropic/claude-sonnet-4\n  hermes config set terminal.backend docker\n  hermes config set OPENROUTER_API_KEY sk-or-...\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
+            "set",
+            "model.provider"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "Usage: hermes config set <key> <value>\n\nExamples:\n  hermes config set model anthropic/claude-sonnet-4\n  hermes config set terminal.backend docker\n  hermes config set OPENROUTER_API_KEY sk-or-...\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
+            "edit"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "No editor found. Config file is at:\n  <HERMES_HOME>/config.yaml\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "config",
             "show"
           ],
           "exit_code": 0,

@@ -270,7 +270,9 @@ against those fixtures in `crates/hermes-parity`:
   writes, and secret `.env` writes with fake credentials, including durable
   file-state checks that config values land in `config.yaml` while secrets land
   in `.env`, and that `terminal.cwd` stays config-only instead of writing a
-  stale `TERMINAL_CWD` env mirror. The no-jobs `cron list` output is
+  stale `TERMINAL_CWD` env mirror. Missing-argument `config set` usage and
+  non-interactive `config edit` fallback behavior are also fixture-backed. The
+  no-jobs `cron list` output is
   fixture-backed. A narrow
   session-management CLI subset is now executable and fixture-backed for
   `sessions list --limit`, `sessions stats`,
