@@ -1502,6 +1502,20 @@ def main() -> int:
                 None,
             ),
             (
+                ["cron", "status"],
+                [
+                    "Gateway is not running",
+                    "cron jobs will NOT fire",
+                    "No active jobs",
+                ],
+                None,
+            ),
+            (
+                ["cron", "run", "missing"],
+                ["Failed to run job: Job with ID or name 'missing' not found."],
+                None,
+            ),
+            (
                 [
                     "cron",
                     "create",

@@ -2444,6 +2444,35 @@
           "argv": [
             "hermes",
             "cron",
+            "status"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Gateway is not running": true,
+            "No active jobs": true,
+            "cron jobs will NOT fire": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "run",
+            "missing"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Failed to run job: Job with ID or name 'missing' not found.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
             "create",
             "2026-06-03T09:00:00+00:00",
             "first duplicate",

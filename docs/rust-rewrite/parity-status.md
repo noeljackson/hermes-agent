@@ -309,8 +309,9 @@ against those fixtures in `crates/hermes-parity`:
   MCP per-tool `tools enable/disable server:tool` behavior is fixture-backed
   for exclude-list mutation, list display, and missing-server diagnostics.
   Deterministic cron subcommands are executable and
-  fixture-backed for create, list, pause, resume, remove, and missing-job
-  pause/resume/remove diagnostics against durable `cron/jobs.json` state.
+  fixture-backed for create, list, pause, resume, remove, no-gateway status,
+  and missing-job pause/resume/remove/run diagnostics against durable
+  `cron/jobs.json` state.
   Duplicate cron names remain allowed, but ambiguous name-based mutation is
   fixture-backed as a no-op with Python-compatible diagnostics, and Rust now
   keeps duplicate-name job IDs unique so ID-based recovery remains possible.

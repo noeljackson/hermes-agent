@@ -519,6 +519,24 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 result = cron_ambiguous_job_output("remove", name, &ids);
             }
         },
+        ["hermes", "cron", "status"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: "\n✗ Gateway is not running — cron jobs will NOT fire\n\n  To enable automatic execution:\n    hermes gateway install    # Install as a user service\n    sudo hermes gateway install --system  # Linux servers: boot-time system service\n    hermes gateway            # Or run in foreground\n\n  No active jobs\n\n".to_string(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "cron", "run", name] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!(
+                    "Failed to run job: Job with ID or name '{name}' not found. Use cronjob(action='list') to inspect jobs.\n"
+                ),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
         ["hermes", "cron", "list", "--all"] | ["hermes", "cron", "list"] => {
             let jobs = hermes_cron::load_jobs(cron_jobs_path(hermes_home))?;
             result = CliExecution {
