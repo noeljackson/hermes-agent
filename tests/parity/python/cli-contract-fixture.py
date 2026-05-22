@@ -620,6 +620,18 @@ def main() -> int:
                     "cloned setup",
                 ],
             ),
+            (
+                [
+                    "profile",
+                    "create",
+                    "cloned",
+                    "--clone",
+                    "--no-alias",
+                    "--description",
+                    "Duplicate clone",
+                ],
+                ["Profile 'cloned' already exists at <HERMES_HOME>/profiles/cloned"],
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],

@@ -1106,6 +1106,24 @@
             "Profile 'cloned' created": true,
             "cloned setup": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "create",
+            "cloned",
+            "--clone",
+            "--no-alias",
+            "--description",
+            "Duplicate clone"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'cloned' already exists at <HERMES_HOME>/profiles/cloned": true
+          }
         }
       ],
       "name": "safe_profile_clone_command_execution",
