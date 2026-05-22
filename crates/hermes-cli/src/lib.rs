@@ -429,8 +429,8 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             }
         }
         ["hermes", "cron", "create", schedule, prompt, "--name", name, "--deliver", deliver] => {
-            create_cron_job(hermes_home, schedule, prompt, name, deliver)?;
-            result = run_safe_command(argv, &home_display);
+            let created = create_cron_job(hermes_home, schedule, prompt, name, deliver)?;
+            result = cron_create_output(&created);
         }
         ["hermes", "cron", "pause", name] => {
             match set_cron_job_enabled(hermes_home, name, false)? {
@@ -1552,13 +1552,21 @@ fn cron_jobs_path(hermes_home: &Path) -> PathBuf {
     hermes_home.join("cron").join("jobs.json")
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CreatedCronJob {
+    id: String,
+    name: String,
+    schedule_display: String,
+    next_run_at: String,
+}
+
 fn create_cron_job(
     hermes_home: &Path,
     schedule_text: &str,
     prompt: &str,
     name: &str,
     deliver: &str,
-) -> io::Result<()> {
+) -> io::Result<CreatedCronJob> {
     let path = cron_jobs_path(hermes_home);
     let mut jobs = hermes_cron::load_jobs(&path)?;
     let schedule = hermes_cron::parse_schedule(schedule_text).map_err(io::Error::other)?;
@@ -1572,8 +1580,9 @@ fn create_cron_job(
         .and_then(Value::as_str)
         .unwrap_or(schedule_text)
         .to_string();
+    let id = unique_cron_job_id(&jobs, name);
     jobs.push(json!({
-        "id": format!("rust-{name}"),
+        "id": id,
         "name": name,
         "prompt": prompt,
         "skills": [],
@@ -1586,7 +1595,45 @@ fn create_cron_job(
         "next_run_at": next_run_at,
         "deliver": deliver,
     }));
-    save_cron_jobs_object(&path, &jobs)
+    save_cron_jobs_object(&path, &jobs)?;
+    Ok(CreatedCronJob {
+        id,
+        name: name.to_string(),
+        schedule_display: display,
+        next_run_at,
+    })
+}
+
+fn unique_cron_job_id(jobs: &[Value], name: &str) -> String {
+    let base = format!("rust-{name}");
+    if !jobs
+        .iter()
+        .any(|job| job.get("id").and_then(Value::as_str) == Some(base.as_str()))
+    {
+        return base;
+    }
+    for index in 2.. {
+        let candidate = format!("{base}-{index}");
+        if !jobs
+            .iter()
+            .any(|job| job.get("id").and_then(Value::as_str) == Some(candidate.as_str()))
+        {
+            return candidate;
+        }
+    }
+    unreachable!("unbounded loop returns on first unused id")
+}
+
+fn cron_create_output(created: &CreatedCronJob) -> CliExecution {
+    CliExecution {
+        exit_code: 0,
+        stdout: format!(
+            "Created job: {}\n  Name: {}\n  Schedule: {}\n  Next run: {}\n",
+            created.id, created.name, created.schedule_display, created.next_run_at
+        ),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
