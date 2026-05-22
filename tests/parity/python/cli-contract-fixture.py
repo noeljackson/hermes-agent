@@ -1336,6 +1336,30 @@ def main() -> int:
                     "✓ enabled  terminal",
                 ],
             ),
+            (
+                ["tools", "list", "--platform", "telegram"],
+                [
+                    "Built-in toolsets (telegram):",
+                    "✓ enabled  browser",
+                    "✓ enabled  web",
+                ],
+            ),
+            (
+                ["tools", "disable", "web", "--platform", "telegram"],
+                ["Disabled: web"],
+            ),
+            (
+                ["tools", "list", "--platform", "telegram"],
+                [
+                    "Built-in toolsets (telegram):",
+                    "✗ disabled  web",
+                    "✓ enabled  browser",
+                ],
+            ),
+            (
+                ["tools", "list", "--platform", "bad"],
+                ["Unknown platform 'bad'"],
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],
@@ -1375,6 +1399,16 @@ def main() -> int:
             in ((tool_config.get("platform_toolsets") or {}).get("cli") or []),
             "unknown_present": "no-such-toolset"
             in ((tool_config.get("platform_toolsets") or {}).get("cli") or []),
+            "platform_toolsets_telegram": sorted(
+                str(item)
+                for item in (
+                    (tool_config.get("platform_toolsets") or {}).get("telegram") or []
+                )
+            ),
+            "telegram_web_enabled": "web"
+            in ((tool_config.get("platform_toolsets") or {}).get("telegram") or []),
+            "telegram_browser_enabled": "browser"
+            in ((tool_config.get("platform_toolsets") or {}).get("telegram") or []),
         }
 
         cron_home = home / "cron-command-home"

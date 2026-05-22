@@ -139,6 +139,30 @@ const DISPLAY_TOOLSETS: &[(&str, &str, bool)] = &[
     ("computer_use", "🖱️  Computer Use (macOS)", true),
 ];
 
+const TOOLSET_PLATFORMS: &[&str] = &[
+    "cli",
+    "telegram",
+    "discord",
+    "slack",
+    "whatsapp",
+    "signal",
+    "bluebubbles",
+    "email",
+    "homeassistant",
+    "mattermost",
+    "matrix",
+    "dingtalk",
+    "feishu",
+    "wecom",
+    "wecom_callback",
+    "weixin",
+    "qqbot",
+    "yuanbao",
+    "webhook",
+    "api_server",
+    "cron",
+];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubcommandHelpContract {
     pub argv: &'static [&'static str],
@@ -395,7 +419,7 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
             stdout = format!("  ✗ Server '{name}' not found in config.\n");
         }
         ["hermes", "tools", "list"] => {
-            stdout = tools_list_output(&default_display_enabled_toolsets());
+            stdout = tools_list_output("cli", &default_display_enabled_toolsets());
         }
         ["hermes", "tools", "enable", names @ ..] if !names.is_empty() => {
             stdout = format!("✓ Enabled: {}\n", names.join(", "));
@@ -616,21 +640,54 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 }
             };
         }
+        ["hermes", "tools", "enable", name, "--platform", platform] => {
+            result = if !is_valid_toolset_platform(platform) {
+                unknown_toolset_platform_output(platform)
+            } else {
+                let names = [*name];
+                let valid = filter_valid_toolset_names(&names);
+                apply_platform_toolset_change(hermes_home, platform, &valid, true)?;
+                toolset_change_output(&names, true)
+            };
+        }
+        ["hermes", "tools", "disable", name, "--platform", platform] => {
+            result = if !is_valid_toolset_platform(platform) {
+                unknown_toolset_platform_output(platform)
+            } else {
+                let names = [*name];
+                let valid = filter_valid_toolset_names(&names);
+                apply_platform_toolset_change(hermes_home, platform, &valid, false)?;
+                toolset_change_output(&names, false)
+            };
+        }
+        ["hermes", "tools", "list", "--platform", platform] => {
+            result = if !is_valid_toolset_platform(platform) {
+                unknown_toolset_platform_output(platform)
+            } else {
+                let enabled = read_platform_toolsets(hermes_home, platform)?;
+                CliExecution {
+                    exit_code: 0,
+                    stdout: tools_list_output(platform, &enabled),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                }
+            };
+        }
         ["hermes", "tools", "enable", names @ ..] if !names.is_empty() => {
             let valid = filter_valid_toolset_names(names);
-            apply_cli_toolset_change(hermes_home, &valid, true)?;
+            apply_platform_toolset_change(hermes_home, "cli", &valid, true)?;
             result = toolset_change_output(names, true);
         }
         ["hermes", "tools", "disable", names @ ..] if !names.is_empty() => {
             let valid = filter_valid_toolset_names(names);
-            apply_cli_toolset_change(hermes_home, &valid, false)?;
+            apply_platform_toolset_change(hermes_home, "cli", &valid, false)?;
             result = toolset_change_output(names, false);
         }
         ["hermes", "tools", "list"] => {
-            let enabled = read_cli_toolsets(hermes_home)?;
+            let enabled = read_platform_toolsets(hermes_home, "cli")?;
             result = CliExecution {
                 exit_code: 0,
-                stdout: tools_list_output(&enabled),
+                stdout: tools_list_output("cli", &enabled),
                 stdout_markers: BTreeMap::new(),
                 stderr: String::new(),
             };
@@ -1287,6 +1344,14 @@ fn default_cli_saved_toolsets() -> BTreeSet<String> {
         .collect()
 }
 
+fn default_platform_saved_toolsets(platform: &str) -> BTreeSet<String> {
+    let mut toolsets = default_cli_saved_toolsets();
+    if platform != "cli" {
+        toolsets.insert("browser".to_string());
+    }
+    toolsets
+}
+
 fn default_display_enabled_toolsets() -> BTreeSet<String> {
     DISPLAY_TOOLSETS
         .iter()
@@ -1306,15 +1371,16 @@ fn read_config_value(hermes_home: &Path) -> io::Result<Value> {
     }
 }
 
-fn read_cli_toolsets(hermes_home: &Path) -> io::Result<BTreeSet<String>> {
+fn read_platform_toolsets(hermes_home: &Path, platform: &str) -> io::Result<BTreeSet<String>> {
     let config = read_config_value(hermes_home)?;
-    Ok(cli_toolsets_from_config(&config).unwrap_or_else(default_display_enabled_toolsets))
+    Ok(platform_toolsets_from_config(&config, platform)
+        .unwrap_or_else(default_display_enabled_toolsets))
 }
 
-fn cli_toolsets_from_config(config: &Value) -> Option<BTreeSet<String>> {
+fn platform_toolsets_from_config(config: &Value, platform: &str) -> Option<BTreeSet<String>> {
     config
         .get("platform_toolsets")
-        .and_then(|value| value.get("cli"))
+        .and_then(|value| value.get(platform))
         .and_then(Value::as_array)
         .map(|items| {
             items
@@ -1325,10 +1391,16 @@ fn cli_toolsets_from_config(config: &Value) -> Option<BTreeSet<String>> {
         })
 }
 
-fn apply_cli_toolset_change(hermes_home: &Path, names: &[String], enable: bool) -> io::Result<()> {
+fn apply_platform_toolset_change(
+    hermes_home: &Path,
+    platform: &str,
+    names: &[String],
+    enable: bool,
+) -> io::Result<()> {
     fs::create_dir_all(hermes_home)?;
     let mut config = read_config_value(hermes_home)?;
-    let mut enabled = cli_toolsets_from_config(&config).unwrap_or_else(default_cli_saved_toolsets);
+    let mut enabled = platform_toolsets_from_config(&config, platform)
+        .unwrap_or_else(|| default_platform_saved_toolsets(platform));
     for name in names {
         if enable {
             enabled.insert(name.to_string());
@@ -1339,7 +1411,7 @@ fn apply_cli_toolset_change(hermes_home: &Path, names: &[String], enable: bool) 
 
     let Some(root) = config.as_object_mut() else {
         config = json!({});
-        return apply_cli_toolset_change_with_config(hermes_home, config, enabled);
+        return apply_platform_toolset_change_with_config(hermes_home, config, platform, enabled);
     };
     let platform_toolsets = root
         .entry("platform_toolsets".to_string())
@@ -1348,7 +1420,7 @@ fn apply_cli_toolset_change(hermes_home: &Path, names: &[String], enable: bool) 
         *platform_toolsets = json!({});
     }
     platform_toolsets.as_object_mut().unwrap().insert(
-        "cli".to_string(),
+        platform.to_string(),
         Value::Array(enabled.into_iter().map(Value::String).collect()),
     );
     fs::write(
@@ -1357,24 +1429,27 @@ fn apply_cli_toolset_change(hermes_home: &Path, names: &[String], enable: bool) 
     )
 }
 
-fn apply_cli_toolset_change_with_config(
+fn apply_platform_toolset_change_with_config(
     hermes_home: &Path,
     mut config: Value,
+    platform: &str,
     enabled: BTreeSet<String>,
 ) -> io::Result<()> {
     let root = config.as_object_mut().unwrap();
-    root.insert(
-        "platform_toolsets".to_string(),
-        json!({"cli": enabled.into_iter().collect::<Vec<_>>()}),
+    let mut platforms = serde_json::Map::new();
+    platforms.insert(
+        platform.to_string(),
+        Value::Array(enabled.into_iter().map(Value::String).collect()),
     );
+    root.insert("platform_toolsets".to_string(), Value::Object(platforms));
     fs::write(
         hermes_home.join("config.yaml"),
         serde_yaml::to_string(&config).unwrap_or_else(|_| "{}\n".to_string()),
     )
 }
 
-fn tools_list_output(enabled: &BTreeSet<String>) -> String {
-    let mut stdout = "Built-in toolsets (cli):\n".to_string();
+fn tools_list_output(platform: &str, enabled: &BTreeSet<String>) -> String {
+    let mut stdout = format!("Built-in toolsets ({platform}):\n");
     for (name, label, _) in DISPLAY_TOOLSETS {
         let status = if enabled.contains(*name) {
             "✓ enabled"
@@ -1398,6 +1473,22 @@ fn is_known_toolset(name: &str) -> bool {
     DISPLAY_TOOLSETS
         .iter()
         .any(|(toolset, _, _)| *toolset == name)
+}
+
+fn is_valid_toolset_platform(platform: &str) -> bool {
+    TOOLSET_PLATFORMS.contains(&platform)
+}
+
+fn unknown_toolset_platform_output(platform: &str) -> CliExecution {
+    CliExecution {
+        exit_code: 0,
+        stdout: format!(
+            "✗ Unknown platform '{platform}'. Valid: {}\n",
+            TOOLSET_PLATFORMS.join(", ")
+        ),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    }
 }
 
 fn toolset_change_output(names: &[&str], enable: bool) -> CliExecution {

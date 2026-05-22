@@ -1386,6 +1386,32 @@ fn cli_contract_matches_python_fixture() {
             .any(|value| value == "no-such-toolset"),
         tools_state["unknown_present"].as_bool().unwrap()
     );
+    let tools_telegram = tools_config["platform_toolsets"]["telegram"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| json!(value.as_str().unwrap()))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        Value::Array(tools_telegram),
+        tools_state["platform_toolsets_telegram"]
+    );
+    assert_eq!(
+        tools_config["platform_toolsets"]["telegram"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "web"),
+        tools_state["telegram_web_enabled"].as_bool().unwrap()
+    );
+    assert_eq!(
+        tools_config["platform_toolsets"]["telegram"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "browser"),
+        tools_state["telegram_browser_enabled"].as_bool().unwrap()
+    );
     let _ = fs::remove_dir_all(tools_home);
 
     let cron_home =

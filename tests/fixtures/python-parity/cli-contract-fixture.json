@@ -2111,6 +2111,71 @@
             "\u2713 enabled  video": false,
             "\u2717 disabled  browser": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "list",
+            "--platform",
+            "telegram"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Built-in toolsets (telegram):": true,
+            "\u2713 enabled  browser": true,
+            "\u2713 enabled  web": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "disable",
+            "web",
+            "--platform",
+            "telegram"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Disabled: web": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "list",
+            "--platform",
+            "telegram"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Built-in toolsets (telegram):": true,
+            "\u2713 enabled  browser": true,
+            "\u2717 disabled  web": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "list",
+            "--platform",
+            "bad"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Unknown platform 'bad'": true
+          }
         }
       ],
       "name": "safe_tools_command_execution",
@@ -2136,6 +2201,27 @@
           "vision",
           "web"
         ],
+        "platform_toolsets_telegram": [
+          "browser",
+          "clarify",
+          "code_execution",
+          "computer_use",
+          "cronjob",
+          "delegation",
+          "file",
+          "image_gen",
+          "kanban",
+          "memory",
+          "messaging",
+          "session_search",
+          "skills",
+          "terminal",
+          "todo",
+          "tts",
+          "vision"
+        ],
+        "telegram_browser_enabled": true,
+        "telegram_web_enabled": false,
         "unknown_present": false,
         "video_enabled": false
       }
