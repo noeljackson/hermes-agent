@@ -469,6 +469,14 @@ def main() -> int:
                 ["Profile: research", "Gateway: stopped", "Skills:", "SOUL.md: exists"],
             ),
             (
+                ["profile", "show", "missing"],
+                ["Profile 'missing' does not exist."],
+            ),
+            (
+                ["profile", "describe", "missing"],
+                [],
+            ),
+            (
                 ["profile", "use", "research"],
                 ["Switched to: research"],
             ),

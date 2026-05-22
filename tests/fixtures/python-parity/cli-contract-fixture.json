@@ -927,6 +927,32 @@
           "argv": [
             "hermes",
             "profile",
+            "show",
+            "missing"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'missing' does not exist.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "describe",
+            "missing"
+          ],
+          "exit_code": 1,
+          "stderr": "Error: profile 'missing' not found\n",
+          "stdout": "",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
             "use",
             "research"
           ],

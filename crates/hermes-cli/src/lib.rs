@@ -715,18 +715,27 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "profile", "describe", name] => {
             let dir = profile_dir(hermes_home, name);
-            let description = read_profile_description(&dir)?.unwrap_or_default();
-            let stdout = if description.is_empty() {
-                format!("(no description set for '{name}')\n")
+            if *name != "default" && !dir.is_dir() {
+                result = CliExecution {
+                    exit_code: 1,
+                    stdout: String::new(),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: format!("Error: profile '{name}' not found\n"),
+                };
             } else {
-                format!("{description}\n")
-            };
-            result = CliExecution {
-                exit_code: 0,
-                stdout,
-                stdout_markers: BTreeMap::new(),
-                stderr: String::new(),
-            };
+                let description = read_profile_description(&dir)?.unwrap_or_default();
+                let stdout = if description.is_empty() {
+                    format!("(no description set for '{name}')\n")
+                } else {
+                    format!("{description}\n")
+                };
+                result = CliExecution {
+                    exit_code: 0,
+                    stdout,
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            }
         }
         ["hermes", "profile", "describe", name, "--text", description] => {
             let dir = profile_dir(hermes_home, name);
@@ -740,18 +749,27 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "profile", "show", name] => {
             let dir = profile_dir(hermes_home, name);
-            let skills = count_profile_skills(&dir);
-            result = CliExecution {
-                exit_code: 0,
-                stdout: format!(
-                    "\nProfile: {name}\nPath:    {}\nGateway: stopped\nSkills:  {skills}\n.env:    {}\nSOUL.md: {}\n\n",
-                    dir.display(),
-                    if dir.join(".env").exists() { "exists" } else { "not configured" },
-                    if dir.join("SOUL.md").exists() { "exists" } else { "not configured" },
-                ),
-                stdout_markers: BTreeMap::new(),
-                stderr: String::new(),
-            };
+            if *name != "default" && !dir.is_dir() {
+                result = CliExecution {
+                    exit_code: 1,
+                    stdout: format!("Error: Profile '{name}' does not exist.\n"),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            } else {
+                let skills = count_profile_skills(&dir);
+                result = CliExecution {
+                    exit_code: 0,
+                    stdout: format!(
+                        "\nProfile: {name}\nPath:    {}\nGateway: stopped\nSkills:  {skills}\n.env:    {}\nSOUL.md: {}\n\n",
+                        dir.display(),
+                        if dir.join(".env").exists() { "exists" } else { "not configured" },
+                        if dir.join("SOUL.md").exists() { "exists" } else { "not configured" },
+                    ),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            }
         }
         ["hermes", "profile", "use", name] => {
             let dir = profile_dir(hermes_home, name);
