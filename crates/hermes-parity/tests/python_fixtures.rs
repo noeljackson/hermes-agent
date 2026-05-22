@@ -1280,6 +1280,7 @@ fn cli_contract_matches_python_fixture() {
         "contains_memory",
         "contains_skill",
         "restored_exists",
+        "badname_exists",
     ] {
         assert_eq!(archive_state[key], json!(true), "{key}");
     }
@@ -1299,6 +1300,15 @@ fn cli_contract_matches_python_fixture() {
     assert_eq!(
         restored.join("auth.json").exists(),
         archive_state["restored_auth_exists"].as_bool().unwrap()
+    );
+    let badname = archive_home.join("profiles").join("badname");
+    assert_eq!(
+        fs::read_to_string(badname.join("config.yaml")).unwrap(),
+        archive_state["badname_config"].as_str().unwrap()
+    );
+    assert_eq!(
+        archive_home.parent().unwrap().join("escape").exists(),
+        archive_state["escaped_exists"].as_bool().unwrap()
     );
 
     let tools_home =

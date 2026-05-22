@@ -1866,6 +1866,73 @@
           "argv": [
             "hermes",
             "profile",
+            "import",
+            "<HERMES_HOME>/missing.tar.gz",
+            "--name",
+            "restored"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Archive not found": true,
+            "Error:": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "import",
+            "<HERMES_HOME>/archive.tar.gz",
+            "--name",
+            "default"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Cannot import as 'default'": true,
+            "Error:": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "import",
+            "<HERMES_HOME>/archive.tar.gz",
+            "--name",
+            "../escape"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Error:": true,
+            "Invalid profile name '../escape'": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "import",
+            "<HERMES_HOME>/archive.tar.gz",
+            "--name",
+            "BadName"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Imported profile 'badname'": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
             "export",
             "missing",
             "-o",
@@ -1901,12 +1968,15 @@
           "archive/skins",
           "archive/workspace"
         ],
+        "badname_config": "model: archive-model\n",
+        "badname_exists": true,
         "contains_auth_json": false,
         "contains_config": true,
         "contains_env": false,
         "contains_memory": true,
         "contains_skill": true,
         "contains_soul": true,
+        "escaped_exists": false,
         "restored_auth_exists": false,
         "restored_config": "model: archive-model\n",
         "restored_env_exists": false,

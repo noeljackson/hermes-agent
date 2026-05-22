@@ -1234,6 +1234,28 @@ def main() -> int:
                 ["Error:", "already exists"],
             ),
             (
+                [
+                    "profile",
+                    "import",
+                    str(archive_home / "missing.tar.gz"),
+                    "--name",
+                    "restored",
+                ],
+                ["Error:", "Archive not found"],
+            ),
+            (
+                ["profile", "import", str(archive_path), "--name", "default"],
+                ["Error:", "Cannot import as 'default'"],
+            ),
+            (
+                ["profile", "import", str(archive_path), "--name", "../escape"],
+                ["Error:", "Invalid profile name '../escape'"],
+            ),
+            (
+                ["profile", "import", str(archive_path), "--name", "BadName"],
+                ["Imported profile 'badname'"],
+            ),
+            (
                 ["profile", "export", "missing", "-o", str(archive_home / "missing.tar.gz")],
                 ["Error:", "does not exist"],
             ),
@@ -1279,6 +1301,11 @@ def main() -> int:
             ),
             "restored_env_exists": (restored / ".env").exists(),
             "restored_auth_exists": (restored / "auth.json").exists(),
+            "badname_exists": (archive_home / "profiles" / "badname").exists(),
+            "badname_config": (
+                archive_home / "profiles" / "badname" / "config.yaml"
+            ).read_text(encoding="utf-8"),
+            "escaped_exists": (archive_home.parent / "escape").exists(),
         }
 
         tool_home = home / "tools-command-home"

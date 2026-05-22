@@ -70,7 +70,10 @@ against those fixtures in `crates/hermes-parity`:
   the active profile while preserving the new profile description. Profile
   creation with `--clone-all` is fixture-backed for broad profile-tree copy,
   sibling-profile exclusion, runtime gateway/process file stripping, session
-  file preservation, and description override.
+  file preservation, and description override. Profile archive import now also
+  covers missing archives, reserved `default` imports, invalid/path-traversal
+  names, and mixed-case import normalization without creating escaped
+  directories.
 - Session maintenance: CLI `sessions prune` is fixture-backed for
   `--older-than`, `--source`, and `--yes`, including deletion of only ended
   sessions older than the cutoff, preservation of active/recent sessions,
