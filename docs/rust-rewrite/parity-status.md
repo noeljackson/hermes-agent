@@ -298,7 +298,8 @@ against those fixtures in `crates/hermes-parity`:
   subcommand dispatch is fixture-backed for `config check`, `mcp list`,
   empty `sessions list --limit`, `tools list` marker contracts, and
   non-interactive `tools enable` / `tools disable` config mutation for the
-  CLI platform toolset list. Deterministic cron subcommands are executable and
+  CLI platform toolset list, including unknown-toolset diagnostics without
+  persisting invalid names. Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, and missing-job
   pause/resume/remove diagnostics against durable `cron/jobs.json` state.
   Duplicate cron names remain allowed, but ambiguous name-based mutation is

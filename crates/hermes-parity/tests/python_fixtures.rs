@@ -1368,6 +1368,14 @@ fn cli_contract_matches_python_fixture() {
             .any(|value| value == "hermes-cli"),
         tools_state["default_composite_present"].as_bool().unwrap()
     );
+    assert_eq!(
+        tools_config["platform_toolsets"]["cli"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "no-such-toolset"),
+        tools_state["unknown_present"].as_bool().unwrap()
+    );
     let _ = fs::remove_dir_all(tools_home);
 
     let cron_home =

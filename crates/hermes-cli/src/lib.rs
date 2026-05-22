@@ -599,12 +599,14 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             };
         }
         ["hermes", "tools", "enable", names @ ..] if !names.is_empty() => {
-            apply_cli_toolset_change(hermes_home, names, true)?;
-            result = run_safe_command(argv, &home_display);
+            let valid = filter_valid_toolset_names(names);
+            apply_cli_toolset_change(hermes_home, &valid, true)?;
+            result = toolset_change_output(names, true);
         }
         ["hermes", "tools", "disable", names @ ..] if !names.is_empty() => {
-            apply_cli_toolset_change(hermes_home, names, false)?;
-            result = run_safe_command(argv, &home_display);
+            let valid = filter_valid_toolset_names(names);
+            apply_cli_toolset_change(hermes_home, &valid, false)?;
+            result = toolset_change_output(names, false);
         }
         ["hermes", "tools", "list"] => {
             let enabled = read_cli_toolsets(hermes_home)?;
@@ -1305,15 +1307,15 @@ fn cli_toolsets_from_config(config: &Value) -> Option<BTreeSet<String>> {
         })
 }
 
-fn apply_cli_toolset_change(hermes_home: &Path, names: &[&str], enable: bool) -> io::Result<()> {
+fn apply_cli_toolset_change(hermes_home: &Path, names: &[String], enable: bool) -> io::Result<()> {
     fs::create_dir_all(hermes_home)?;
     let mut config = read_config_value(hermes_home)?;
     let mut enabled = cli_toolsets_from_config(&config).unwrap_or_else(default_cli_saved_toolsets);
     for name in names {
         if enable {
-            enabled.insert((*name).to_string());
+            enabled.insert(name.to_string());
         } else {
-            enabled.remove(*name);
+            enabled.remove(name.as_str());
         }
     }
 
@@ -1364,6 +1366,45 @@ fn tools_list_output(enabled: &BTreeSet<String>) -> String {
         stdout.push_str(&format!("  {status}  {name}  {label}\n"));
     }
     stdout
+}
+
+fn filter_valid_toolset_names(names: &[&str]) -> Vec<String> {
+    names
+        .iter()
+        .filter(|name| is_known_toolset(name))
+        .map(|name| (*name).to_string())
+        .collect()
+}
+
+fn is_known_toolset(name: &str) -> bool {
+    DISPLAY_TOOLSETS
+        .iter()
+        .any(|(toolset, _, _)| *toolset == name)
+}
+
+fn toolset_change_output(names: &[&str], enable: bool) -> CliExecution {
+    let mut stdout = String::new();
+    for name in names.iter().filter(|name| !is_known_toolset(name)) {
+        stdout.push_str(&format!("✗ Unknown toolset '{name}'\n"));
+    }
+    let valid = names
+        .iter()
+        .filter(|name| is_known_toolset(name))
+        .copied()
+        .collect::<Vec<_>>();
+    if !valid.is_empty() {
+        stdout.push_str(&format!(
+            "✓ {}: {}\n",
+            if enable { "Enabled" } else { "Disabled" },
+            valid.join(", ")
+        ));
+    }
+    CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    }
 }
 
 fn gateway_status_output() -> String {

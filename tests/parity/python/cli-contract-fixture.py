@@ -1286,7 +1286,16 @@ def main() -> int:
         tool_env["HERMES_HOME"] = str(tool_home)
         tool_commands = []
         for argv, marker_list in [
+            (["tools", "enable", "no-such-toolset"], ["Unknown toolset 'no-such-toolset'"]),
+            (
+                ["tools", "enable", "web", "no-such-toolset", "video"],
+                ["Unknown toolset 'no-such-toolset'", "Enabled: web, video"],
+            ),
             (["tools", "enable", "video"], ["Enabled: video"]),
+            (
+                ["tools", "disable", "browser", "no-such-toolset", "video"],
+                ["Unknown toolset 'no-such-toolset'", "Disabled: browser, video"],
+            ),
             (["tools", "disable", "browser"], ["Disabled: browser"]),
             (
                 ["tools", "list"],
@@ -1333,6 +1342,8 @@ def main() -> int:
             "video_enabled": "video"
             in ((tool_config.get("platform_toolsets") or {}).get("cli") or []),
             "default_composite_present": "hermes-cli"
+            in ((tool_config.get("platform_toolsets") or {}).get("cli") or []),
+            "unknown_present": "no-such-toolset"
             in ((tool_config.get("platform_toolsets") or {}).get("cli") or []),
         }
 

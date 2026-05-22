@@ -1921,6 +1921,37 @@
             "hermes",
             "tools",
             "enable",
+            "no-such-toolset"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Unknown toolset 'no-such-toolset'": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "enable",
+            "web",
+            "no-such-toolset",
+            "video"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Enabled: web, video": true,
+            "Unknown toolset 'no-such-toolset'": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "enable",
             "video"
           ],
           "exit_code": 0,
@@ -1928,6 +1959,23 @@
           "stdout": "",
           "stdout_markers": {
             "Enabled: video": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "tools",
+            "disable",
+            "browser",
+            "no-such-toolset",
+            "video"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Disabled: browser, video": true,
+            "Unknown toolset 'no-such-toolset'": true
           }
         },
         {
@@ -1956,7 +2004,7 @@
           "stdout_markers": {
             "Built-in toolsets (cli):": true,
             "\u2713 enabled  terminal": true,
-            "\u2713 enabled  video": true,
+            "\u2713 enabled  video": false,
             "\u2717 disabled  browser": true
           }
         }
@@ -1981,11 +2029,11 @@
           "terminal",
           "todo",
           "tts",
-          "video",
           "vision",
           "web"
         ],
-        "video_enabled": true
+        "unknown_present": false,
+        "video_enabled": false
       }
     },
     {
