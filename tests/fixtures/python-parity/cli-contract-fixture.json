@@ -1763,6 +1763,66 @@
           "stdout_markers": {
             "No gateway running for this profile": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "gateway",
+            "start"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Service start is not applicable inside a Docker container.": true,
+            "docker start <container>": true,
+            "hermes gateway run": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Service start is not applicable inside a Docker container.": true,
+            "docker start <container>": true,
+            "hermes gateway run": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "gateway",
+            "install"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Docker restart policies": true,
+            "Service installation is not needed inside a Docker container.": true,
+            "hermes gateway run": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Docker restart policies": true,
+            "Service installation is not needed inside a Docker container.": true,
+            "hermes gateway run": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "gateway",
+            "uninstall"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Service uninstall is not applicable inside a Docker container.": true,
+            "docker rm <container>": true,
+            "docker stop <container>": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Service uninstall is not applicable inside a Docker container.": true,
+            "docker rm <container>": true,
+            "docker stop <container>": true
+          }
         }
       ],
       "name": "safe_gateway_command_execution"

@@ -1159,6 +1159,30 @@ def main() -> int:
                     "No gateway running for this profile": True,
                 },
             ),
+            (
+                ["gateway", "start"],
+                {
+                    "Service start is not applicable inside a Docker container.": True,
+                    "docker start <container>": True,
+                    "hermes gateway run": True,
+                },
+            ),
+            (
+                ["gateway", "install"],
+                {
+                    "Service installation is not needed inside a Docker container.": True,
+                    "Docker restart policies": True,
+                    "hermes gateway run": True,
+                },
+            ),
+            (
+                ["gateway", "uninstall"],
+                {
+                    "Service uninstall is not applicable inside a Docker container.": True,
+                    "docker stop <container>": True,
+                    "docker rm <container>": True,
+                },
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],

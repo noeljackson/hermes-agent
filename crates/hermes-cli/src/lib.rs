@@ -324,6 +324,15 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "gateway", "stop"] => {
             stdout = "✗ No gateway running for this profile\n".to_string();
         }
+        ["hermes", "gateway", "start"] => {
+            stdout = gateway_container_start_output();
+        }
+        ["hermes", "gateway", "install"] => {
+            stdout = gateway_container_install_output();
+        }
+        ["hermes", "gateway", "uninstall"] => {
+            stdout = gateway_container_uninstall_output();
+        }
         ["hermes", "cron", "create", schedule, prompt, "--name", name, "--deliver", _deliver] => {
             let display = hermes_cron::parse_schedule(schedule)
                 .ok()
@@ -466,6 +475,30 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             result = CliExecution {
                 exit_code: 0,
                 stdout: "✗ No gateway running for this profile\n".to_string(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "gateway", "start"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: gateway_container_start_output(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "gateway", "install"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: gateway_container_install_output(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "gateway", "uninstall"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: gateway_container_uninstall_output(),
                 stdout_markers: BTreeMap::new(),
                 stderr: String::new(),
             };
@@ -1181,6 +1214,21 @@ fn tools_list_output(enabled: &BTreeSet<String>) -> String {
 
 fn gateway_status_output() -> String {
     "✗ Gateway is not running\n\nTo start:\n  hermes gateway run      # Run in foreground\n  hermes gateway install  # Install as user service\n  sudo hermes gateway install --system  # Install as boot-time system service\n"
+        .to_string()
+}
+
+fn gateway_container_start_output() -> String {
+    "Service start is not applicable inside a Docker container.\nThe gateway runs as the container's main process.\n\n  docker start <container>     # start a stopped container\n  docker restart <container>   # restart a running container\n\nOr run the gateway directly: hermes gateway run\n"
+        .to_string()
+}
+
+fn gateway_container_install_output() -> String {
+    "Service installation is not needed inside a Docker container.\nThe container runtime is your service manager — use Docker restart policies instead:\n\n  docker run --restart unless-stopped ...   # auto-restart on crash/reboot\n  docker restart <container>                # manual restart\n\nTo run the gateway: hermes gateway run\n"
+        .to_string()
+}
+
+fn gateway_container_uninstall_output() -> String {
+    "Service uninstall is not applicable inside a Docker container.\nTo stop the gateway, stop or remove the container:\n\n  docker stop <container>\n  docker rm <container>\n"
         .to_string()
 }
 

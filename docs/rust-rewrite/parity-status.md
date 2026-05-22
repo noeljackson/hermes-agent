@@ -172,9 +172,11 @@ against those fixtures in `crates/hermes-parity`:
   channel target labels, and session-derived channel-directory IDs/names.
   Gateway CLI status/list surfaces are fixture-backed for no-running-gateway
   startup guidance, no-running-gateway stop behavior, and multi-profile status
-  inventory without contacting messaging platforms. Live platform adapters themselves remain
-  opt-in/future work until deterministic adapter fixtures cover each platform
-  boundary.
+  inventory without contacting messaging platforms. Container service-manager
+  guidance for `gateway start`, `gateway install`, and `gateway uninstall` is
+  fixture-backed from the Docker oracle. Live platform adapters themselves
+  remain opt-in/future work until deterministic adapter fixtures cover each
+  platform boundary.
 - MCP filtering: server/tool name sanitization, include/exclude filtering
   including include precedence, string filters, invalid filter fallback,
   bool-ish resource/prompt utility gates, and capability-gated utility
