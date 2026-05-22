@@ -629,35 +629,59 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         ["hermes", "profile", "create", name, "--no-alias", "--no-skills", "--description", description] =>
         {
             let dir = profile_dir(hermes_home, name);
-            create_minimal_profile(&dir, Some(description), true)?;
-            result = CliExecution {
-                exit_code: 0,
-                stdout: format!(
-                    "\nProfile '{name}' created at {}\nNo bundled skills seeded (--no-skills). Delete .no-bundled-skills in the profile to opt back in.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  ⚠ This profile has no API keys yet. Run '{name} setup' first,\n    or it will inherit keys from your shell environment.\n  Edit {}/SOUL.md to customize personality\n\n",
-                    dir.display(),
-                    dir.display(),
-                ),
-                stdout_markers: BTreeMap::new(),
-                stderr: String::new(),
-            };
+            if dir.exists() {
+                result = CliExecution {
+                    exit_code: 1,
+                    stdout: format!(
+                        "Error: Profile '{name}' already exists at {}\n",
+                        dir.display()
+                    ),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            } else {
+                create_minimal_profile(&dir, Some(description), true)?;
+                result = CliExecution {
+                    exit_code: 0,
+                    stdout: format!(
+                        "\nProfile '{name}' created at {}\nNo bundled skills seeded (--no-skills). Delete .no-bundled-skills in the profile to opt back in.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  ⚠ This profile has no API keys yet. Run '{name} setup' first,\n    or it will inherit keys from your shell environment.\n  Edit {}/SOUL.md to customize personality\n\n",
+                        dir.display(),
+                        dir.display(),
+                    ),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            }
         }
         ["hermes", "profile", "create", name, "--clone", "--no-alias", "--description", description] =>
         {
             let source = profile_dir(hermes_home, &active_profile_name(hermes_home));
             let dir = profile_dir(hermes_home, name);
-            create_cloned_profile(&source, &dir, Some(description))?;
-            result = CliExecution {
-                exit_code: 0,
-                stdout: format!(
-                    "\nProfile '{name}' created at {}\nCloned config, .env, SOUL.md, and skills from {}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
-                    dir.display(),
-                    active_profile_name(hermes_home),
-                    dir.display(),
-                    dir.display(),
-                ),
-                stdout_markers: BTreeMap::new(),
-                stderr: String::new(),
-            };
+            if dir.exists() {
+                result = CliExecution {
+                    exit_code: 1,
+                    stdout: format!(
+                        "Error: Profile '{name}' already exists at {}\n",
+                        dir.display()
+                    ),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            } else {
+                create_cloned_profile(&source, &dir, Some(description))?;
+                result = CliExecution {
+                    exit_code: 0,
+                    stdout: format!(
+                        "\nProfile '{name}' created at {}\nCloned config, .env, SOUL.md, and skills from {}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
+                        dir.display(),
+                        active_profile_name(hermes_home),
+                        dir.display(),
+                        dir.display(),
+                    ),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            }
         }
         ["hermes", "profile", "create", name, "--clone-all", "--no-alias", "--description", description] =>
         {

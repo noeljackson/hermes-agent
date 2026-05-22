@@ -862,6 +862,24 @@
           "argv": [
             "hermes",
             "profile",
+            "create",
+            "research",
+            "--no-alias",
+            "--no-skills",
+            "--description",
+            "Duplicate work"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'research' already exists at <HERMES_HOME>/profiles/research": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
             "describe",
             "research",
             "--text",

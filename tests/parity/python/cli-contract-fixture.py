@@ -445,6 +445,18 @@ def main() -> int:
                 ["Research work"],
             ),
             (
+                [
+                    "profile",
+                    "create",
+                    "research",
+                    "--no-alias",
+                    "--no-skills",
+                    "--description",
+                    "Duplicate work",
+                ],
+                ["Profile 'research' already exists at <HERMES_HOME>/profiles/research"],
+            ),
+            (
                 ["profile", "describe", "research", "--text", "Updated role"],
                 ["Description updated for 'research'."],
             ),
