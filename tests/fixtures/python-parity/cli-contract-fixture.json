@@ -953,6 +953,20 @@
           "argv": [
             "hermes",
             "profile",
+            "describe",
+            "missing",
+            "--text",
+            "Nope"
+          ],
+          "exit_code": 1,
+          "stderr": "Error: profile directory does not exist: <HERMES_HOME>/profiles/missing\n",
+          "stdout": "",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
             "use",
             "research"
           ],

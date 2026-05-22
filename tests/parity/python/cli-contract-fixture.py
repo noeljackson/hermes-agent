@@ -477,6 +477,10 @@ def main() -> int:
                 [],
             ),
             (
+                ["profile", "describe", "missing", "--text", "Nope"],
+                [],
+            ),
+            (
                 ["profile", "use", "research"],
                 ["Switched to: research"],
             ),

@@ -739,13 +739,25 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "profile", "describe", name, "--text", description] => {
             let dir = profile_dir(hermes_home, name);
-            write_profile_description(&dir, description)?;
-            result = CliExecution {
-                exit_code: 0,
-                stdout: format!("Description updated for '{name}'.\n"),
-                stdout_markers: BTreeMap::new(),
-                stderr: String::new(),
-            };
+            if *name != "default" && !dir.is_dir() {
+                result = CliExecution {
+                    exit_code: 1,
+                    stdout: String::new(),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: format!(
+                        "Error: profile directory does not exist: {}\n",
+                        dir.display()
+                    ),
+                };
+            } else {
+                write_profile_description(&dir, description)?;
+                result = CliExecution {
+                    exit_code: 0,
+                    stdout: format!("Description updated for '{name}'.\n"),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            }
         }
         ["hermes", "profile", "show", name] => {
             let dir = profile_dir(hermes_home, name);
