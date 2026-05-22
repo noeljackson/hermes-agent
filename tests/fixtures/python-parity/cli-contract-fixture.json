@@ -1842,6 +1842,48 @@
           "argv": [
             "hermes",
             "cron",
+            "pause",
+            "missing"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Failed to pause job: Job with ID or name 'missing' not found.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "resume",
+            "missing"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Failed to resume job: Job with ID or name 'missing' not found.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "remove",
+            "missing"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Failed to remove job: Job with ID or name 'missing' not found.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
             "list",
             "--all"
           ],
@@ -1874,6 +1916,10 @@
               "state": "scheduled"
             }
           ]
+        },
+        "after_missing_remove": {
+          "job_count": 0,
+          "jobs": []
         },
         "after_pause": {
           "job_count": 1,

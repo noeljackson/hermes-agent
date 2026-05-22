@@ -1132,7 +1132,14 @@ fn cli_contract_matches_python_fixture() {
         }
     }
     let cron_states = &cron_execution["states"];
-    assert_eq!(read_cli_cron_state(&cron_home), cron_states["after_remove"]);
+    assert_eq!(
+        read_cli_cron_state(&cron_home),
+        cron_states["after_missing_remove"]
+    );
+    assert_eq!(
+        cron_states["after_missing_remove"],
+        cron_states["after_remove"]
+    );
     assert_eq!(cron_states["after_create"]["job_count"], 1);
     assert_eq!(
         cron_states["after_create"]["jobs"][0]["name"],

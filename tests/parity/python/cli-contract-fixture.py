@@ -1149,6 +1149,21 @@ def main() -> int:
             (["cron", "resume", "demo"], ["Resumed job: demo"], "after_resume"),
             (["cron", "remove", "demo"], ["Removed job: demo"], "after_remove"),
             (
+                ["cron", "pause", "missing"],
+                ["Failed to pause job: Job with ID or name 'missing' not found."],
+                None,
+            ),
+            (
+                ["cron", "resume", "missing"],
+                ["Failed to resume job: Job with ID or name 'missing' not found."],
+                None,
+            ),
+            (
+                ["cron", "remove", "missing"],
+                ["Failed to remove job: Job with ID or name 'missing' not found."],
+                "after_missing_remove",
+            ),
+            (
                 ["cron", "list", "--all"],
                 ["No scheduled jobs.", "hermes cron create"],
                 None,

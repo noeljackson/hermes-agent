@@ -294,8 +294,8 @@ against those fixtures in `crates/hermes-parity`:
   empty `sessions list --limit`, `tools list` marker contracts, and
   non-interactive `tools enable` / `tools disable` config mutation for the
   CLI platform toolset list. Deterministic cron subcommands are executable and
-  fixture-backed for create, list, pause, resume, and remove against durable
-  `cron/jobs.json` state.
+  fixture-backed for create, list, pause, resume, remove, and missing-job
+  pause/resume/remove diagnostics against durable `cron/jobs.json` state.
 - TUI gateway contract: JSON-RPC method inventory, long-handler routing
   inventory, `_ok`/`_err`/unknown-method frame shapes, request normalization
   errors for malformed requests and params, event frame shape, dashboard PTY

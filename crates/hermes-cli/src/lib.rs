@@ -433,18 +433,27 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             result = run_safe_command(argv, &home_display);
         }
         ["hermes", "cron", "pause", name] => {
-            set_cron_job_enabled(hermes_home, name, false)?;
-            result = run_safe_command(argv, &home_display);
+            if set_cron_job_enabled(hermes_home, name, false)? {
+                result = run_safe_command(argv, &home_display);
+            } else {
+                result = cron_missing_job_output("pause", name);
+            }
         }
         ["hermes", "cron", "resume", name] => {
-            set_cron_job_enabled(hermes_home, name, true)?;
-            result = run_safe_command(argv, &home_display);
+            if set_cron_job_enabled(hermes_home, name, true)? {
+                result = run_safe_command(argv, &home_display);
+            } else {
+                result = cron_missing_job_output("resume", name);
+            }
         }
         ["hermes", "cron", "remove", name]
         | ["hermes", "cron", "rm", name]
         | ["hermes", "cron", "delete", name] => {
-            remove_cron_job(hermes_home, name)?;
-            result = run_safe_command(argv, &home_display);
+            if remove_cron_job(hermes_home, name)? {
+                result = run_safe_command(argv, &home_display);
+            } else {
+                result = cron_missing_job_output("remove", name);
+            }
         }
         ["hermes", "cron", "list", "--all"] | ["hermes", "cron", "list"] => {
             let jobs = hermes_cron::load_jobs(cron_jobs_path(hermes_home))?;
@@ -1564,11 +1573,13 @@ fn create_cron_job(
     save_cron_jobs_object(&path, &jobs)
 }
 
-fn set_cron_job_enabled(hermes_home: &Path, name: &str, enabled: bool) -> io::Result<()> {
+fn set_cron_job_enabled(hermes_home: &Path, name: &str, enabled: bool) -> io::Result<bool> {
     let path = cron_jobs_path(hermes_home);
     let mut jobs = hermes_cron::load_jobs(&path)?;
+    let mut found = false;
     for job in &mut jobs {
         if cron_job_matches(job, name) {
+            found = true;
             if let Some(object) = job.as_object_mut() {
                 object.insert("enabled".to_string(), json!(enabled));
                 object.insert(
@@ -1578,14 +1589,28 @@ fn set_cron_job_enabled(hermes_home: &Path, name: &str, enabled: bool) -> io::Re
             }
         }
     }
-    save_cron_jobs_object(&path, &jobs)
+    save_cron_jobs_object(&path, &jobs)?;
+    Ok(found)
 }
 
-fn remove_cron_job(hermes_home: &Path, name: &str) -> io::Result<()> {
+fn remove_cron_job(hermes_home: &Path, name: &str) -> io::Result<bool> {
     let path = cron_jobs_path(hermes_home);
     let mut jobs = hermes_cron::load_jobs(&path)?;
+    let before = jobs.len();
     jobs.retain(|job| !cron_job_matches(job, name));
-    save_cron_jobs_object(&path, &jobs)
+    save_cron_jobs_object(&path, &jobs)?;
+    Ok(jobs.len() != before)
+}
+
+fn cron_missing_job_output(action: &str, name: &str) -> CliExecution {
+    CliExecution {
+        exit_code: 0,
+        stdout: format!(
+            "Failed to {action} job: Job with ID or name '{name}' not found. Use cronjob(action='list') to inspect jobs.\n"
+        ),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    }
 }
 
 fn cron_job_matches(job: &Value, name_or_id: &str) -> bool {
