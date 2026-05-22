@@ -566,10 +566,30 @@ def main() -> int:
                 ],
                 ["Profile 'rename-me' created", "No bundled skills seeded"],
             ),
+            (
+                [
+                    "profile",
+                    "create",
+                    "target",
+                    "--no-alias",
+                    "--no-skills",
+                    "--description",
+                    "Target role",
+                ],
+                ["Profile 'target' created", "No bundled skills seeded"],
+            ),
+            (
+                ["profile", "rename", "rename-me", "target"],
+                ["Profile 'target' already exists."],
+            ),
             (["profile", "use", "rename-me"], ["Switched to: rename-me"]),
             (
                 ["profile", "rename", "rename-me", "renamed"],
                 ["Renamed rename-me", "Profile renamed: rename-me", "renamed"],
+            ),
+            (
+                ["profile", "rename", "missing", "renamed-again"],
+                ["Profile 'missing' does not exist."],
             ),
             (
                 ["profile", "describe", "renamed"],

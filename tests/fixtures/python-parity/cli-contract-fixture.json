@@ -1115,6 +1115,40 @@
           "argv": [
             "hermes",
             "profile",
+            "create",
+            "target",
+            "--no-alias",
+            "--no-skills",
+            "--description",
+            "Target role"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No bundled skills seeded": true,
+            "Profile 'target' created": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "rename",
+            "rename-me",
+            "target"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'target' already exists.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
             "use",
             "rename-me"
           ],
@@ -1140,6 +1174,21 @@
             "Profile renamed: rename-me": true,
             "Renamed rename-me": true,
             "renamed": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "rename",
+            "missing",
+            "renamed-again"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'missing' does not exist.": true
           }
         },
         {
