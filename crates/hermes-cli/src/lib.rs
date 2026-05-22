@@ -1862,23 +1862,16 @@ fn logs_tail_execution(
         };
     };
     let path = hermes_home.join("logs").join(filename);
-    if !path.exists() {
-        return CliExecution {
-            exit_code: 1,
-            stdout: format!(
-                "Log file not found: {}\n(Logs are created when Hermes runs — try 'hermes chat' first)\n",
-                path.display()
-            ),
-            stdout_markers: BTreeMap::new(),
-            stderr: String::new(),
-        };
-    }
     let num_lines = lines.parse::<usize>().unwrap_or(50);
-    let mut all_lines = fs::read_to_string(&path)
-        .unwrap_or_default()
-        .lines()
-        .map(str::to_string)
-        .collect::<Vec<_>>();
+    let mut all_lines = if path.exists() {
+        fs::read_to_string(&path)
+            .unwrap_or_default()
+            .lines()
+            .map(str::to_string)
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
     if let Some(level) = level {
         all_lines.retain(|line| log_line_level_at_least(line, level));
     }

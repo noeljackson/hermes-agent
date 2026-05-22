@@ -78,8 +78,9 @@ against those fixtures in `crates/hermes-parity`:
   `request_dump_*` files only for pruned sessions. Session export-to-file is
   fixture-backed for source filtering and JSONL output shape.
 - Logs: CLI `logs list`, bounded log tailing for `agent.log`, `errors.log`,
-  and `gateway.log`, and log filtering by minimum level, session substring,
-  and component prefix are fixture-backed with synthetic log files.
+  and `gateway.log`, empty known-log tailing when the file has not been
+  created yet, unknown-log errors, and log filtering by minimum level, session
+  substring, and component prefix are fixture-backed with synthetic log files.
 - Install/update: install-method stamp format, stamped-method detection, and
   recommended update command mapping for NixOS, Homebrew, Docker, pip, git,
   and unknown installs.

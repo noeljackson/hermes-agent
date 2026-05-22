@@ -1452,8 +1452,36 @@
             "last 1": true,
             "ready": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "logs",
+            "unknown",
+            "-n",
+            "1"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Unknown log: 'unknown'. Available: agent, errors, gateway": true
+          }
         }
       ],
+      "missing_file_command": {
+        "argv": [
+          "hermes",
+          "logs",
+          "agent",
+          "-n",
+          "1"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "--- <HERMES_HOME>/logs/agent.log (last 1) ---\n",
+        "stdout_markers": {}
+      },
       "name": "safe_logs_command_execution"
     },
     {

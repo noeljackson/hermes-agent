@@ -871,6 +871,42 @@ fn cli_contract_matches_python_fixture() {
             );
         }
     }
+    let missing_logs_home = std::env::temp_dir().join(format!(
+        "hermes-parity-cli-logs-missing-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&missing_logs_home);
+    fs::create_dir_all(&missing_logs_home).unwrap();
+    let missing_logs_home_display = missing_logs_home.to_string_lossy().to_string();
+    let expected_missing = &logs_execution["missing_file_command"];
+    let missing_argv = expected_missing["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect::<Vec<_>>();
+    let mut actual_missing =
+        hermes_cli::run_safe_command_in_home(&missing_argv, &missing_logs_home).unwrap();
+    actual_missing.stdout = actual_missing
+        .stdout
+        .replace(&missing_logs_home_display, "<HERMES_HOME>");
+    actual_missing.stderr = actual_missing
+        .stderr
+        .replace(&missing_logs_home_display, "<HERMES_HOME>");
+    assert_eq!(
+        actual_missing.exit_code,
+        expected_missing["exit_code"].as_i64().unwrap() as i32,
+        "{missing_argv:?} exit"
+    );
+    assert_eq!(
+        actual_missing.stdout, expected_missing["stdout"],
+        "{missing_argv:?} stdout"
+    );
+    assert_eq!(
+        actual_missing.stderr, expected_missing["stderr"],
+        "{missing_argv:?} stderr"
+    );
+    let _ = fs::remove_dir_all(missing_logs_home);
 
     let archive_home = std::env::temp_dir().join(format!(
         "hermes-parity-cli-profile-archive-{}",

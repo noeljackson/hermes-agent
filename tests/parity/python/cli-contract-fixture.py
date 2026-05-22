@@ -882,6 +882,10 @@ def main() -> int:
                 ["logs", "gateway", "-n", "1"],
                 ["gateway.log", "last 1", "ready"],
             ),
+            (
+                ["logs", "unknown", "-n", "1"],
+                ["Unknown log: 'unknown'. Available: agent, errors, gateway"],
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],
@@ -902,6 +906,25 @@ def main() -> int:
                     },
                 }
             )
+
+        logs_missing_home = home / "logs-missing-home"
+        logs_missing_env = env.copy()
+        logs_missing_env["HERMES_HOME"] = str(logs_missing_home)
+        logs_missing_home.mkdir(parents=True, exist_ok=True)
+        command_result = subprocess.run(
+            [sys.executable, "-m", "hermes_cli.main", "logs", "agent", "-n", "1"],
+            text=True,
+            capture_output=True,
+            timeout=60,
+            env=logs_missing_env,
+        )
+        logs_missing_command = {
+            "argv": ["hermes", "logs", "agent", "-n", "1"],
+            "exit_code": command_result.returncode,
+            "stderr": normalize_output(command_result.stderr, logs_missing_home),
+            "stdout": normalize_output(command_result.stdout, logs_missing_home),
+            "stdout_markers": {},
+        }
 
         archive_home = home / "profile-archive-home"
         archive_env = env.copy()
@@ -1409,6 +1432,7 @@ def main() -> int:
             {
                 "name": "safe_logs_command_execution",
                 "commands": logs_commands,
+                "missing_file_command": logs_missing_command,
             },
             {
                 "name": "safe_profile_archive_command_execution",
