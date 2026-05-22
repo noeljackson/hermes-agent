@@ -268,9 +268,11 @@ against those fixtures in `crates/hermes-parity`:
   in `.env`. The no-jobs `cron list` output is fixture-backed. A narrow
   session-management CLI subset is now executable and fixture-backed for
   `sessions list --limit`, `sessions stats`,
-  `sessions export -`, `sessions export - --session-id`, `sessions rename`,
-  and `sessions delete --yes`. A narrow profile-management CLI subset is
-  executable and fixture-backed for current-profile display, create with
+  `sessions export -`, `sessions export - --session-id`, session export to
+  a file, `sessions rename`, missing-session rename diagnostics,
+  `sessions delete --yes`, and missing-session `sessions delete -y`
+  diagnostics. A narrow profile-management CLI subset is executable and
+  fixture-backed for current-profile display, create with
   `--no-alias --no-skills --description`, describe read/write, show, use,
   list, and delete with active-profile reset. Additional deterministic
   subcommand dispatch is fixture-backed for `config check`, `mcp list`,

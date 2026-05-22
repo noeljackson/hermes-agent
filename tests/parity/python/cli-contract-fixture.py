@@ -217,7 +217,9 @@ def main() -> int:
             ["sessions", "export", "-", "--session-id", "cli-session-1"],
             ["sessions", "export", str(session_file_export), "--source", "cli"],
             ["sessions", "rename", "cli-session-1", "Renamed", "Session"],
+            ["sessions", "rename", "missing-session", "Missing", "Title"],
             ["sessions", "delete", "telegram-session-1", "--yes"],
+            ["sessions", "delete", "missing-session", "-y"],
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],
@@ -274,6 +276,18 @@ def main() -> int:
 
                 case["stdout"] = ""
                 case["export"] = normalize_timestamps(json.loads(normalized_stdout))
+            elif argv[0:2] == ["sessions", "rename"] and argv[2] == "missing-session":
+                case["stdout"] = ""
+                case["stdout_markers"] = {
+                    "Session 'missing-session' not found.": "Session 'missing-session' not found."
+                    in normalized_stdout
+                }
+            elif argv[0:2] == ["sessions", "delete"] and argv[2] == "missing-session":
+                case["stdout"] = ""
+                case["stdout_markers"] = {
+                    "Session 'missing-session' not found.": "Session 'missing-session' not found."
+                    in normalized_stdout
+                }
             session_commands.append(case)
 
         final_db = SessionDB(home / "state.db")

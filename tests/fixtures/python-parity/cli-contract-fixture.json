@@ -635,6 +635,22 @@
           "argv": [
             "hermes",
             "sessions",
+            "rename",
+            "missing-session",
+            "Missing",
+            "Title"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Session 'missing-session' not found.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
             "delete",
             "telegram-session-1",
             "--yes"
@@ -643,6 +659,21 @@
           "stderr": "",
           "stdout": "Deleted session 'telegram-session-1'.\n",
           "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "delete",
+            "missing-session",
+            "-y"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Session 'missing-session' not found.": true
+          }
         }
       ],
       "name": "safe_session_command_execution",
