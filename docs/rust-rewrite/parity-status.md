@@ -270,9 +270,10 @@ against those fixtures in `crates/hermes-parity`:
   session-management CLI subset is now executable and fixture-backed for
   `sessions list --limit`, `sessions stats`,
   `sessions export -`, `sessions export - --session-id`, session export to
-  a file, `sessions rename`, missing-session rename diagnostics,
-  `sessions delete --yes`, and missing-session `sessions delete -y`
-  diagnostics. A narrow profile-management CLI subset is executable and
+  a file, missing-session export diagnostics, `sessions rename`,
+  missing-session rename diagnostics, `sessions delete --yes`, and
+  missing-session `sessions delete -y` diagnostics. A narrow
+  profile-management CLI subset is executable and
   fixture-backed for current-profile display, create with
   `--no-alias --no-skills --description`, duplicate-create rejection without
   rewriting the existing profile, clone creation from the active profile,

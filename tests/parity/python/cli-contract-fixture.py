@@ -215,6 +215,7 @@ def main() -> int:
             ["sessions", "export", "-"],
             ["sessions", "stats"],
             ["sessions", "export", "-", "--session-id", "cli-session-1"],
+            ["sessions", "export", "-", "--session-id", "missing"],
             ["sessions", "export", str(session_file_export), "--source", "cli"],
             ["sessions", "rename", "cli-session-1", "Renamed", "Session"],
             ["sessions", "rename", "missing-session", "Missing", "Title"],
@@ -271,6 +272,12 @@ def main() -> int:
                     for line in normalized_stdout.splitlines()
                     if line.strip()
                 ]
+            elif argv == ["sessions", "export", "-", "--session-id", "missing"]:
+                case["stdout"] = ""
+                case["stdout_markers"] = {
+                    "Session 'missing' not found.": "Session 'missing' not found."
+                    in normalized_stdout
+                }
             elif argv[:3] == ["sessions", "export", "-"]:
                 import json
 

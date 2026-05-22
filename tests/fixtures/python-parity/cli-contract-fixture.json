@@ -608,6 +608,22 @@
             "hermes",
             "sessions",
             "export",
+            "-",
+            "--session-id",
+            "missing"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Session 'missing' not found.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "export",
             "<HERMES_HOME>/cli-session-export.jsonl",
             "--source",
             "cli"
