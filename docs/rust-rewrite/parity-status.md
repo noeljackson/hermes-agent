@@ -285,7 +285,8 @@ against those fixtures in `crates/hermes-parity`:
   `active_profile`, default-profile activation that clears `active_profile`,
   list, default-profile delete rejection, missing-profile delete rejection, and
   delete with active-profile reset. Profile rename error coverage rejects
-  missing sources and existing targets without moving directories. Additional
+  missing sources, existing targets, and reserved/default profile names without
+  moving directories. Additional
   deterministic
   subcommand dispatch is fixture-backed for `config check`, `mcp list`,
   empty `sessions list --limit`, `tools list` marker contracts, and

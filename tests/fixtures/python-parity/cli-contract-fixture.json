@@ -1112,6 +1112,21 @@
           "argv": [
             "hermes",
             "profile",
+            "rename",
+            "default",
+            "renamed-default"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Cannot rename the default profile.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
             "create",
             "rename-me",
             "--no-alias",
@@ -1159,6 +1174,21 @@
           "stdout": "",
           "stdout_markers": {
             "Profile 'target' already exists.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "rename",
+            "target",
+            "default"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Cannot rename to 'default' \u2014 it is reserved.": true
           }
         },
         {

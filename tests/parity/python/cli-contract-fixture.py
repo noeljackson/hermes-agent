@@ -562,6 +562,10 @@ def main() -> int:
         rename_commands = []
         for argv, marker_list in [
             (
+                ["profile", "rename", "default", "renamed-default"],
+                ["Cannot rename the default profile."],
+            ),
+            (
                 [
                     "profile",
                     "create",
@@ -588,6 +592,10 @@ def main() -> int:
             (
                 ["profile", "rename", "rename-me", "target"],
                 ["Profile 'target' already exists."],
+            ),
+            (
+                ["profile", "rename", "target", "default"],
+                ["Cannot rename to 'default' — it is reserved."],
             ),
             (["profile", "use", "rename-me"], ["Switched to: rename-me"]),
             (
