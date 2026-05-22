@@ -483,6 +483,14 @@ def main() -> int:
                 ["Profile", "default", "research", "stopped"],
             ),
             (
+                ["profile", "use", "default"],
+                ["Switched to: default (~/.hermes)"],
+            ),
+            (
+                ["profile", "use", "research"],
+                ["Switched to: research"],
+            ),
+            (
                 ["profile", "delete", "research", "--yes"],
                 ["Profile 'research' deleted.", "Active profile reset to default"],
             ),

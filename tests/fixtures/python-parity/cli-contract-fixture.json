@@ -971,6 +971,34 @@
           "argv": [
             "hermes",
             "profile",
+            "use",
+            "default"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Switched to: default (~/.hermes)": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "use",
+            "research"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Switched to: research": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
             "delete",
             "research",
             "--yes"

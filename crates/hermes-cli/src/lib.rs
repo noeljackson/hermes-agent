@@ -755,7 +755,15 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "profile", "use", name] => {
             let dir = profile_dir(hermes_home, name);
-            if *name != "default" && !dir.is_dir() {
+            if *name == "default" {
+                let _ = fs::remove_file(hermes_home.join("active_profile"));
+                result = CliExecution {
+                    exit_code: 0,
+                    stdout: "Switched to: default (~/.hermes)\n".to_string(),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            } else if !dir.is_dir() {
                 result = CliExecution {
                     exit_code: 1,
                     stdout: format!(
