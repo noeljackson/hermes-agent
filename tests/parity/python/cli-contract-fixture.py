@@ -491,6 +491,10 @@ def main() -> int:
                 ["Switched to: research"],
             ),
             (
+                ["profile", "delete", "missing", "--yes"],
+                ["Profile 'missing' does not exist."],
+            ),
+            (
                 ["profile", "delete", "research", "--yes"],
                 ["Profile 'research' deleted.", "Active profile reset to default"],
             ),

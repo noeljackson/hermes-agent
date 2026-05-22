@@ -279,8 +279,8 @@ against those fixtures in `crates/hermes-parity`:
   clone-all creation with runtime-file stripping, duplicate clone-all
   rejection, describe read/write, show, use, missing-profile use rejection
   without changing `active_profile`, default-profile activation that clears
-  `active_profile`, list, and delete with active-profile reset. Additional
-  deterministic
+  `active_profile`, list, missing-profile delete rejection, and delete with
+  active-profile reset. Additional deterministic
   subcommand dispatch is fixture-backed for `config check`, `mcp list`,
   empty `sessions list --limit`, `tools list` marker contracts, and
   non-interactive `tools enable` / `tools disable` config mutation for the

@@ -1000,6 +1000,21 @@
             "hermes",
             "profile",
             "delete",
+            "missing",
+            "--yes"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'missing' does not exist.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "delete",
             "research",
             "--yes"
           ],

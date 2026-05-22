@@ -826,23 +826,32 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         ["hermes", "profile", "delete", name, "--yes"]
         | ["hermes", "profile", "delete", name, "-y"] => {
             let dir = profile_dir(hermes_home, name);
-            let _ = fs::remove_dir_all(&dir);
-            let mut stdout = format!(
-                "\nProfile: {name}\nPath:    {}\n\nThis will permanently delete:\n  • All config, API keys, memories, sessions, skills, cron jobs\n✓ Removed {}\n",
-                dir.display(),
-                dir.display(),
-            );
-            if active_profile_name(hermes_home) == *name {
-                let _ = fs::remove_file(hermes_home.join("active_profile"));
-                stdout.push_str("✓ Active profile reset to default\n");
+            if *name != "default" && !dir.is_dir() {
+                result = CliExecution {
+                    exit_code: 1,
+                    stdout: format!("Error: Profile '{name}' does not exist.\n"),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            } else {
+                let _ = fs::remove_dir_all(&dir);
+                let mut stdout = format!(
+                    "\nProfile: {name}\nPath:    {}\n\nThis will permanently delete:\n  • All config, API keys, memories, sessions, skills, cron jobs\n✓ Removed {}\n",
+                    dir.display(),
+                    dir.display(),
+                );
+                if active_profile_name(hermes_home) == *name {
+                    let _ = fs::remove_file(hermes_home.join("active_profile"));
+                    stdout.push_str("✓ Active profile reset to default\n");
+                }
+                stdout.push_str(&format!("\nProfile '{name}' deleted.\n"));
+                result = CliExecution {
+                    exit_code: 0,
+                    stdout,
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
             }
-            stdout.push_str(&format!("\nProfile '{name}' deleted.\n"));
-            result = CliExecution {
-                exit_code: 0,
-                stdout,
-                stdout_markers: BTreeMap::new(),
-                stderr: String::new(),
-            };
         }
         ["hermes", "profile", "rename", old_name, new_name] => {
             match rename_profile_dir(hermes_home, old_name, new_name) {
