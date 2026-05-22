@@ -276,7 +276,8 @@ against those fixtures in `crates/hermes-parity`:
   missing-session rename diagnostics, `sessions delete --yes`, and
   missing-session `sessions delete -y` diagnostics. Ambiguous session-ID
   prefixes are fixture-backed as not-found no-ops for export, rename, and
-  delete. A narrow
+  delete. Duplicate-title rename rejection and subsequent successful rename are
+  fixture-backed without losing messages. A narrow
   profile-management CLI subset is executable and
   fixture-backed for current-profile display, create with
   `--no-alias --no-skills --description`, duplicate-create rejection without

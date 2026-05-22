@@ -368,6 +368,67 @@ def main() -> int:
         }
         ambiguous_final_db.close()
 
+        title_conflict_home = home / "session-title-conflict-home"
+        title_conflict_env = env.copy()
+        title_conflict_env["HERMES_HOME"] = str(title_conflict_home)
+        title_conflict_home.mkdir(parents=True, exist_ok=True)
+        title_conflict_db = SessionDB(title_conflict_home / "state.db")
+        for session_id, content in [
+            ("session-one", "first title conflict"),
+            ("session-two", "second title conflict"),
+        ]:
+            title_conflict_db.create_session(
+                session_id,
+                "cli",
+                user_id="title-user",
+                model="fake/model",
+                model_config={"provider": "fake"},
+                system_prompt="system",
+            )
+            title_conflict_db.append_message(session_id, "user", content)
+        title_conflict_db.set_session_title("session-one", "Existing Title")
+        title_conflict_db.close()
+        title_conflict_commands = []
+        for argv, marker_list in [
+            (
+                ["sessions", "rename", "session-two", "Existing", "Title"],
+                ["Error: Title 'Existing Title' is already in use by session session-one"],
+            ),
+            (
+                ["sessions", "rename", "session-two", "Fresh", "Title"],
+                ["Session 'session-two' renamed to: Fresh Title"],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=title_conflict_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, title_conflict_home)
+            title_conflict_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(
+                        command_result.stderr, title_conflict_home
+                    ),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+        title_conflict_final_db = SessionDB(title_conflict_home / "state.db")
+        title_conflict_state = {
+            "session_count": title_conflict_final_db.session_count(),
+            "message_count": title_conflict_final_db.message_count(),
+            "first_title": title_conflict_final_db.get_session_title("session-one"),
+            "second_title": title_conflict_final_db.get_session_title("session-two"),
+        }
+        title_conflict_final_db.close()
+
         prune_home = home / "session-prune-home"
         prune_env = env.copy()
         prune_env["HERMES_HOME"] = str(prune_home)
@@ -1612,6 +1673,11 @@ def main() -> int:
                 "name": "safe_session_ambiguous_prefix_command_execution",
                 "commands": ambiguous_commands,
                 "state": ambiguous_state,
+            },
+            {
+                "name": "safe_session_title_conflict_command_execution",
+                "commands": title_conflict_commands,
+                "state": title_conflict_state,
             },
             {
                 "name": "safe_session_prune_command_execution",

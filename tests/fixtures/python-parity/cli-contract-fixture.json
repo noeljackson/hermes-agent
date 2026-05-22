@@ -834,6 +834,49 @@
           "argv": [
             "hermes",
             "sessions",
+            "rename",
+            "session-two",
+            "Existing",
+            "Title"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Error: Title 'Existing Title' is already in use by session session-one": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "sessions",
+            "rename",
+            "session-two",
+            "Fresh",
+            "Title"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Session 'session-two' renamed to: Fresh Title": true
+          }
+        }
+      ],
+      "name": "safe_session_title_conflict_command_execution",
+      "state": {
+        "first_title": "Existing Title",
+        "message_count": 2,
+        "second_title": "Fresh Title",
+        "session_count": 2
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "sessions",
             "prune",
             "--older-than",
             "90",

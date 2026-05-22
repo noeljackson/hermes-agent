@@ -403,6 +403,88 @@ fn cli_contract_matches_python_fixture() {
     );
     let _ = fs::remove_dir_all(ambiguous_home);
 
+    let title_conflict_home = std::env::temp_dir().join(format!(
+        "hermes-parity-cli-title-conflict-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&title_conflict_home);
+    fs::create_dir_all(&title_conflict_home).unwrap();
+    let title_conflict_home_display = title_conflict_home.to_string_lossy().to_string();
+    let title_conflict_db =
+        hermes_session::SqliteSessionStore::open(title_conflict_home.join("state.db")).unwrap();
+    for (session_id, content) in [
+        ("session-one", "first title conflict"),
+        ("session-two", "second title conflict"),
+    ] {
+        title_conflict_db
+            .create_session(
+                session_id,
+                "cli",
+                "title-user",
+                "fake/model",
+                "{\"provider\": \"fake\"}",
+                "system",
+            )
+            .unwrap();
+        title_conflict_db
+            .append_message(session_id, "user", content, None, None, None, None)
+            .unwrap();
+    }
+    title_conflict_db
+        .set_session_title("session-one", Some("Existing Title"))
+        .unwrap();
+    let title_conflict_execution = case(&fixture, "safe_session_title_conflict_command_execution");
+    for expected in title_conflict_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &title_conflict_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&title_conflict_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&title_conflict_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let title_conflict_state = &title_conflict_execution["state"];
+    assert_eq!(
+        title_conflict_db.session_count(None).unwrap(),
+        title_conflict_state["session_count"].as_i64().unwrap()
+    );
+    assert_eq!(
+        title_conflict_db.message_count(None).unwrap(),
+        title_conflict_state["message_count"].as_i64().unwrap()
+    );
+    assert_eq!(
+        title_conflict_db.get_session_title("session-one").unwrap(),
+        title_conflict_state["first_title"]
+            .as_str()
+            .map(str::to_string)
+    );
+    assert_eq!(
+        title_conflict_db.get_session_title("session-two").unwrap(),
+        title_conflict_state["second_title"]
+            .as_str()
+            .map(str::to_string)
+    );
+    let _ = fs::remove_dir_all(title_conflict_home);
+
     let prune_home =
         std::env::temp_dir().join(format!("hermes-parity-cli-prune-{}", std::process::id()));
     let _ = fs::remove_dir_all(&prune_home);
