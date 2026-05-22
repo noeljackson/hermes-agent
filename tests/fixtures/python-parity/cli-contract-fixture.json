@@ -212,6 +212,36 @@
         {
           "argv": [
             "hermes",
+            "status"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "API Keys": true,
+            "Auth Providers": true,
+            "Environment": true,
+            "Gateway Service": true,
+            "Hermes Agent Status": true,
+            "Messaging Platforms": true,
+            "Scheduled Jobs": true,
+            "Sessions": true,
+            "Terminal Backend": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "logout"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "No provider is currently logged in.\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
             "config",
             "path"
           ],

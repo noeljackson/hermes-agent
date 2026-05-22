@@ -132,10 +132,23 @@ def main() -> int:
                 "Messaging Platforms",
             ],
             "sessions_list_empty": ["No sessions found."],
+            "status": [
+                "Hermes Agent Status",
+                "Environment",
+                "API Keys",
+                "Auth Providers",
+                "Terminal Backend",
+                "Messaging Platforms",
+                "Gateway Service",
+                "Scheduled Jobs",
+                "Sessions",
+            ],
         }
         for argv in [
             ["--version"],
             ["version"],
+            ["status"],
+            ["logout"],
             ["config", "path"],
             ["config", "env-path"],
             ["config", "check"],
@@ -163,6 +176,8 @@ def main() -> int:
             marker_key = None
             if argv in (["--version"], ["version"]):
                 marker_key = "version"
+            elif argv == ["status"]:
+                marker_key = "status"
             elif argv == ["tools", "list"]:
                 marker_key = "tools_list"
             elif argv == ["mcp", "list"]:

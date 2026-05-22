@@ -262,7 +262,8 @@ against those fixtures in `crates/hermes-parity`:
   command generation, Slack subcommand routing, and mention/argument-safe
   resolution.
 - CLI contract: top-level help exit/stderr behavior, deterministic help
-  markers, built-in subcommand inventory, and selected subcommand help markers
+  markers, top-level status/logout no-credential behavior, built-in
+  subcommand inventory, and selected subcommand help markers
   for config, tools, MCP, sessions, cron, and gateway. The selected
   subcommand help contracts are executable through the Rust CLI dispatch layer.
   Safe command execution is also fixture-backed for version markers, config

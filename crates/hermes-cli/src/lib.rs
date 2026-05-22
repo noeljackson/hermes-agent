@@ -306,6 +306,19 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
                 stdout_markers.insert(marker, true);
             }
         }
+        ["hermes", "status"] => {
+            stdout = format!(
+                "\n┌─────────────────────────────────────────────────────────┐\n│                 ⚕ Hermes Agent Status                  │\n└─────────────────────────────────────────────────────────┘\n\n◆ Environment\n  Project:      <PROJECT_ROOT>\n  Python:       unavailable\n  .env file:    {}\n  Model:        (not set)\n  Provider:     Auto\n\n◆ API Keys\n  OpenRouter    ✗ (not set)\n\n◆ Auth Providers\n  Nous Portal   ✗ not logged in (run: hermes auth add nous --type oauth)\n  OpenAI Codex  ✗ not logged in (run: hermes model)\n\n◆ Terminal Backend\n  Backend:      local\n  Sudo:         ✗ disabled\n\n◆ Messaging Platforms\n  Telegram      ✗ not configured\n  Discord       ✗ not configured\n\n◆ Gateway Service\n  Status:       ✗ stopped\n  Manager:      docker (foreground)\n\n◆ Scheduled Jobs\n  Jobs:         0\n\n◆ Sessions\n  Active:       0\n\n────────────────────────────────────────────────────────────\n  Run 'hermes doctor' for detailed diagnostics\n  Run 'hermes setup' to configure\n\n",
+                if Path::new(hermes_home).join(".env").exists() {
+                    "✓ found"
+                } else {
+                    "✗ not found"
+                }
+            );
+        }
+        ["hermes", "logout"] => {
+            stdout = "No provider is currently logged in.\n".to_string();
+        }
         ["hermes", command, "--help"] => {
             if let Some(help) = subcommand_help(command) {
                 stdout = help.to_string();
