@@ -715,6 +715,80 @@ def main() -> int:
             ).exists(),
         }
 
+        profile_validation_home = home / "profile-validation-home"
+        profile_validation_env = env.copy()
+        profile_validation_env["HERMES_HOME"] = str(profile_validation_home)
+        profile_validation_commands = []
+        for argv, marker_list in [
+            (
+                [
+                    "profile",
+                    "create",
+                    "BadName",
+                    "--no-alias",
+                    "--no-skills",
+                    "--description",
+                    "Bad",
+                ],
+                ["Profile 'BadName' created", "profiles/badname"],
+            ),
+            (["profile", "use", "BadName"], ["Switched to: BadName"]),
+            (["profile", "show", "BadName"], ["Profile: BadName", "profiles/badname"]),
+            (["profile", "describe", "BadName"], ["Bad"]),
+            (
+                ["profile", "delete", "BadName", "--yes"],
+                ["Profile: badname", "Profile 'badname' deleted."],
+            ),
+            (
+                [
+                    "profile",
+                    "create",
+                    "../escape",
+                    "--no-alias",
+                    "--no-skills",
+                    "--description",
+                    "Bad",
+                ],
+                ["Invalid profile name '../escape'"],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=profile_validation_env,
+            )
+            normalized_stdout = normalize_output(
+                command_result.stdout, profile_validation_home
+            )
+            profile_validation_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(
+                        command_result.stderr, profile_validation_home
+                    ),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_list
+                    },
+                }
+            )
+        profile_validation_active = profile_validation_home / "active_profile"
+        profile_validation_state = {
+            "active_profile_file": (
+                profile_validation_active.read_text(encoding="utf-8").strip()
+                if profile_validation_active.exists()
+                else None
+            ),
+            "badname_exists": (profile_validation_home / "profiles" / "badname").exists(),
+            "raw_badname_exists": (
+                profile_validation_home / "profiles" / "BadName"
+            ).exists(),
+            "escape_exists": (profile_validation_home.parent / "escape").exists(),
+        }
+
         clone_home = home / "profile-clone-home"
         clone_env = env.copy()
         clone_env["HERMES_HOME"] = str(clone_home)
@@ -1553,6 +1627,11 @@ def main() -> int:
                 "name": "safe_profile_rename_command_execution",
                 "commands": rename_commands,
                 "state": rename_state,
+            },
+            {
+                "name": "safe_profile_validation_command_execution",
+                "commands": profile_validation_commands,
+                "state": profile_validation_state,
             },
             {
                 "name": "safe_profile_clone_command_execution",

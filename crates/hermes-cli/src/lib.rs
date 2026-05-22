@@ -651,193 +651,214 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
-        ["hermes", "profile", "create", name, "--no-alias", "--no-skills", "--description", description] =>
-        {
-            let dir = profile_dir(hermes_home, name);
-            if dir.exists() {
-                result = CliExecution {
-                    exit_code: 1,
-                    stdout: format!(
-                        "Error: Profile '{name}' already exists at {}\n",
-                        dir.display()
-                    ),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
-            } else {
-                create_minimal_profile(&dir, Some(description), true)?;
-                result = CliExecution {
-                    exit_code: 0,
-                    stdout: format!(
-                        "\nProfile '{name}' created at {}\nNo bundled skills seeded (--no-skills). Delete .no-bundled-skills in the profile to opt back in.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  ⚠ This profile has no API keys yet. Run '{name} setup' first,\n    or it will inherit keys from your shell environment.\n  Edit {}/SOUL.md to customize personality\n\n",
-                        dir.display(),
-                        dir.display(),
-                    ),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
+        ["hermes", "profile", "create", name, "--no-alias", "--no-skills", "--description", description] => {
+            match checked_profile_dir(hermes_home, name) {
+                Err(error) => result = error,
+                Ok((_canon, dir)) => {
+                    if dir.exists() {
+                        result = CliExecution {
+                            exit_code: 1,
+                            stdout: format!(
+                                "Error: Profile '{name}' already exists at {}\n",
+                                dir.display()
+                            ),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    } else {
+                        create_minimal_profile(&dir, Some(description), true)?;
+                        result = CliExecution {
+                            exit_code: 0,
+                            stdout: format!(
+                                "\nProfile '{name}' created at {}\nNo bundled skills seeded (--no-skills). Delete .no-bundled-skills in the profile to opt back in.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  ⚠ This profile has no API keys yet. Run '{name} setup' first,\n    or it will inherit keys from your shell environment.\n  Edit {}/SOUL.md to customize personality\n\n",
+                                dir.display(),
+                                dir.display(),
+                            ),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    }
+                }
             }
         }
         ["hermes", "profile", "create", name, "--clone", "--no-alias", "--description", description] =>
         {
             let source = profile_dir(hermes_home, &active_profile_name(hermes_home));
-            let dir = profile_dir(hermes_home, name);
-            if dir.exists() {
-                result = CliExecution {
-                    exit_code: 1,
-                    stdout: format!(
-                        "Error: Profile '{name}' already exists at {}\n",
-                        dir.display()
-                    ),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
-            } else {
-                create_cloned_profile(&source, &dir, Some(description))?;
-                result = CliExecution {
-                    exit_code: 0,
-                    stdout: format!(
-                        "\nProfile '{name}' created at {}\nCloned config, .env, SOUL.md, and skills from {}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
-                        dir.display(),
-                        active_profile_name(hermes_home),
-                        dir.display(),
-                        dir.display(),
-                    ),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
+            match checked_profile_dir(hermes_home, name) {
+                Err(error) => result = error,
+                Ok((_canon, dir)) => {
+                    if dir.exists() {
+                        result = CliExecution {
+                            exit_code: 1,
+                            stdout: format!(
+                                "Error: Profile '{name}' already exists at {}\n",
+                                dir.display()
+                            ),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    } else {
+                        create_cloned_profile(&source, &dir, Some(description))?;
+                        result = CliExecution {
+                            exit_code: 0,
+                            stdout: format!(
+                                "\nProfile '{name}' created at {}\nCloned config, .env, SOUL.md, and skills from {}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
+                                dir.display(),
+                                active_profile_name(hermes_home),
+                                dir.display(),
+                                dir.display(),
+                            ),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    }
+                }
             }
         }
         ["hermes", "profile", "create", name, "--clone-all", "--no-alias", "--description", description] =>
         {
             let source_name = active_profile_name(hermes_home);
             let source = profile_dir(hermes_home, &source_name);
-            let dir = profile_dir(hermes_home, name);
-            if dir.exists() {
-                result = CliExecution {
-                    exit_code: 1,
-                    stdout: format!(
-                        "Error: Profile '{name}' already exists at {}\n",
-                        dir.display()
-                    ),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
-            } else {
-                create_clone_all_profile(&source, &dir, Some(description))?;
-                result = CliExecution {
-                    exit_code: 0,
-                    stdout: format!(
-                        "\nProfile '{name}' created at {}\nFull copy from {source_name}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
-                        dir.display(),
-                        dir.display(),
-                        dir.display(),
-                    ),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
+            match checked_profile_dir(hermes_home, name) {
+                Err(error) => result = error,
+                Ok((_canon, dir)) => {
+                    if dir.exists() {
+                        result = CliExecution {
+                            exit_code: 1,
+                            stdout: format!(
+                                "Error: Profile '{name}' already exists at {}\n",
+                                dir.display()
+                            ),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    } else {
+                        create_clone_all_profile(&source, &dir, Some(description))?;
+                        result = CliExecution {
+                            exit_code: 0,
+                            stdout: format!(
+                                "\nProfile '{name}' created at {}\nFull copy from {source_name}.\n\nNext steps:\n  {name} setup              Configure API keys and model\n  {name} chat               Start chatting\n  {name} gateway start      Start the messaging gateway\n\n  Edit {}/.env for different API keys\n  Edit {}/SOUL.md for different personality\n\n",
+                                dir.display(),
+                                dir.display(),
+                                dir.display(),
+                            ),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    }
+                }
             }
         }
-        ["hermes", "profile", "describe", name] => {
-            let dir = profile_dir(hermes_home, name);
-            if *name != "default" && !dir.is_dir() {
-                result = CliExecution {
-                    exit_code: 1,
-                    stdout: String::new(),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: format!("Error: profile '{name}' not found\n"),
-                };
-            } else {
-                let description = read_profile_description(&dir)?.unwrap_or_default();
-                let stdout = if description.is_empty() {
-                    format!("(no description set for '{name}')\n")
+        ["hermes", "profile", "describe", name] => match checked_profile_dir(hermes_home, name) {
+            Err(error) => result = error,
+            Ok((canon, dir)) => {
+                if canon != "default" && !dir.is_dir() {
+                    result = CliExecution {
+                        exit_code: 1,
+                        stdout: String::new(),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: format!("Error: profile '{canon}' not found\n"),
+                    };
                 } else {
-                    format!("{description}\n")
-                };
-                result = CliExecution {
-                    exit_code: 0,
-                    stdout,
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
+                    let description = read_profile_description(&dir)?.unwrap_or_default();
+                    let stdout = if description.is_empty() {
+                        format!("(no description set for '{name}')\n")
+                    } else {
+                        format!("{description}\n")
+                    };
+                    result = CliExecution {
+                        exit_code: 0,
+                        stdout,
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
             }
-        }
+        },
         ["hermes", "profile", "describe", name, "--text", description] => {
-            let dir = profile_dir(hermes_home, name);
-            if *name != "default" && !dir.is_dir() {
-                result = CliExecution {
-                    exit_code: 1,
-                    stdout: String::new(),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: format!(
-                        "Error: profile directory does not exist: {}\n",
-                        dir.display()
-                    ),
-                };
-            } else {
-                write_profile_description(&dir, description)?;
-                result = CliExecution {
-                    exit_code: 0,
-                    stdout: format!("Description updated for '{name}'.\n"),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
+            match checked_profile_dir(hermes_home, name) {
+                Err(error) => result = error,
+                Ok((canon, dir)) => {
+                    if canon != "default" && !dir.is_dir() {
+                        result = CliExecution {
+                            exit_code: 1,
+                            stdout: String::new(),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: format!(
+                                "Error: profile directory does not exist: {}\n",
+                                dir.display()
+                            ),
+                        };
+                    } else {
+                        write_profile_description(&dir, description)?;
+                        result = CliExecution {
+                            exit_code: 0,
+                            stdout: format!("Description updated for '{name}'.\n"),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    }
+                }
             }
         }
-        ["hermes", "profile", "show", name] => {
-            let dir = profile_dir(hermes_home, name);
-            if *name != "default" && !dir.is_dir() {
-                result = CliExecution {
-                    exit_code: 1,
-                    stdout: format!("Error: Profile '{name}' does not exist.\n"),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
-            } else {
-                let skills = count_profile_skills(&dir);
-                result = CliExecution {
-                    exit_code: 0,
-                    stdout: format!(
-                        "\nProfile: {name}\nPath:    {}\nGateway: stopped\nSkills:  {skills}\n.env:    {}\nSOUL.md: {}\n\n",
-                        dir.display(),
-                        if dir.join(".env").exists() { "exists" } else { "not configured" },
-                        if dir.join("SOUL.md").exists() { "exists" } else { "not configured" },
-                    ),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
+        ["hermes", "profile", "show", name] => match checked_profile_dir(hermes_home, name) {
+            Err(error) => result = error,
+            Ok((canon, dir)) => {
+                if canon != "default" && !dir.is_dir() {
+                    result = CliExecution {
+                        exit_code: 1,
+                        stdout: format!("Error: Profile '{name}' does not exist.\n"),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                } else {
+                    let skills = count_profile_skills(&dir);
+                    result = CliExecution {
+                            exit_code: 0,
+                            stdout: format!(
+                                "\nProfile: {name}\nPath:    {}\nGateway: stopped\nSkills:  {skills}\n.env:    {}\nSOUL.md: {}\n\n",
+                                dir.display(),
+                                if dir.join(".env").exists() { "exists" } else { "not configured" },
+                                if dir.join("SOUL.md").exists() { "exists" } else { "not configured" },
+                            ),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                }
             }
-        }
-        ["hermes", "profile", "use", name] => {
-            let dir = profile_dir(hermes_home, name);
-            if *name == "default" {
-                let _ = fs::remove_file(hermes_home.join("active_profile"));
-                result = CliExecution {
-                    exit_code: 0,
-                    stdout: "Switched to: default (~/.hermes)\n".to_string(),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
-            } else if !dir.is_dir() {
-                result = CliExecution {
-                    exit_code: 1,
-                    stdout: format!(
-                        "Error: Profile '{name}' does not exist. Create it with: hermes profile create {name}\n"
-                    ),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
-            } else {
-                fs::create_dir_all(hermes_home)?;
-                fs::write(hermes_home.join("active_profile"), format!("{name}\n"))?;
-                result = CliExecution {
-                    exit_code: 0,
-                    stdout: format!("Switched to: {name}\n"),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
+        },
+        ["hermes", "profile", "use", name] => match checked_profile_dir(hermes_home, name) {
+            Err(error) => result = error,
+            Ok((canon, dir)) => {
+                if canon == "default" {
+                    let _ = fs::remove_file(hermes_home.join("active_profile"));
+                    result = CliExecution {
+                        exit_code: 0,
+                        stdout: "Switched to: default (~/.hermes)\n".to_string(),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                } else if !dir.is_dir() {
+                    result = CliExecution {
+                            exit_code: 1,
+                            stdout: format!(
+                                "Error: Profile '{name}' does not exist. Create it with: hermes profile create {name}\n"
+                            ),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                } else {
+                    fs::create_dir_all(hermes_home)?;
+                    fs::write(hermes_home.join("active_profile"), format!("{canon}\n"))?;
+                    result = CliExecution {
+                        exit_code: 0,
+                        stdout: format!("Switched to: {name}\n"),
+                        stdout_markers: BTreeMap::new(),
+                        stderr: String::new(),
+                    };
+                }
             }
-        }
+        },
         ["hermes", "profile", "list"] => {
             let active = active_profile_name(hermes_home);
             let mut stdout = "\n Profile          Model                        Gateway      Alias        Distribution\n ───────────────    ───────────────────────────    ───────────    ───────────    ────────────────────\n".to_string();
@@ -880,41 +901,45 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "profile", "delete", name, "--yes"]
         | ["hermes", "profile", "delete", name, "-y"] => {
-            let dir = profile_dir(hermes_home, name);
-            if *name == "default" {
-                result = CliExecution {
-                    exit_code: 1,
-                    stdout:
-                        "Error: Cannot delete the default profile (~/.hermes).\nTo remove everything, use: hermes uninstall\n"
-                            .to_string(),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
-            } else if !dir.is_dir() {
-                result = CliExecution {
-                    exit_code: 1,
-                    stdout: format!("Error: Profile '{name}' does not exist.\n"),
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
-            } else {
-                let _ = fs::remove_dir_all(&dir);
-                let mut stdout = format!(
-                    "\nProfile: {name}\nPath:    {}\n\nThis will permanently delete:\n  • All config, API keys, memories, sessions, skills, cron jobs\n✓ Removed {}\n",
-                    dir.display(),
-                    dir.display(),
-                );
-                if active_profile_name(hermes_home) == *name {
-                    let _ = fs::remove_file(hermes_home.join("active_profile"));
-                    stdout.push_str("✓ Active profile reset to default\n");
+            match checked_profile_dir(hermes_home, name) {
+                Err(error) => result = error,
+                Ok((canon, dir)) => {
+                    if canon == "default" {
+                        result = CliExecution {
+                            exit_code: 1,
+                            stdout:
+                                "Error: Cannot delete the default profile (~/.hermes).\nTo remove everything, use: hermes uninstall\n"
+                                    .to_string(),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    } else if !dir.is_dir() {
+                        result = CliExecution {
+                            exit_code: 1,
+                            stdout: format!("Error: Profile '{name}' does not exist.\n"),
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    } else {
+                        let _ = fs::remove_dir_all(&dir);
+                        let mut stdout = format!(
+                            "\nProfile: {canon}\nPath:    {}\n\nThis will permanently delete:\n  • All config, API keys, memories, sessions, skills, cron jobs\n✓ Removed {}\n",
+                            dir.display(),
+                            dir.display(),
+                        );
+                        if active_profile_name(hermes_home) == canon {
+                            let _ = fs::remove_file(hermes_home.join("active_profile"));
+                            stdout.push_str("✓ Active profile reset to default\n");
+                        }
+                        stdout.push_str(&format!("\nProfile '{canon}' deleted.\n"));
+                        result = CliExecution {
+                            exit_code: 0,
+                            stdout,
+                            stdout_markers: BTreeMap::new(),
+                            stderr: String::new(),
+                        };
+                    }
                 }
-                stdout.push_str(&format!("\nProfile '{name}' deleted.\n"));
-                result = CliExecution {
-                    exit_code: 0,
-                    stdout,
-                    stdout_markers: BTreeMap::new(),
-                    stderr: String::new(),
-                };
             }
         }
         ["hermes", "profile", "rename", old_name, new_name] => {
@@ -1789,6 +1814,22 @@ fn profile_dir(hermes_home: &Path, name: &str) -> PathBuf {
     }
 }
 
+fn checked_profile_dir(hermes_home: &Path, name: &str) -> Result<(String, PathBuf), CliExecution> {
+    let canon = normalize_profile_name_for_cli(name).map_err(profile_name_error)?;
+    validate_profile_name_for_cli(&canon).map_err(profile_name_error)?;
+    let dir = profile_dir(hermes_home, &canon);
+    Ok((canon, dir))
+}
+
+fn profile_name_error(error: io::Error) -> CliExecution {
+    CliExecution {
+        exit_code: 1,
+        stdout: format!("Error: {error}\n"),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    }
+}
+
 fn active_profile_name(hermes_home: &Path) -> String {
     fs::read_to_string(hermes_home.join("active_profile"))
         .ok()
@@ -2135,11 +2176,13 @@ fn rename_profile_dir(hermes_home: &Path, old_name: &str, new_name: &str) -> io:
 }
 
 fn export_profile_archive(hermes_home: &Path, name: &str, output: &Path) -> io::Result<PathBuf> {
-    let dir = profile_dir(hermes_home, name);
+    let canon = normalize_profile_name_for_cli(name)?;
+    validate_profile_name_for_cli(&canon)?;
+    let dir = profile_dir(hermes_home, &canon);
     if !dir.is_dir() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            format!("Profile '{name}' does not exist."),
+            format!("Profile '{canon}' does not exist."),
         ));
     }
 
@@ -2152,7 +2195,11 @@ fn export_profile_archive(hermes_home: &Path, name: &str, output: &Path) -> io::
     let file = fs::File::create(output)?;
     let encoder = GzEncoder::new(file, Compression::default());
     let mut builder = Builder::new(encoder);
-    let archive_root = if name == "default" { "default" } else { name };
+    let archive_root = if canon == "default" {
+        "default"
+    } else {
+        canon.as_str()
+    };
     builder.append_dir(archive_root, &dir)?;
     append_profile_archive_entries(
         &mut builder,

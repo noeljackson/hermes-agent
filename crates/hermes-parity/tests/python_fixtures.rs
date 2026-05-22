@@ -676,6 +676,84 @@ fn cli_contract_matches_python_fixture() {
             .unwrap()
     );
 
+    let profile_validation_home = std::env::temp_dir().join(format!(
+        "hermes-parity-cli-profile-validation-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&profile_validation_home);
+    fs::create_dir_all(&profile_validation_home).unwrap();
+    let profile_validation_home_display = profile_validation_home.to_string_lossy().to_string();
+    let profile_validation_execution = case(&fixture, "safe_profile_validation_command_execution");
+    for expected in profile_validation_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual =
+            hermes_cli::run_safe_command_in_home(&argv, &profile_validation_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&profile_validation_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&profile_validation_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let profile_validation_state = &profile_validation_execution["state"];
+    let profile_validation_active_path = profile_validation_home.join("active_profile");
+    let profile_validation_active = if profile_validation_active_path.exists() {
+        json!(fs::read_to_string(profile_validation_active_path)
+            .unwrap()
+            .trim())
+    } else {
+        Value::Null
+    };
+    assert_eq!(
+        profile_validation_active,
+        profile_validation_state["active_profile_file"]
+    );
+    assert_eq!(
+        profile_validation_home
+            .join("profiles")
+            .join("badname")
+            .exists(),
+        profile_validation_state["badname_exists"]
+            .as_bool()
+            .unwrap()
+    );
+    assert_eq!(
+        profile_validation_home
+            .join("profiles")
+            .join("BadName")
+            .exists(),
+        profile_validation_state["raw_badname_exists"]
+            .as_bool()
+            .unwrap()
+    );
+    assert_eq!(
+        profile_validation_home
+            .parent()
+            .unwrap()
+            .join("escape")
+            .exists(),
+        profile_validation_state["escape_exists"].as_bool().unwrap()
+    );
+    let _ = fs::remove_dir_all(profile_validation_home);
+
     let clone_home = std::env::temp_dir().join(format!(
         "hermes-parity-cli-profile-clone-{}",
         std::process::id()

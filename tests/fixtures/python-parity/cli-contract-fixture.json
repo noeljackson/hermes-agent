@@ -1373,6 +1373,113 @@
             "hermes",
             "profile",
             "create",
+            "BadName",
+            "--no-alias",
+            "--no-skills",
+            "--description",
+            "Bad"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'BadName' created": true,
+            "profiles/badname": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "use",
+            "BadName"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Switched to: BadName": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "show",
+            "BadName"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile: BadName": true,
+            "profiles/badname": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "describe",
+            "BadName"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Bad": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "delete",
+            "BadName",
+            "--yes"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'badname' deleted.": true,
+            "Profile: badname": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "create",
+            "../escape",
+            "--no-alias",
+            "--no-skills",
+            "--description",
+            "Bad"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Invalid profile name '../escape'": true
+          }
+        }
+      ],
+      "name": "safe_profile_validation_command_execution",
+      "state": {
+        "active_profile_file": null,
+        "badname_exists": false,
+        "escape_exists": false,
+        "raw_badname_exists": false
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "create",
             "cloned",
             "--clone",
             "--no-alias",

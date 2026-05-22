@@ -288,7 +288,9 @@ against those fixtures in `crates/hermes-parity`:
   profile directories, use, missing-profile use rejection without changing
   `active_profile`, default-profile activation that clears `active_profile`,
   list, default-profile delete rejection, missing-profile delete rejection, and
-  delete with active-profile reset. Profile rename error coverage rejects
+  delete with active-profile reset. Profile name normalization and validation
+  are fixture-backed for mixed-case commands and path-traversal rejection
+  without creating directories. Profile rename error coverage rejects
   missing sources, existing targets, and reserved/default profile names without
   moving directories. Additional
   deterministic
