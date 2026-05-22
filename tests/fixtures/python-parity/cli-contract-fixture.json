@@ -1622,7 +1622,39 @@
           "argv": [
             "hermes",
             "mcp",
-            "remove",
+            "ls"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "-1 excluded": true,
+            "2 selected": true,
+            "MCP Servers": true,
+            "disabled": true,
+            "enabled": true,
+            "https://example.com/mcp": true,
+            "local-demo": true,
+            "npx @modelcontext": true,
+            "remote-demo": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "-1 excluded": true,
+            "2 selected": true,
+            "MCP Servers": true,
+            "disabled": true,
+            "enabled": true,
+            "https://example.com/mcp": true,
+            "local-demo": true,
+            "npx @modelcontext": true,
+            "remote-demo": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "rm",
             "remote-demo"
           ],
           "exit_code": 0,
@@ -1653,6 +1685,23 @@
             "local-demo": true,
             "preserved-model": false,
             "remote-demo": false
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "remove",
+            "missing"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Server 'missing' not found in config.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Server 'missing' not found in config.": true
           }
         },
         {

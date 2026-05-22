@@ -1077,7 +1077,21 @@ def main() -> int:
                 },
             ),
             (
-                ["mcp", "remove", "remote-demo"],
+                ["mcp", "ls"],
+                {
+                    "MCP Servers": True,
+                    "remote-demo": True,
+                    "https://example.com/mcp": True,
+                    "2 selected": True,
+                    "enabled": True,
+                    "local-demo": True,
+                    "npx @modelcontext": True,
+                    "-1 excluded": True,
+                    "disabled": True,
+                },
+            ),
+            (
+                ["mcp", "rm", "remote-demo"],
                 {"Removed 'remote-demo' from config": True},
             ),
             (
@@ -1087,6 +1101,10 @@ def main() -> int:
                     "remote-demo": False,
                     "preserved-model": False,
                 },
+            ),
+            (
+                ["mcp", "remove", "missing"],
+                {"Server 'missing' not found in config.": True},
             ),
             (
                 ["mcp", "add", "missing-transport"],
