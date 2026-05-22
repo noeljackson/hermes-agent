@@ -1168,6 +1168,49 @@ def main() -> int:
                 ["No scheduled jobs.", "hermes cron create"],
                 None,
             ),
+            (
+                [
+                    "cron",
+                    "create",
+                    "2026-06-03T09:00:00+00:00",
+                    "first duplicate",
+                    "--name",
+                    "duplicate",
+                    "--deliver",
+                    "local",
+                ],
+                ["Created job:", "Name: duplicate"],
+                None,
+            ),
+            (
+                [
+                    "cron",
+                    "create",
+                    "2026-06-04T09:00:00+00:00",
+                    "second duplicate",
+                    "--name",
+                    "duplicate",
+                    "--deliver",
+                    "local",
+                ],
+                ["Created job:", "Name: duplicate"],
+                "after_duplicate_create",
+            ),
+            (
+                ["cron", "pause", "duplicate"],
+                ["Failed to pause job: Job name 'duplicate' is ambiguous", "matches 2 jobs"],
+                "after_ambiguous_pause",
+            ),
+            (
+                ["cron", "resume", "duplicate"],
+                ["Failed to resume job: Job name 'duplicate' is ambiguous", "matches 2 jobs"],
+                None,
+            ),
+            (
+                ["cron", "remove", "duplicate"],
+                ["Failed to remove job: Job name 'duplicate' is ambiguous", "matches 2 jobs"],
+                "after_ambiguous_remove",
+            ),
         ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],

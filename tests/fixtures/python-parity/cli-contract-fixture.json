@@ -1894,10 +1894,161 @@
             "No scheduled jobs.": true,
             "hermes cron create": true
           }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "create",
+            "2026-06-03T09:00:00+00:00",
+            "first duplicate",
+            "--name",
+            "duplicate",
+            "--deliver",
+            "local"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Created job:": true,
+            "Name: duplicate": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "create",
+            "2026-06-04T09:00:00+00:00",
+            "second duplicate",
+            "--name",
+            "duplicate",
+            "--deliver",
+            "local"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Created job:": true,
+            "Name: duplicate": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "pause",
+            "duplicate"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Failed to pause job: Job name 'duplicate' is ambiguous": true,
+            "matches 2 jobs": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "resume",
+            "duplicate"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Failed to resume job: Job name 'duplicate' is ambiguous": true,
+            "matches 2 jobs": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "cron",
+            "remove",
+            "duplicate"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Failed to remove job: Job name 'duplicate' is ambiguous": true,
+            "matches 2 jobs": true
+          }
         }
       ],
       "name": "safe_cron_command_execution",
       "states": {
+        "after_ambiguous_pause": {
+          "job_count": 2,
+          "jobs": [
+            {
+              "deliver": "local",
+              "enabled": true,
+              "id_present": true,
+              "name": "duplicate",
+              "next_run_at": "2026-06-03T09:00:00+00:00",
+              "prompt": "first duplicate",
+              "repeat": {
+                "completed": 0,
+                "times": 1
+              },
+              "schedule_display": "once at 2026-06-03 09:00",
+              "state": "scheduled"
+            },
+            {
+              "deliver": "local",
+              "enabled": true,
+              "id_present": true,
+              "name": "duplicate",
+              "next_run_at": "2026-06-04T09:00:00+00:00",
+              "prompt": "second duplicate",
+              "repeat": {
+                "completed": 0,
+                "times": 1
+              },
+              "schedule_display": "once at 2026-06-04 09:00",
+              "state": "scheduled"
+            }
+          ]
+        },
+        "after_ambiguous_remove": {
+          "job_count": 2,
+          "jobs": [
+            {
+              "deliver": "local",
+              "enabled": true,
+              "id_present": true,
+              "name": "duplicate",
+              "next_run_at": "2026-06-03T09:00:00+00:00",
+              "prompt": "first duplicate",
+              "repeat": {
+                "completed": 0,
+                "times": 1
+              },
+              "schedule_display": "once at 2026-06-03 09:00",
+              "state": "scheduled"
+            },
+            {
+              "deliver": "local",
+              "enabled": true,
+              "id_present": true,
+              "name": "duplicate",
+              "next_run_at": "2026-06-04T09:00:00+00:00",
+              "prompt": "second duplicate",
+              "repeat": {
+                "completed": 0,
+                "times": 1
+              },
+              "schedule_display": "once at 2026-06-04 09:00",
+              "state": "scheduled"
+            }
+          ]
+        },
         "after_create": {
           "job_count": 1,
           "jobs": [
@@ -1913,6 +2064,39 @@
                 "times": 1
               },
               "schedule_display": "once at 2026-06-01 09:00",
+              "state": "scheduled"
+            }
+          ]
+        },
+        "after_duplicate_create": {
+          "job_count": 2,
+          "jobs": [
+            {
+              "deliver": "local",
+              "enabled": true,
+              "id_present": true,
+              "name": "duplicate",
+              "next_run_at": "2026-06-03T09:00:00+00:00",
+              "prompt": "first duplicate",
+              "repeat": {
+                "completed": 0,
+                "times": 1
+              },
+              "schedule_display": "once at 2026-06-03 09:00",
+              "state": "scheduled"
+            },
+            {
+              "deliver": "local",
+              "enabled": true,
+              "id_present": true,
+              "name": "duplicate",
+              "next_run_at": "2026-06-04T09:00:00+00:00",
+              "prompt": "second duplicate",
+              "repeat": {
+                "completed": 0,
+                "times": 1
+              },
+              "schedule_display": "once at 2026-06-04 09:00",
               "state": "scheduled"
             }
           ]

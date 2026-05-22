@@ -1134,7 +1134,7 @@ fn cli_contract_matches_python_fixture() {
     let cron_states = &cron_execution["states"];
     assert_eq!(
         read_cli_cron_state(&cron_home),
-        cron_states["after_missing_remove"]
+        cron_states["after_ambiguous_remove"]
     );
     assert_eq!(
         cron_states["after_missing_remove"],
@@ -1156,6 +1156,15 @@ fn cli_contract_matches_python_fixture() {
     assert_eq!(
         cron_states["after_resume"]["jobs"][0]["state"],
         json!("scheduled")
+    );
+    assert_eq!(cron_states["after_duplicate_create"]["job_count"], 2);
+    assert_eq!(
+        cron_states["after_ambiguous_pause"],
+        cron_states["after_duplicate_create"]
+    );
+    assert_eq!(
+        cron_states["after_ambiguous_remove"],
+        cron_states["after_duplicate_create"]
     );
     let _ = fs::remove_dir_all(cron_home);
 

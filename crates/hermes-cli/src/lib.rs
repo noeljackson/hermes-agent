@@ -433,28 +433,44 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             result = run_safe_command(argv, &home_display);
         }
         ["hermes", "cron", "pause", name] => {
-            if set_cron_job_enabled(hermes_home, name, false)? {
-                result = run_safe_command(argv, &home_display);
-            } else {
-                result = cron_missing_job_output("pause", name);
+            match set_cron_job_enabled(hermes_home, name, false)? {
+                CronMutationOutcome::Changed => {
+                    result = run_safe_command(argv, &home_display);
+                }
+                CronMutationOutcome::Missing => {
+                    result = cron_missing_job_output("pause", name);
+                }
+                CronMutationOutcome::Ambiguous(ids) => {
+                    result = cron_ambiguous_job_output("pause", name, &ids);
+                }
             }
         }
         ["hermes", "cron", "resume", name] => {
-            if set_cron_job_enabled(hermes_home, name, true)? {
-                result = run_safe_command(argv, &home_display);
-            } else {
-                result = cron_missing_job_output("resume", name);
+            match set_cron_job_enabled(hermes_home, name, true)? {
+                CronMutationOutcome::Changed => {
+                    result = run_safe_command(argv, &home_display);
+                }
+                CronMutationOutcome::Missing => {
+                    result = cron_missing_job_output("resume", name);
+                }
+                CronMutationOutcome::Ambiguous(ids) => {
+                    result = cron_ambiguous_job_output("resume", name, &ids);
+                }
             }
         }
         ["hermes", "cron", "remove", name]
         | ["hermes", "cron", "rm", name]
-        | ["hermes", "cron", "delete", name] => {
-            if remove_cron_job(hermes_home, name)? {
+        | ["hermes", "cron", "delete", name] => match remove_cron_job(hermes_home, name)? {
+            CronMutationOutcome::Changed => {
                 result = run_safe_command(argv, &home_display);
-            } else {
+            }
+            CronMutationOutcome::Missing => {
                 result = cron_missing_job_output("remove", name);
             }
-        }
+            CronMutationOutcome::Ambiguous(ids) => {
+                result = cron_ambiguous_job_output("remove", name, &ids);
+            }
+        },
         ["hermes", "cron", "list", "--all"] | ["hermes", "cron", "list"] => {
             let jobs = hermes_cron::load_jobs(cron_jobs_path(hermes_home))?;
             result = CliExecution {
@@ -1573,13 +1589,31 @@ fn create_cron_job(
     save_cron_jobs_object(&path, &jobs)
 }
 
-fn set_cron_job_enabled(hermes_home: &Path, name: &str, enabled: bool) -> io::Result<bool> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CronMutationOutcome {
+    Changed,
+    Missing,
+    Ambiguous(Vec<String>),
+}
+
+fn set_cron_job_enabled(
+    hermes_home: &Path,
+    name: &str,
+    enabled: bool,
+) -> io::Result<CronMutationOutcome> {
     let path = cron_jobs_path(hermes_home);
     let mut jobs = hermes_cron::load_jobs(&path)?;
-    let mut found = false;
+    let matching_ids = cron_matching_job_ids(&jobs, name);
+    if matching_ids.is_empty() {
+        save_cron_jobs_object(&path, &jobs)?;
+        return Ok(CronMutationOutcome::Missing);
+    }
+    if matching_ids.len() > 1 {
+        save_cron_jobs_object(&path, &jobs)?;
+        return Ok(CronMutationOutcome::Ambiguous(matching_ids));
+    }
     for job in &mut jobs {
         if cron_job_matches(job, name) {
-            found = true;
             if let Some(object) = job.as_object_mut() {
                 object.insert("enabled".to_string(), json!(enabled));
                 object.insert(
@@ -1590,16 +1624,24 @@ fn set_cron_job_enabled(hermes_home: &Path, name: &str, enabled: bool) -> io::Re
         }
     }
     save_cron_jobs_object(&path, &jobs)?;
-    Ok(found)
+    Ok(CronMutationOutcome::Changed)
 }
 
-fn remove_cron_job(hermes_home: &Path, name: &str) -> io::Result<bool> {
+fn remove_cron_job(hermes_home: &Path, name: &str) -> io::Result<CronMutationOutcome> {
     let path = cron_jobs_path(hermes_home);
     let mut jobs = hermes_cron::load_jobs(&path)?;
-    let before = jobs.len();
+    let matching_ids = cron_matching_job_ids(&jobs, name);
+    if matching_ids.is_empty() {
+        save_cron_jobs_object(&path, &jobs)?;
+        return Ok(CronMutationOutcome::Missing);
+    }
+    if matching_ids.len() > 1 {
+        save_cron_jobs_object(&path, &jobs)?;
+        return Ok(CronMutationOutcome::Ambiguous(matching_ids));
+    }
     jobs.retain(|job| !cron_job_matches(job, name));
     save_cron_jobs_object(&path, &jobs)?;
-    Ok(jobs.len() != before)
+    Ok(CronMutationOutcome::Changed)
 }
 
 fn cron_missing_job_output(action: &str, name: &str) -> CliExecution {
@@ -1613,9 +1655,34 @@ fn cron_missing_job_output(action: &str, name: &str) -> CliExecution {
     }
 }
 
+fn cron_ambiguous_job_output(action: &str, name: &str, ids: &[String]) -> CliExecution {
+    CliExecution {
+        exit_code: 0,
+        stdout: format!(
+            "Failed to {action} job: Job name '{name}' is ambiguous — matches {} jobs: {}. Use the job ID instead.\n",
+            ids.len(),
+            ids.join(", ")
+        ),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    }
+}
+
 fn cron_job_matches(job: &Value, name_or_id: &str) -> bool {
     job.get("id").and_then(Value::as_str) == Some(name_or_id)
         || job.get("name").and_then(Value::as_str) == Some(name_or_id)
+}
+
+fn cron_matching_job_ids(jobs: &[Value], name_or_id: &str) -> Vec<String> {
+    jobs.iter()
+        .filter(|job| cron_job_matches(job, name_or_id))
+        .map(|job| {
+            job.get("id")
+                .and_then(Value::as_str)
+                .unwrap_or(name_or_id)
+                .to_string()
+        })
+        .collect()
 }
 
 fn save_cron_jobs_object(path: &Path, jobs: &[Value]) -> io::Result<()> {

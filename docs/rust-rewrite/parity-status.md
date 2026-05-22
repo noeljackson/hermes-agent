@@ -296,6 +296,8 @@ against those fixtures in `crates/hermes-parity`:
   CLI platform toolset list. Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, and missing-job
   pause/resume/remove diagnostics against durable `cron/jobs.json` state.
+  Duplicate cron names remain allowed, but ambiguous name-based mutation is
+  fixture-backed as a no-op with Python-compatible diagnostics.
 - TUI gateway contract: JSON-RPC method inventory, long-handler routing
   inventory, `_ok`/`_err`/unknown-method frame shapes, request normalization
   errors for malformed requests and params, event frame shape, dashboard PTY
