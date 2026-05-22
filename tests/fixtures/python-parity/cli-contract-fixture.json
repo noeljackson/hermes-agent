@@ -1000,6 +1000,22 @@
             "hermes",
             "profile",
             "delete",
+            "default",
+            "--yes"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Cannot delete the default profile (~/.hermes).": true,
+            "hermes uninstall": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
+            "delete",
             "missing",
             "--yes"
           ],

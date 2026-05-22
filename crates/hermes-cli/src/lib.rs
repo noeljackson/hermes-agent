@@ -826,7 +826,16 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         ["hermes", "profile", "delete", name, "--yes"]
         | ["hermes", "profile", "delete", name, "-y"] => {
             let dir = profile_dir(hermes_home, name);
-            if *name != "default" && !dir.is_dir() {
+            if *name == "default" {
+                result = CliExecution {
+                    exit_code: 1,
+                    stdout:
+                        "Error: Cannot delete the default profile (~/.hermes).\nTo remove everything, use: hermes uninstall\n"
+                            .to_string(),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            } else if !dir.is_dir() {
                 result = CliExecution {
                     exit_code: 1,
                     stdout: format!("Error: Profile '{name}' does not exist.\n"),

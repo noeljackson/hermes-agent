@@ -491,6 +491,13 @@ def main() -> int:
                 ["Switched to: research"],
             ),
             (
+                ["profile", "delete", "default", "--yes"],
+                [
+                    "Cannot delete the default profile (~/.hermes).",
+                    "hermes uninstall",
+                ],
+            ),
+            (
                 ["profile", "delete", "missing", "--yes"],
                 ["Profile 'missing' does not exist."],
             ),
