@@ -473,6 +473,12 @@ def main() -> int:
                 ["Switched to: research"],
             ),
             (
+                ["profile", "use", "missing"],
+                [
+                    "Profile 'missing' does not exist. Create it with: hermes profile create missing"
+                ],
+            ),
+            (
                 ["profile", "list"],
                 ["Profile", "default", "research", "stopped"],
             ),

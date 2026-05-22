@@ -754,14 +754,26 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
             };
         }
         ["hermes", "profile", "use", name] => {
-            fs::create_dir_all(hermes_home)?;
-            fs::write(hermes_home.join("active_profile"), format!("{name}\n"))?;
-            result = CliExecution {
-                exit_code: 0,
-                stdout: format!("Switched to: {name}\n"),
-                stdout_markers: BTreeMap::new(),
-                stderr: String::new(),
-            };
+            let dir = profile_dir(hermes_home, name);
+            if *name != "default" && !dir.is_dir() {
+                result = CliExecution {
+                    exit_code: 1,
+                    stdout: format!(
+                        "Error: Profile '{name}' does not exist. Create it with: hermes profile create {name}\n"
+                    ),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            } else {
+                fs::create_dir_all(hermes_home)?;
+                fs::write(hermes_home.join("active_profile"), format!("{name}\n"))?;
+                result = CliExecution {
+                    exit_code: 0,
+                    stdout: format!("Switched to: {name}\n"),
+                    stdout_markers: BTreeMap::new(),
+                    stderr: String::new(),
+                };
+            }
         }
         ["hermes", "profile", "list"] => {
             let active = active_profile_name(hermes_home);

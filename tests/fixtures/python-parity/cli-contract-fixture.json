@@ -941,6 +941,20 @@
           "argv": [
             "hermes",
             "profile",
+            "use",
+            "missing"
+          ],
+          "exit_code": 1,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Profile 'missing' does not exist. Create it with: hermes profile create missing": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "profile",
             "list"
           ],
           "exit_code": 0,
