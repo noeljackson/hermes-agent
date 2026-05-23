@@ -49,6 +49,30 @@ def cron_state(home):
     return {"job_count": len(simplified), "jobs": simplified}
 
 
+def quick_snapshot_state(home):
+    root = home / "state-snapshots"
+    snapshots = sorted([p for p in root.iterdir() if p.is_dir()]) if root.exists() else []
+    if not snapshots:
+        return {"snapshot_count": 0, "files": [], "manifest": {}}
+    snap = snapshots[-1]
+    manifest = json.loads((snap / "manifest.json").read_text(encoding="utf-8"))
+    files = sorted(
+        str(path.relative_to(snap)).replace(os.sep, "/")
+        for path in snap.rglob("*")
+        if path.is_file()
+    )
+    manifest_files = dict(sorted((manifest.get("files") or {}).items()))
+    return {
+        "snapshot_count": len(snapshots),
+        "id_has_label": str(manifest.get("id", "")).endswith("-parity"),
+        "label": manifest.get("label"),
+        "file_count": manifest.get("file_count"),
+        "total_size": manifest.get("total_size"),
+        "files": files,
+        "manifest_files": manifest_files,
+    }
+
+
 def main() -> int:
     import json
 
@@ -525,6 +549,79 @@ def main() -> int:
                     in payload["oauth_config"]["scopes"]["bot"],
                 }
             slack_commands.append(case)
+
+        backup_home = home / "backup-command-home"
+        backup_env = env.copy()
+        backup_env["HERMES_HOME"] = str(backup_home)
+        backup_home.mkdir(parents=True, exist_ok=True)
+        (backup_home / "config.yaml").write_text(
+            "model:\n  provider: parity\n", encoding="utf-8"
+        )
+        (backup_home / ".env").write_text(
+            "OPENROUTER_API_KEY=sk-fake-parity\n", encoding="utf-8"
+        )
+        (backup_home / "auth.json").write_text(
+            json.dumps({"providers": {"openrouter": {"api_key": "sk-fake"}}}),
+            encoding="utf-8",
+        )
+        (backup_home / "cron").mkdir(parents=True, exist_ok=True)
+        (backup_home / "cron" / "jobs.json").write_text(
+            json.dumps({"jobs": []}), encoding="utf-8"
+        )
+        (backup_home / "gateway_state.json").write_text(
+            json.dumps({"running": False}), encoding="utf-8"
+        )
+        (backup_home / "channel_directory.json").write_text(
+            json.dumps({"channels": {}}), encoding="utf-8"
+        )
+        (backup_home / "processes.json").write_text(
+            json.dumps({"gateway": {"pid": 123}}), encoding="utf-8"
+        )
+        pairing_snapshot_dir = backup_home / "pairing"
+        pairing_snapshot_dir.mkdir(parents=True, exist_ok=True)
+        (pairing_snapshot_dir / "telegram-approved.json").write_text(
+            json.dumps({"U123": {"user_name": "Ada"}}), encoding="utf-8"
+        )
+        platform_pairing_dir = backup_home / "platforms" / "pairing"
+        platform_pairing_dir.mkdir(parents=True, exist_ok=True)
+        (platform_pairing_dir / "discord-pending.json").write_text(
+            json.dumps({"DISC1234": {"user_name": "Dee"}}), encoding="utf-8"
+        )
+        (backup_home / "feishu_comment_pairing.json").write_text(
+            json.dumps({"tenant": "fake"}), encoding="utf-8"
+        )
+        sqlite_conn = sqlite3.connect(backup_home / "state.db")
+        sqlite_conn.execute("CREATE TABLE parity (id INTEGER PRIMARY KEY, value TEXT)")
+        sqlite_conn.execute("INSERT INTO parity(value) VALUES ('session')")
+        sqlite_conn.commit()
+        sqlite_conn.close()
+        backup_commands = []
+        for argv in [["backup", "--quick", "--label", "parity"]]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=backup_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, backup_home)
+            backup_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in [
+                            "State snapshot created:",
+                            "<HERMES_HOME>/state-snapshots/",
+                            "Restore with: /snapshot restore",
+                        ]
+                    },
+                    "stderr": normalize_output(command_result.stderr, backup_home),
+                }
+            )
+        backup_state = quick_snapshot_state(backup_home)
 
         from hermes_state import SessionDB
 
@@ -2174,6 +2271,11 @@ def main() -> int:
             {
                 "name": "safe_slack_manifest_command_execution",
                 "commands": slack_commands,
+            },
+            {
+                "name": "safe_backup_command_execution",
+                "commands": backup_commands,
+                "state": backup_state,
             },
             {
                 "name": "safe_session_command_execution",

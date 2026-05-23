@@ -942,6 +942,62 @@
         {
           "argv": [
             "hermes",
+            "backup",
+            "--quick",
+            "--label",
+            "parity"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "<HERMES_HOME>/state-snapshots/": true,
+            "Restore with: /snapshot restore": true,
+            "State snapshot created:": true
+          }
+        }
+      ],
+      "name": "safe_backup_command_execution",
+      "state": {
+        "file_count": 11,
+        "files": [
+          ".env",
+          "auth.json",
+          "channel_directory.json",
+          "config.yaml",
+          "cron/jobs.json",
+          "feishu_comment_pairing.json",
+          "gateway_state.json",
+          "manifest.json",
+          "pairing/telegram-approved.json",
+          "platforms/pairing/discord-pending.json",
+          "processes.json",
+          "state.db"
+        ],
+        "id_has_label": true,
+        "label": "parity",
+        "manifest_files": {
+          ".env": 34,
+          "auth.json": 53,
+          "channel_directory.json": 16,
+          "config.yaml": 26,
+          "cron/jobs.json": 12,
+          "feishu_comment_pairing.json": 18,
+          "gateway_state.json": 18,
+          "pairing/telegram-approved.json": 30,
+          "platforms/pairing/discord-pending.json": 34,
+          "processes.json": 25,
+          "state.db": 8192
+        },
+        "snapshot_count": 1,
+        "total_size": 8458
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",

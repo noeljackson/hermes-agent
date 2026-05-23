@@ -41,6 +41,26 @@ fn names(values: &[Value]) -> Vec<&str> {
         .collect()
 }
 
+fn collect_relative_files(root: &Path, dir: &Path, out: &mut Vec<String>) {
+    let mut entries = fs::read_dir(dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect::<Vec<_>>();
+    entries.sort();
+    for path in entries {
+        if path.is_dir() {
+            collect_relative_files(root, &path, out);
+        } else if path.is_file() {
+            out.push(
+                path.strip_prefix(root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/"),
+            );
+        }
+    }
+}
+
 #[test]
 fn all_python_parity_fixtures_have_source_and_cases() {
     let dir = fixture_dir();
@@ -519,6 +539,131 @@ fn cli_contract_matches_python_fixture() {
         }
     }
     let _ = fs::remove_dir_all(slack_home);
+
+    let backup_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-backup-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&backup_home);
+    fs::create_dir_all(&backup_home).unwrap();
+    fs::write(
+        backup_home.join("config.yaml"),
+        "model:\n  provider: parity\n",
+    )
+    .unwrap();
+    fs::write(
+        backup_home.join(".env"),
+        "OPENROUTER_API_KEY=sk-fake-parity\n",
+    )
+    .unwrap();
+    fs::write(
+        backup_home.join("auth.json"),
+        "{\"providers\": {\"openrouter\": {\"api_key\": \"sk-fake\"}}}",
+    )
+    .unwrap();
+    fs::create_dir_all(backup_home.join("cron")).unwrap();
+    fs::write(backup_home.join("cron").join("jobs.json"), "{\"jobs\": []}").unwrap();
+    fs::write(
+        backup_home.join("gateway_state.json"),
+        "{\"running\": false}",
+    )
+    .unwrap();
+    fs::write(
+        backup_home.join("channel_directory.json"),
+        "{\"channels\": {}}",
+    )
+    .unwrap();
+    fs::write(
+        backup_home.join("processes.json"),
+        "{\"gateway\": {\"pid\": 123}}",
+    )
+    .unwrap();
+    fs::create_dir_all(backup_home.join("pairing")).unwrap();
+    fs::write(
+        backup_home.join("pairing").join("telegram-approved.json"),
+        "{\"U123\": {\"user_name\": \"Ada\"}}",
+    )
+    .unwrap();
+    fs::create_dir_all(backup_home.join("platforms").join("pairing")).unwrap();
+    fs::write(
+        backup_home
+            .join("platforms")
+            .join("pairing")
+            .join("discord-pending.json"),
+        "{\"DISC1234\": {\"user_name\": \"Dee\"}}",
+    )
+    .unwrap();
+    fs::write(
+        backup_home.join("feishu_comment_pairing.json"),
+        "{\"tenant\": \"fake\"}",
+    )
+    .unwrap();
+    let sqlite = rusqlite::Connection::open(backup_home.join("state.db")).unwrap();
+    sqlite
+        .execute(
+            "CREATE TABLE parity (id INTEGER PRIMARY KEY, value TEXT)",
+            [],
+        )
+        .unwrap();
+    sqlite
+        .execute("INSERT INTO parity(value) VALUES ('session')", [])
+        .unwrap();
+    drop(sqlite);
+
+    let backup_home_display = backup_home.to_string_lossy().to_string();
+    let backup_execution = case(&fixture, "safe_backup_command_execution");
+    for expected in backup_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &backup_home).unwrap();
+        actual.stdout = actual.stdout.replace(&backup_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&backup_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let snapshots_dir = backup_home.join("state-snapshots");
+    let mut snapshots = fs::read_dir(&snapshots_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.is_dir())
+        .collect::<Vec<_>>();
+    snapshots.sort();
+    let snapshot = snapshots.last().unwrap();
+    let manifest: Value =
+        serde_json::from_str(&fs::read_to_string(snapshot.join("manifest.json")).unwrap()).unwrap();
+    let mut files = Vec::new();
+    collect_relative_files(snapshot, snapshot, &mut files);
+    let expected_state = &backup_execution["state"];
+    assert_eq!(
+        snapshots.len(),
+        expected_state["snapshot_count"].as_u64().unwrap() as usize
+    );
+    assert_eq!(
+        manifest["id"].as_str().unwrap().ends_with("-parity"),
+        expected_state["id_has_label"].as_bool().unwrap()
+    );
+    assert_eq!(manifest["label"], expected_state["label"]);
+    assert_eq!(manifest["file_count"], expected_state["file_count"]);
+    assert_eq!(manifest["total_size"], expected_state["total_size"]);
+    assert_eq!(
+        Value::Array(files.into_iter().map(Value::String).collect()),
+        expected_state["files"]
+    );
+    assert_eq!(manifest["files"], expected_state["manifest_files"]);
+    let _ = fs::remove_dir_all(backup_home);
 
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db

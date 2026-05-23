@@ -335,6 +335,10 @@ against those fixtures in `crates/hermes-parity`:
   Shell-hook CLI inspection is fixture-backed for empty-config `hooks list`
   and `hooks doctor` behavior without executing user hook scripts or mutating
   hook consent state.
+  Quick state backup is fixture-backed for `backup --quick --label`,
+  including the Python critical-state file set, `state-snapshots/` manifest
+  shape, SQLite `state.db` copy presence, config, `.env`, auth, cron,
+  gateway state, process state, and legacy plus platform pairing stores.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable

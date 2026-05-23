@@ -346,6 +346,12 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
                 "\n  Nothing to reset — no memory files found in {hermes_home}/memories/\n\n"
             );
         }
+        ["hermes", "backup", "--quick", "--label", label] => {
+            let snap_id = format!("19700101-000000-{label}");
+            stdout = format!(
+                "State snapshot created: {snap_id}\n  1 snapshot(s) stored in {hermes_home}/state-snapshots/\n  Restore with: /snapshot restore {snap_id}\n"
+            );
+        }
         ["hermes", "pairing", "list"] => {
             stdout = "No pairing data found. No one has tried to pair yet~\n".to_string();
         }
@@ -640,6 +646,9 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "memory", "reset", "--target", target, "--yes"] => {
             result = memory_reset_target(hermes_home, target)?;
+        }
+        ["hermes", "backup", "--quick", "--label", label] => {
+            result = create_quick_backup_output(hermes_home, label)?;
         }
         ["hermes", "pairing", "list"] => {
             result = CliExecution {
@@ -1633,6 +1642,165 @@ fn memory_reset_target(hermes_home: &Path, target: &str) -> io::Result<CliExecut
         stdout_markers: BTreeMap::new(),
         stderr: String::new(),
     })
+}
+
+const QUICK_STATE_FILES: &[&str] = &[
+    "state.db",
+    "config.yaml",
+    ".env",
+    "auth.json",
+    "cron/jobs.json",
+    "gateway_state.json",
+    "channel_directory.json",
+    "processes.json",
+    "pairing",
+    "platforms/pairing",
+    "feishu_comment_pairing.json",
+];
+
+fn create_quick_backup_output(hermes_home: &Path, label: &str) -> io::Result<CliExecution> {
+    let snap_id = quick_snapshot_id(label);
+    let snapshot_dir = hermes_home.join("state-snapshots").join(&snap_id);
+    fs::create_dir_all(&snapshot_dir)?;
+
+    let mut manifest = BTreeMap::<String, u64>::new();
+    for rel in QUICK_STATE_FILES {
+        let src = hermes_home.join(rel);
+        if !src.exists() {
+            continue;
+        }
+        if src.is_dir() {
+            let mut files = Vec::new();
+            collect_files_sorted(&src, &mut files)?;
+            for file in files {
+                let sub_rel = file
+                    .strip_prefix(hermes_home)
+                    .map_err(io::Error::other)?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                copy_quick_snapshot_file(hermes_home, &snapshot_dir, &sub_rel, &mut manifest)?;
+            }
+        } else if src.is_file() {
+            copy_quick_snapshot_file(hermes_home, &snapshot_dir, rel, &mut manifest)?;
+        }
+    }
+
+    if manifest.is_empty() {
+        let _ = fs::remove_dir_all(&snapshot_dir);
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "No state files found to snapshot.\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+
+    let file_count = manifest.len();
+    let total_size = manifest.values().sum::<u64>();
+    let timestamp = snap_id
+        .split_once('-')
+        .and_then(|(date, rest)| {
+            rest.split_once('-')
+                .map(|(time, _)| format!("{date}-{time}"))
+        })
+        .unwrap_or_else(|| snap_id.clone());
+    let meta = json!({
+        "id": snap_id,
+        "timestamp": timestamp,
+        "label": label,
+        "file_count": file_count,
+        "total_size": total_size,
+        "files": manifest,
+    });
+    fs::write(
+        snapshot_dir.join("manifest.json"),
+        serde_json::to_string_pretty(&meta).unwrap_or_else(|_| "{}".to_string()),
+    )?;
+    prune_quick_snapshots(&hermes_home.join("state-snapshots"), 20)?;
+
+    let snapshots = list_quick_snapshot_count(&hermes_home.join("state-snapshots"))?;
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: format!(
+            "State snapshot created: {snap_id}\n  {snapshots} snapshot(s) stored in {}/state-snapshots/\n  Restore with: /snapshot restore {snap_id}\n",
+            hermes_home.display()
+        ),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn quick_snapshot_id(label: &str) -> String {
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    if label.is_empty() {
+        format!("{seconds:014}")
+    } else {
+        format!("{seconds:014}-{label}")
+    }
+}
+
+fn collect_files_sorted(dir: &Path, files: &mut Vec<PathBuf>) -> io::Result<()> {
+    let mut children = fs::read_dir(dir)?
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
+    children.sort_by_key(|entry| entry.path());
+    for child in children {
+        let path = child.path();
+        if path.is_dir() {
+            collect_files_sorted(&path, files)?;
+        } else if path.is_file() {
+            files.push(path);
+        }
+    }
+    Ok(())
+}
+
+fn copy_quick_snapshot_file(
+    hermes_home: &Path,
+    snapshot_dir: &Path,
+    rel: &str,
+    manifest: &mut BTreeMap<String, u64>,
+) -> io::Result<()> {
+    let src = hermes_home.join(rel);
+    let dst = snapshot_dir.join(rel);
+    if let Some(parent) = dst.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::copy(src, &dst)?;
+    manifest.insert(rel.to_string(), fs::metadata(dst)?.len());
+    Ok(())
+}
+
+fn prune_quick_snapshots(root: &Path, keep: usize) -> io::Result<usize> {
+    if !root.exists() {
+        return Ok(0);
+    }
+    let mut dirs = fs::read_dir(root)?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_dir())
+        .collect::<Vec<_>>();
+    dirs.sort_by_key(|entry| entry.file_name());
+    dirs.reverse();
+
+    let mut deleted = 0;
+    for dir in dirs.into_iter().skip(keep) {
+        fs::remove_dir_all(dir.path())?;
+        deleted += 1;
+    }
+    Ok(deleted)
+}
+
+fn list_quick_snapshot_count(root: &Path) -> io::Result<usize> {
+    if !root.exists() {
+        return Ok(0);
+    }
+    Ok(fs::read_dir(root)?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_dir())
+        .count())
 }
 
 fn pairing_dir(hermes_home: &Path) -> PathBuf {
