@@ -4401,6 +4401,120 @@
         {
           "argv": [
             "hermes",
+            "send",
+            "--list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Available messaging targets": true,
+            "Discord (Hermes)": true,
+            "Telegram": true,
+            "Use these as the \"target\" parameter when sending.": true,
+            "discord:#ops": true,
+            "telegram:Ops Group (group)": true
+          },
+          "stderr": "",
+          "stderr_markers": {
+            "Available messaging targets": false,
+            "Discord (Hermes)": false,
+            "Telegram": false,
+            "Use these as the \"target\" parameter when sending.": false,
+            "discord:#ops": false,
+            "telegram:Ops Group (group)": false
+          },
+          "stdout": "",
+          "stdout_markers": {
+            "Available messaging targets": true,
+            "Discord (Hermes)": true,
+            "Telegram": true,
+            "Use these as the \"target\" parameter when sending.": true,
+            "discord:#ops": true,
+            "telegram:Ops Group (group)": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "send",
+            "--list",
+            "telegram"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "discord": false,
+            "telegram:Ops Group": true
+          },
+          "stderr": "",
+          "stderr_markers": {
+            "discord": false,
+            "telegram:Ops Group": false
+          },
+          "stdout": "",
+          "stdout_markers": {
+            "discord": false,
+            "telegram:Ops Group": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "send",
+            "--list",
+            "--json"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "\"Ops Group\"": true,
+            "\"discord\"": true,
+            "\"platforms\"": true,
+            "\"telegram\"": true
+          },
+          "stderr": "",
+          "stderr_markers": {
+            "\"Ops Group\"": false,
+            "\"discord\"": false,
+            "\"platforms\"": false,
+            "\"telegram\"": false
+          },
+          "stdout": "",
+          "stdout_markers": {
+            "\"Ops Group\"": true,
+            "\"discord\"": true,
+            "\"platforms\"": true,
+            "\"telegram\"": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "send",
+            "--list",
+            "missing"
+          ],
+          "exit_code": 1,
+          "expected_markers": {
+            "Configured: discord, slack, telegram": true,
+            "no targets found for platform 'missing'": true
+          },
+          "stderr": "hermes send: no targets found for platform 'missing'. Configured: discord, slack, telegram\n",
+          "stderr_markers": {
+            "Configured: discord, slack, telegram": true,
+            "no targets found for platform 'missing'": true
+          },
+          "stdout": "",
+          "stdout_markers": {
+            "Configured: discord, slack, telegram": false,
+            "no targets found for platform 'missing'": false
+          }
+        }
+      ],
+      "name": "safe_send_command_execution"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "webhook",
             "list"
           ],

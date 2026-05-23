@@ -2878,6 +2878,101 @@ def main() -> int:
                 }
             )
 
+        send_home = home / "send-command-home"
+        send_env = env.copy()
+        send_env["HERMES_HOME"] = str(send_home)
+        send_home.mkdir(parents=True, exist_ok=True)
+        (send_home / "channel_directory.json").write_text(
+            json.dumps(
+                {
+                    "updated_at": "2026-05-23T00:00:00",
+                    "platforms": {
+                        "telegram": [
+                            {
+                                "id": "-100123",
+                                "name": "Ops Group",
+                                "type": "group",
+                            }
+                        ],
+                        "discord": [
+                            {
+                                "id": "555",
+                                "name": "ops",
+                                "guild": "Hermes",
+                                "type": "channel",
+                            }
+                        ],
+                        "slack": [],
+                    },
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        send_commands = []
+        for argv, marker_map in [
+            (
+                ["send", "--list"],
+                {
+                    "Available messaging targets": True,
+                    "Telegram": True,
+                    "telegram:Ops Group (group)": True,
+                    "Discord (Hermes)": True,
+                    "discord:#ops": True,
+                    "Use these as the \"target\" parameter when sending.": True,
+                },
+            ),
+            (
+                ["send", "--list", "telegram"],
+                {
+                    "telegram:Ops Group": True,
+                    "discord": False,
+                },
+            ),
+            (
+                ["send", "--list", "--json"],
+                {
+                    "\"platforms\"": True,
+                    "\"telegram\"": True,
+                    "\"Ops Group\"": True,
+                    "\"discord\"": True,
+                },
+            ),
+            (
+                ["send", "--list", "missing"],
+                {
+                    "no targets found for platform 'missing'": True,
+                    "Configured: discord, slack, telegram": True,
+                },
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=send_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, send_home)
+            normalized_stderr = normalize_output(command_result.stderr, send_home)
+            send_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in marker_map
+                    },
+                    "stderr_markers": {
+                        marker: marker in normalized_stderr
+                        for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                    "stderr": normalized_stderr,
+                }
+            )
+
         webhook_home = home / "webhook-command-home"
         webhook_env = env.copy()
         webhook_env["HERMES_HOME"] = str(webhook_home)
@@ -3626,6 +3721,10 @@ def main() -> int:
             {
                 "name": "safe_gateway_command_execution",
                 "commands": gateway_commands,
+            },
+            {
+                "name": "safe_send_command_execution",
+                "commands": send_commands,
             },
             {
                 "name": "safe_webhook_command_execution",

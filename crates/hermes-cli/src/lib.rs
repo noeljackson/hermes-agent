@@ -831,6 +831,15 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "send", "--list"] => {
+            result = send_list_output(hermes_home, None, false)?;
+        }
+        ["hermes", "send", "--list", "--json"] => {
+            result = send_list_output(hermes_home, None, true)?;
+        }
+        ["hermes", "send", "--list", platform] => {
+            result = send_list_output(hermes_home, Some(platform), false)?;
+        }
         ["hermes", "webhook", "list"] | ["hermes", "webhook", "ls"] => {
             result = webhook_list_output(hermes_home)?;
         }
@@ -4168,6 +4177,208 @@ fn gateway_list_output(hermes_home: &Path) -> io::Result<String> {
         stdout.push_str(&format!("  ✗ {label:<24}\n"));
     }
     Ok(stdout)
+}
+
+fn load_channel_directory(hermes_home: &Path) -> Value {
+    let path = hermes_home.join("channel_directory.json");
+    if !path.exists() {
+        return json!({"updated_at": null, "platforms": {}});
+    }
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .unwrap_or_else(|| json!({"updated_at": null, "platforms": {}}))
+}
+
+fn channel_target_name(platform: &str, channel: &Value) -> String {
+    let name = channel.get("name").and_then(Value::as_str).unwrap_or("?");
+    if platform == "discord" {
+        if channel.get("guild").and_then(Value::as_str).is_some() {
+            return format!("#{name}");
+        }
+    } else if let Some(kind) = channel.get("type").and_then(Value::as_str) {
+        return format!("{name} ({kind})");
+    }
+    name.to_string()
+}
+
+fn send_list_output(
+    hermes_home: &Path,
+    platform_filter: Option<&str>,
+    json_mode: bool,
+) -> io::Result<CliExecution> {
+    let directory = load_channel_directory(hermes_home);
+    let mut platforms = directory
+        .get("platforms")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+
+    if let Some(filter) = platform_filter {
+        let key = filter.trim().to_lowercase();
+        platforms.retain(|name, _| name.to_lowercase() == key);
+        if platforms.is_empty() {
+            let configured = directory
+                .get("platforms")
+                .and_then(Value::as_object)
+                .map(|map| {
+                    let mut names = map.keys().cloned().collect::<Vec<_>>();
+                    names.sort();
+                    if names.is_empty() {
+                        "(none)".to_string()
+                    } else {
+                        names.join(", ")
+                    }
+                })
+                .unwrap_or_else(|| "(none)".to_string());
+            return Ok(CliExecution {
+                exit_code: 1,
+                stdout: String::new(),
+                stdout_markers: BTreeMap::new(),
+                stderr: format!(
+                    "hermes send: no targets found for platform '{filter}'. Configured: {configured}\n"
+                ),
+            });
+        }
+    }
+
+    if json_mode {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: format!(
+                "{}\n",
+                serde_json::to_string_pretty(&json!({ "platforms": platforms }))
+                    .unwrap_or_else(|_| "{\"platforms\":{}}".to_string())
+            ),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+
+    if !platforms.values().any(|value| {
+        value
+            .as_array()
+            .map(|channels| !channels.is_empty())
+            .unwrap_or(false)
+    }) {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "No messaging platforms configured or no channels discovered yet.\nSet one up with `hermes gateway setup`, or run the gateway once so\nchannel discovery can populate ~/.hermes/channel_directory.json.\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+
+    let mut names = platforms.keys().cloned().collect::<Vec<_>>();
+    names.sort();
+    let mut stdout = String::new();
+    if platform_filter.is_none() {
+        stdout.push_str("Available messaging targets:\n\n");
+        for name in names {
+            let channels = platforms
+                .get(&name)
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            if channels.is_empty() {
+                continue;
+            }
+            if name == "discord" {
+                let mut guilds: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+                let mut dms = Vec::new();
+                for channel in channels {
+                    if let Some(guild) = channel.get("guild").and_then(Value::as_str) {
+                        guilds
+                            .entry(guild.to_string())
+                            .or_default()
+                            .push(channel.clone());
+                    } else {
+                        dms.push(channel);
+                    }
+                }
+                for (guild, mut channels) in guilds {
+                    channels.sort_by_key(|channel| {
+                        channel
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            .to_string()
+                    });
+                    stdout.push_str(&format!("Discord ({guild}):\n"));
+                    for channel in channels {
+                        stdout.push_str(&format!(
+                            "  discord:{}\n",
+                            channel_target_name(&name, &channel)
+                        ));
+                    }
+                }
+                if !dms.is_empty() {
+                    stdout.push_str("Discord (DMs):\n");
+                    for channel in dms {
+                        stdout.push_str(&format!(
+                            "  discord:{}\n",
+                            channel_target_name(&name, &channel)
+                        ));
+                    }
+                }
+                stdout.push('\n');
+            } else {
+                stdout.push_str(&format!("{}:\n", title_case(&name)));
+                for channel in channels {
+                    stdout.push_str(&format!(
+                        "  {name}:{}\n",
+                        channel_target_name(&name, &channel)
+                    ));
+                }
+                stdout.push('\n');
+            }
+        }
+        stdout.push_str("Use these as the \"target\" parameter when sending.\n");
+        stdout.push_str("Bare platform name (e.g. \"telegram\") sends to home channel.\n");
+    } else {
+        for name in names {
+            let channels = platforms
+                .get(&name)
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            stdout.push_str(&format!("{name}:\n"));
+            if channels.is_empty() {
+                stdout.push_str("  (no channels discovered yet)\n");
+                continue;
+            }
+            for channel in channels {
+                let display = channel.get("name").and_then(Value::as_str).unwrap_or("?");
+                let chat_id = channel
+                    .get("id")
+                    .or_else(|| channel.get("chat_id"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let suffix = if !chat_id.is_empty() && chat_id != display {
+                    format!("  [{chat_id}]")
+                } else {
+                    String::new()
+                };
+                stdout.push_str(&format!("  {name}:{display}{suffix}\n"));
+            }
+            stdout.push('\n');
+        }
+    }
+
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn title_case(value: &str) -> String {
+    let mut chars = value.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+        None => String::new(),
+    }
 }
 
 fn webhook_subscriptions_path(hermes_home: &Path) -> PathBuf {

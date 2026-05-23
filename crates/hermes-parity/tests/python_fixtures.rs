@@ -2660,6 +2660,58 @@ fn cli_contract_matches_python_fixture() {
     }
     let _ = fs::remove_dir_all(gateway_home);
 
+    let send_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-send-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&send_home);
+    fs::create_dir_all(&send_home).unwrap();
+    fs::write(
+        send_home.join("channel_directory.json"),
+        serde_json::to_string_pretty(&json!({
+            "updated_at": "2026-05-23T00:00:00",
+            "platforms": {
+                "telegram": [{"id": "-100123", "name": "Ops Group", "type": "group"}],
+                "discord": [{"id": "555", "name": "ops", "guild": "Hermes", "type": "channel"}],
+                "slack": [],
+            },
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let send_home_display = send_home.to_string_lossy().to_string();
+    let send_execution = case(&fixture, "safe_send_command_execution");
+    for expected in send_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &send_home).unwrap();
+        actual.stdout = actual.stdout.replace(&send_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&send_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} stdout marker {marker}"
+            );
+        }
+        for (marker, present) in expected["stderr_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stderr.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} stderr marker {marker}"
+            );
+        }
+    }
+    let _ = fs::remove_dir_all(send_home);
+
     let webhook_home =
         std::env::temp_dir().join(format!("hermes-parity-cli-webhook-{}", std::process::id()));
     let _ = fs::remove_dir_all(&webhook_home);

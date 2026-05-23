@@ -338,6 +338,9 @@ against those fixtures in `crates/hermes-parity`:
   --slashes-only`, full manifest display metadata/scopes/socket-mode shape,
   reserved command filtering, first-class slash command count, stable command
   URL/escape flags, and `--write` file output without contacting Slack.
+  Standalone send-target discovery is fixture-backed for `send --list`,
+  platform-filtered listing, JSON listing, and unknown-platform diagnostics
+  against durable `channel_directory.json` without sending any messages.
   Dashboard lifecycle status commands are fixture-backed for no-running-process
   `dashboard --status` and `dashboard --stop` behavior without starting the
   web UI or importing dashboard server dependencies.
