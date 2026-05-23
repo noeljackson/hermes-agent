@@ -203,6 +203,87 @@
         }
       ],
       "name": "import_validation"
+    },
+    {
+      "members": [
+        {
+          "action": "restore",
+          "member": ".hermes/config.yaml",
+          "prefix": ".hermes/",
+          "rel": "config.yaml",
+          "secret": false
+        },
+        {
+          "action": "restore",
+          "member": ".hermes/.env",
+          "prefix": ".hermes/",
+          "rel": ".env",
+          "secret": true
+        },
+        {
+          "action": "restore",
+          "member": ".hermes/auth.json",
+          "prefix": ".hermes/",
+          "rel": "auth.json",
+          "secret": true
+        },
+        {
+          "action": "restore",
+          "member": ".hermes/state.db",
+          "prefix": ".hermes/",
+          "rel": "state.db",
+          "secret": true
+        },
+        {
+          "action": "restore",
+          "member": ".hermes/profiles/demo/auth.json",
+          "prefix": ".hermes/",
+          "rel": "profiles/demo/auth.json",
+          "secret": true
+        },
+        {
+          "action": "restore",
+          "member": ".hermes/profiles/demo/SOUL.md",
+          "prefix": ".hermes/",
+          "rel": "profiles/demo/SOUL.md",
+          "secret": false
+        },
+        {
+          "action": "block",
+          "error": "  ../escape.txt: path traversal blocked",
+          "member": ".hermes/../escape.txt",
+          "prefix": ".hermes/",
+          "rel": "../escape.txt"
+        },
+        {
+          "action": "block",
+          "error": "  ../escape.txt: path traversal blocked",
+          "member": "../escape.txt",
+          "prefix": "",
+          "rel": "../escape.txt"
+        },
+        {
+          "action": "block",
+          "error": "  /tmp/escape.txt: path traversal blocked",
+          "member": "/tmp/escape.txt",
+          "prefix": "",
+          "rel": "/tmp/escape.txt"
+        },
+        {
+          "action": "restore",
+          "member": "safe/../config.yaml",
+          "prefix": "",
+          "rel": "config.yaml",
+          "secret": false
+        },
+        {
+          "action": "skip",
+          "member": ".hermes/",
+          "prefix": ".hermes/",
+          "rel": ""
+        }
+      ],
+      "name": "import_member_planning"
     }
   ],
   "source": {

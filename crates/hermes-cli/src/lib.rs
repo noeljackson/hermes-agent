@@ -1742,6 +1742,69 @@ pub fn backup_validate_members(members: &[&str]) -> (bool, String) {
     (true, String::new())
 }
 
+pub fn backup_import_member_plan(member: &str, prefix: &str) -> Value {
+    if member.ends_with('/') {
+        return json!({
+            "member": member,
+            "prefix": prefix,
+            "action": "skip",
+            "rel": "",
+        });
+    }
+
+    let rel = if !prefix.is_empty() && member.starts_with(prefix) {
+        &member[prefix.len()..]
+    } else {
+        member
+    };
+    if rel.is_empty() {
+        return json!({
+            "member": member,
+            "prefix": prefix,
+            "action": "skip",
+            "rel": rel,
+        });
+    }
+
+    let Some(restored_rel) = normalize_backup_import_rel(rel) else {
+        return json!({
+            "member": member,
+            "prefix": prefix,
+            "action": "block",
+            "rel": rel,
+            "error": format!("  {rel}: path traversal blocked"),
+        });
+    };
+    let basename = rel
+        .split('/')
+        .rfind(|part| !part.is_empty())
+        .unwrap_or_default();
+    json!({
+        "member": member,
+        "prefix": prefix,
+        "action": "restore",
+        "rel": restored_rel,
+        "secret": BACKUP_SECRET_FILE_NAMES.contains(&basename),
+    })
+}
+
+fn normalize_backup_import_rel(rel: &str) -> Option<String> {
+    if rel.starts_with('/') {
+        return None;
+    }
+    let mut parts = Vec::<&str>::new();
+    for part in rel.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop()?;
+            }
+            other => parts.push(other),
+        }
+    }
+    Some(parts.join("/"))
+}
+
 fn create_quick_backup_output(hermes_home: &Path, label: &str) -> io::Result<CliExecution> {
     let snap_id = quick_snapshot_id(label);
     let snapshot_dir = hermes_home.join("state-snapshots").join(&snap_id);

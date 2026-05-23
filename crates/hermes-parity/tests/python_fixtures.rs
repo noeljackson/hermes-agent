@@ -153,6 +153,17 @@ fn backup_policy_matches_python_fixture() {
             expected["name"].as_str().unwrap()
         );
     }
+
+    let member_plans = case(&fixture, "import_member_planning");
+    for expected in member_plans["members"].as_array().unwrap() {
+        let member = expected["member"].as_str().unwrap();
+        let prefix = expected["prefix"].as_str().unwrap();
+        assert_eq!(
+            hermes_cli::backup_import_member_plan(member, prefix),
+            *expected,
+            "backup import member plan for {member:?} with prefix {prefix:?}"
+        );
+    }
 }
 
 #[test]

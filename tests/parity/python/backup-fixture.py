@@ -18,6 +18,39 @@ def zip_with_members(path, members):
                 zf.writestr(member, "x")
 
 
+def import_member_plan(member, prefix, home, secret_file_names):
+    if member.endswith("/"):
+        return {"member": member, "prefix": prefix, "action": "skip", "rel": ""}
+
+    if prefix and member.startswith(prefix):
+        rel = member[len(prefix) :]
+    else:
+        rel = member
+
+    if not rel:
+        return {"member": member, "prefix": prefix, "action": "skip", "rel": rel}
+
+    target = home / rel
+    try:
+        restored_rel = target.resolve().relative_to(home.resolve()).as_posix()
+    except ValueError:
+        return {
+            "member": member,
+            "prefix": prefix,
+            "action": "block",
+            "rel": rel,
+            "error": f"  {rel}: path traversal blocked",
+        }
+
+    return {
+        "member": member,
+        "prefix": prefix,
+        "action": "restore",
+        "rel": restored_rel,
+        "secret": target.name in secret_file_names,
+    }
+
+
 def main() -> int:
     out = parse_out_arg()
     with isolated_hermes_home() as home:
@@ -100,6 +133,30 @@ def main() -> int:
                     }
                 )
 
+        import_member_cases = [
+            import_member_plan(".hermes/config.yaml", ".hermes/", home, _SECRET_FILE_NAMES),
+            import_member_plan(".hermes/.env", ".hermes/", home, _SECRET_FILE_NAMES),
+            import_member_plan(".hermes/auth.json", ".hermes/", home, _SECRET_FILE_NAMES),
+            import_member_plan(".hermes/state.db", ".hermes/", home, _SECRET_FILE_NAMES),
+            import_member_plan(
+                ".hermes/profiles/demo/auth.json",
+                ".hermes/",
+                home,
+                _SECRET_FILE_NAMES,
+            ),
+            import_member_plan(
+                ".hermes/profiles/demo/SOUL.md",
+                ".hermes/",
+                home,
+                _SECRET_FILE_NAMES,
+            ),
+            import_member_plan(".hermes/../escape.txt", ".hermes/", home, _SECRET_FILE_NAMES),
+            import_member_plan("../escape.txt", "", home, _SECRET_FILE_NAMES),
+            import_member_plan("/tmp/escape.txt", "", home, _SECRET_FILE_NAMES),
+            import_member_plan("safe/../config.yaml", "", home, _SECRET_FILE_NAMES),
+            import_member_plan(".hermes/", ".hermes/", home, _SECRET_FILE_NAMES),
+        ]
+
         cases = [
             {
                 "name": "full_backup_exclusion_policy",
@@ -113,6 +170,10 @@ def main() -> int:
             {
                 "name": "import_validation",
                 "archives": validation_cases,
+            },
+            {
+                "name": "import_member_planning",
+                "members": import_member_cases,
             },
         ]
 

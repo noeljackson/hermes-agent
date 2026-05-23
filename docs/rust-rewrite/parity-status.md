@@ -343,7 +343,9 @@ against those fixtures in `crates/hermes-parity`:
   regeneratable/runtime directories, SQLite sidecars, bytecode, PID files,
   durable config/secrets/state files, memory, cron, gateway state, and skills.
   Import validation and `.hermes/`/`hermes/` prefix detection are also backed
-  by Python zip fixtures before full zip restore behavior is ported.
+  by Python zip fixtures before full zip restore behavior is ported. Restore
+  member planning is fixture-backed for prefix stripping, traversal blocking,
+  normalized safe paths, directory-member skips, and secret-file chmod targets.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable
