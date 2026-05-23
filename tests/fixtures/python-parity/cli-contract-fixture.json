@@ -749,6 +749,93 @@
         {
           "argv": [
             "hermes",
+            "slack",
+            "manifest",
+            "--slashes-only"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {},
+          "summary": {
+            "all_urls": [
+              "https://hermes-agent.local/slack/commands"
+            ],
+            "contains": {
+              "/background": true,
+              "/btw": true,
+              "/hermes": true,
+              "/model": true,
+              "/reload-mcp": true,
+              "/status": false,
+              "/topic": false
+            },
+            "count": 50,
+            "first_command": "/hermes",
+            "should_escape_values": [
+              false
+            ]
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "slack",
+            "manifest",
+            "--name",
+            "ParityHermes",
+            "--description",
+            "Parity Slack manifest"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {},
+          "summary": {
+            "bot_display_name": "ParityHermes",
+            "bot_scopes_contains_commands": true,
+            "display_description": "Parity Slack manifest",
+            "display_name": "ParityHermes",
+            "slash_count": 50,
+            "socket_mode_enabled": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "slack",
+            "manifest",
+            "--write",
+            "<HERMES_HOME>/slack-parity-manifest.json",
+            "--slashes-only"
+          ],
+          "exit_code": 0,
+          "stderr": "Slack manifest written to: <HERMES_HOME>/slack-parity-manifest.json\n\nNext steps:\n  1. Open https://api.slack.com/apps and pick your Hermes app\n     (or create a new one: Create New App \u2192 From an app manifest).\n  2. Features \u2192 App Manifest \u2192 paste the contents of\n     <HERMES_HOME>/slack-parity-manifest.json\n  3. Save; Slack will prompt to reinstall the app if scopes or\n     slash commands changed.\n  4. Make sure Socket Mode is enabled and you have a bot token\n     (xoxb-...) and app token (xapp-...) configured via\n     `hermes setup`.\n\n",
+          "stderr_markers": {
+            "<HERMES_HOME>/slack-parity-manifest.json": true,
+            "Next steps:": true,
+            "Slack manifest written to:": true
+          },
+          "stdout": "",
+          "stdout_markers": {},
+          "summary": {
+            "contains": {
+              "/background": true,
+              "/btw": true,
+              "/hermes": true
+            },
+            "count": 50,
+            "first_command": "/hermes"
+          }
+        }
+      ],
+      "name": "safe_slack_manifest_command_execution"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",

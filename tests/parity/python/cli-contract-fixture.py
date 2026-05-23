@@ -392,6 +392,105 @@ def main() -> int:
             "telegram_failure_count": rate_limits.get("_failures:telegram"),
         }
 
+        slack_home = home / "slack-command-home"
+        slack_env = env.copy()
+        slack_env["HERMES_HOME"] = str(slack_home)
+        slack_home.mkdir(parents=True, exist_ok=True)
+        (slack_home / ".env").write_text("", encoding="utf-8")
+        slack_commands = []
+        slack_write_path = slack_home / "slack-parity-manifest.json"
+        for argv in [
+            ["slack", "manifest", "--slashes-only"],
+            [
+                "slack",
+                "manifest",
+                "--name",
+                "ParityHermes",
+                "--description",
+                "Parity Slack manifest",
+            ],
+            ["slack", "manifest", "--write", str(slack_write_path), "--slashes-only"],
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=slack_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, slack_home)
+            normalized_stderr = normalize_output(command_result.stderr, slack_home)
+            case = {
+                "argv": [
+                    part.replace(str(slack_home), "<HERMES_HOME>")
+                    for part in ["hermes", *argv]
+                ],
+                "exit_code": command_result.returncode,
+                "stdout": "",
+                "stderr": normalized_stderr,
+                "stdout_markers": {},
+            }
+            if argv[0:3] == ["slack", "manifest", "--write"]:
+                case["stderr_markers"] = {
+                    marker: marker in normalized_stderr
+                    for marker in [
+                        "Slack manifest written to:",
+                        "Next steps:",
+                        "<HERMES_HOME>/slack-parity-manifest.json",
+                    ]
+                }
+                payload = json.loads(slack_write_path.read_text(encoding="utf-8"))
+                commands = [entry["command"] for entry in payload]
+                case["summary"] = {
+                    "count": len(payload),
+                    "first_command": commands[0],
+                    "contains": {
+                        name: name in commands
+                        for name in ["/hermes", "/background", "/btw"]
+                    },
+                }
+            elif argv[-1] == "--slashes-only":
+                payload = json.loads(normalized_stdout)
+                commands = [entry["command"] for entry in payload]
+                case["summary"] = {
+                    "count": len(payload),
+                    "first_command": commands[0],
+                    "contains": {
+                        name: name in commands
+                        for name in [
+                            "/hermes",
+                            "/background",
+                            "/btw",
+                            "/model",
+                            "/status",
+                            "/topic",
+                            "/reload-mcp",
+                        ]
+                    },
+                    "all_urls": sorted({entry.get("url") for entry in payload}),
+                    "should_escape_values": sorted(
+                        {entry.get("should_escape") for entry in payload}
+                    ),
+                }
+            elif argv[0:2] == ["slack", "manifest"]:
+                payload = json.loads(normalized_stdout)
+                case["summary"] = {
+                    "display_name": payload["display_information"]["name"],
+                    "display_description": payload["display_information"][
+                        "description"
+                    ],
+                    "bot_display_name": payload["features"]["bot_user"][
+                        "display_name"
+                    ],
+                    "slash_count": len(payload["features"]["slash_commands"]),
+                    "socket_mode_enabled": payload["settings"][
+                        "socket_mode_enabled"
+                    ],
+                    "bot_scopes_contains_commands": "commands"
+                    in payload["oauth_config"]["scopes"]["bot"],
+                }
+            slack_commands.append(case)
+
         from hermes_state import SessionDB
 
         db = SessionDB(home / "state.db")
@@ -2036,6 +2135,10 @@ def main() -> int:
                 "name": "safe_pairing_command_execution",
                 "commands": pairing_commands,
                 "state": pairing_state,
+            },
+            {
+                "name": "safe_slack_manifest_command_execution",
+                "commands": slack_commands,
             },
             {
                 "name": "safe_session_command_execution",

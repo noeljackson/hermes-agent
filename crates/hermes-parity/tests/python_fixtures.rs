@@ -378,6 +378,148 @@ fn cli_contract_matches_python_fixture() {
     );
     let _ = fs::remove_dir_all(pairing_home);
 
+    let slack_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-slack-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&slack_home);
+    fs::create_dir_all(&slack_home).unwrap();
+    let slack_home_display = slack_home.to_string_lossy().to_string();
+    let slack_execution = case(&fixture, "safe_slack_manifest_command_execution");
+    for expected in slack_execution["commands"].as_array().unwrap() {
+        let argv_owned = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .unwrap()
+                    .replace("<HERMES_HOME>", &slack_home_display)
+            })
+            .collect::<Vec<_>>();
+        let argv = argv_owned.iter().map(String::as_str).collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &slack_home).unwrap();
+        actual.stdout = actual.stdout.replace(&slack_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&slack_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        if let Some(markers) = expected["stderr_markers"].as_object() {
+            for (marker, present) in markers {
+                assert_eq!(
+                    actual.stderr.contains(marker),
+                    present.as_bool().unwrap(),
+                    "{argv:?} stderr marker {marker}"
+                );
+            }
+        }
+        let summary = &expected["summary"];
+        if argv.ends_with(&["--slashes-only"]) && !argv.contains(&"--write") {
+            let payload: Value = serde_json::from_str(&actual.stdout).unwrap();
+            let commands = payload
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|entry| entry["command"].as_str().unwrap().to_string())
+                .collect::<Vec<_>>();
+            assert_eq!(payload.as_array().unwrap().len(), summary["count"]);
+            assert_eq!(
+                commands.first().unwrap(),
+                summary["first_command"].as_str().unwrap()
+            );
+            for (command, present) in summary["contains"].as_object().unwrap() {
+                assert_eq!(
+                    commands.iter().any(|value| value == command),
+                    present.as_bool().unwrap(),
+                    "{argv:?} command {command}"
+                );
+            }
+            let mut urls = payload
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|entry| entry["url"].as_str().unwrap().to_string())
+                .collect::<Vec<_>>();
+            urls.sort();
+            urls.dedup();
+            assert_eq!(
+                Value::Array(urls.into_iter().map(Value::String).collect()),
+                summary["all_urls"]
+            );
+            let mut escapes = payload
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|entry| entry["should_escape"].as_bool().unwrap())
+                .collect::<Vec<_>>();
+            escapes.sort();
+            escapes.dedup();
+            assert_eq!(
+                Value::Array(escapes.into_iter().map(Value::Bool).collect()),
+                summary["should_escape_values"]
+            );
+        } else if argv.contains(&"--write") {
+            let payload: Value = serde_json::from_str(
+                &fs::read_to_string(slack_home.join("slack-parity-manifest.json")).unwrap(),
+            )
+            .unwrap();
+            let commands = payload
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|entry| entry["command"].as_str().unwrap().to_string())
+                .collect::<Vec<_>>();
+            assert_eq!(payload.as_array().unwrap().len(), summary["count"]);
+            assert_eq!(
+                commands.first().unwrap(),
+                summary["first_command"].as_str().unwrap()
+            );
+            for (command, present) in summary["contains"].as_object().unwrap() {
+                assert_eq!(
+                    commands.iter().any(|value| value == command),
+                    present.as_bool().unwrap(),
+                    "{argv:?} command {command}"
+                );
+            }
+        } else {
+            let payload: Value = serde_json::from_str(&actual.stdout).unwrap();
+            assert_eq!(
+                payload["display_information"]["name"],
+                summary["display_name"]
+            );
+            assert_eq!(
+                payload["display_information"]["description"],
+                summary["display_description"]
+            );
+            assert_eq!(
+                payload["features"]["bot_user"]["display_name"],
+                summary["bot_display_name"]
+            );
+            assert_eq!(
+                payload["features"]["slash_commands"]
+                    .as_array()
+                    .unwrap()
+                    .len(),
+                summary["slash_count"].as_u64().unwrap() as usize
+            );
+            assert_eq!(
+                payload["settings"]["socket_mode_enabled"],
+                summary["socket_mode_enabled"]
+            );
+            assert_eq!(
+                payload["oauth_config"]["scopes"]["bot"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|scope| scope.as_str() == Some("commands")),
+                summary["bot_scopes_contains_commands"].as_bool().unwrap()
+            );
+        }
+    }
+    let _ = fs::remove_dir_all(slack_home);
+
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db
         .create_session(

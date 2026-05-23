@@ -358,6 +358,16 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "pairing", "clear-pending"] => {
             stdout = "\n  No pending requests to clear.\n".to_string();
         }
+        ["hermes", "slack", "manifest", "--slashes-only"] => {
+            stdout = slack_slashes_only_json();
+        }
+        ["hermes", "slack", "manifest", "--name", name, "--description", description] => {
+            stdout = slack_full_manifest_json(name, description);
+        }
+        ["hermes", "slack", "manifest", "--write", path, "--slashes-only"] => {
+            let _ = path;
+            stderr = slack_manifest_write_stderr(&format!("{hermes_home}/slack-manifest.json"));
+        }
         ["hermes", command, "--help"] => {
             if let Some(help) = subcommand_help(command) {
                 stdout = help.to_string();
@@ -626,6 +636,36 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "pairing", "clear-pending"] => {
             result = pairing_clear_pending(hermes_home)?;
+        }
+        ["hermes", "slack", "manifest", "--slashes-only"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: slack_slashes_only_json(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "slack", "manifest", "--name", name, "--description", description] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: slack_full_manifest_json(name, description),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "slack", "manifest", "--write", path, "--slashes-only"] => {
+            let payload = slack_slashes_only_json();
+            let target = Path::new(path);
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(target, &payload)?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: String::new(),
+                stdout_markers: BTreeMap::new(),
+                stderr: slack_manifest_write_stderr(path),
+            };
         }
         ["hermes", "cron", "list", "--all"] | ["hermes", "cron", "list"] => {
             let jobs = hermes_cron::load_jobs(cron_jobs_path(hermes_home))?;
@@ -1875,6 +1915,116 @@ fn pairing_revoke_missing_output(platform: &str, user_id: &str) -> String {
         "\n  User {user_id} not found in approved list for {}.\n\n",
         platform.to_ascii_lowercase()
     )
+}
+
+fn slack_slash_commands_json() -> Value {
+    Value::Array(
+        hermes_slash::slack_native_slashes()
+            .into_iter()
+            .map(|(name, description, usage_hint)| {
+                let mut entry = serde_json::Map::new();
+                entry.insert("command".to_string(), json!(format!("/{name}")));
+                entry.insert(
+                    "description".to_string(),
+                    json!(if description.is_empty() {
+                        format!("Run /{name}")
+                    } else {
+                        description
+                    }),
+                );
+                entry.insert("should_escape".to_string(), json!(false));
+                entry.insert(
+                    "url".to_string(),
+                    json!("https://hermes-agent.local/slack/commands"),
+                );
+                if !usage_hint.is_empty() {
+                    entry.insert("usage_hint".to_string(), json!(usage_hint));
+                }
+                Value::Object(entry)
+            })
+            .collect(),
+    )
+}
+
+fn slack_slashes_only_json() -> String {
+    serde_json::to_string_pretty(&slack_slash_commands_json()).unwrap_or_else(|_| "[]".to_string())
+        + "\n"
+}
+
+fn slack_full_manifest_json(name: &str, description: &str) -> String {
+    let display_name = truncate_chars_for_cli(name, 35);
+    let bot_name = truncate_chars_for_cli(name, 80);
+    let display_description = truncate_chars_for_cli(description, 140);
+    let manifest = json!({
+        "_metadata": {"major_version": 1, "minor_version": 1},
+        "display_information": {
+            "name": display_name,
+            "description": display_description,
+            "background_color": "#1a1a2e",
+        },
+        "features": {
+            "app_home": {
+                "home_tab_enabled": false,
+                "messages_tab_enabled": true,
+                "messages_tab_read_only_enabled": false,
+            },
+            "bot_user": {
+                "display_name": bot_name,
+                "always_online": true,
+            },
+            "slash_commands": slack_slash_commands_json(),
+            "assistant_view": {
+                "assistant_description": "Chat with Hermes in threads and DMs.",
+            },
+        },
+        "oauth_config": {
+            "scopes": {
+                "bot": [
+                    "app_mentions:read",
+                    "assistant:write",
+                    "channels:history",
+                    "channels:read",
+                    "chat:write",
+                    "commands",
+                    "files:read",
+                    "files:write",
+                    "groups:history",
+                    "groups:read",
+                    "im:history",
+                    "im:read",
+                    "im:write",
+                    "users:read",
+                ],
+            },
+        },
+        "settings": {
+            "event_subscriptions": {
+                "bot_events": [
+                    "app_mention",
+                    "assistant_thread_context_changed",
+                    "assistant_thread_started",
+                    "message.channels",
+                    "message.groups",
+                    "message.im",
+                ],
+            },
+            "interactivity": {"is_enabled": true},
+            "org_deploy_enabled": false,
+            "socket_mode_enabled": true,
+            "token_rotation_enabled": false,
+        },
+    });
+    serde_json::to_string_pretty(&manifest).unwrap_or_else(|_| "{}".to_string()) + "\n"
+}
+
+fn slack_manifest_write_stderr(path: &str) -> String {
+    format!(
+        "Slack manifest written to: {path}\n\nNext steps:\n  1. Open https://api.slack.com/apps and pick your Hermes app\n     (or create a new one: Create New App → From an app manifest).\n  2. Features → App Manifest → paste the contents of\n     {path}\n  3. Save; Slack will prompt to reinstall the app if scopes or\n     slash commands changed.\n  4. Make sure Socket Mode is enabled and you have a bot token\n     (xoxb-...) and app token (xapp-...) configured via\n     `hermes setup`.\n\n"
+    )
+}
+
+fn truncate_chars_for_cli(value: &str, max_chars: usize) -> String {
+    value.chars().take(max_chars).collect()
 }
 
 fn read_platform_toolsets(hermes_home: &Path, platform: &str) -> io::Result<BTreeSet<String>> {

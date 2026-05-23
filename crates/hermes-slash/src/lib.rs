@@ -870,6 +870,106 @@ pub fn slack_subcommand_map() -> BTreeMap<&'static str, String> {
     mapping
 }
 
+pub fn slack_native_slashes() -> Vec<(String, String, String)> {
+    const MAX_SLASH_COMMANDS: usize = 50;
+    let mut entries = vec![(
+        "hermes".to_string(),
+        "Talk to Hermes or run a subcommand".to_string(),
+        "[subcommand] [args]".to_string(),
+    )];
+    let mut seen = BTreeSet::from(["hermes".to_string()]);
+
+    for command in gateway_surface_commands().filter(|command| is_gateway_available(command)) {
+        add_slack_native_slash(
+            &mut entries,
+            &mut seen,
+            MAX_SLASH_COMMANDS,
+            command.name,
+            command.description,
+            command.args_hint,
+        );
+    }
+    for command in gateway_surface_commands().filter(|command| is_gateway_available(command)) {
+        for alias in command.aliases {
+            add_slack_native_slash(
+                &mut entries,
+                &mut seen,
+                MAX_SLASH_COMMANDS,
+                alias,
+                &format!("Alias for /{} -- {}", command.name, command.description),
+                command.args_hint,
+            );
+        }
+    }
+    entries
+}
+
+fn add_slack_native_slash(
+    entries: &mut Vec<(String, String, String)>,
+    seen: &mut BTreeSet<String>,
+    max_commands: usize,
+    name: &str,
+    description: &str,
+    usage_hint: &str,
+) {
+    if entries.len() >= max_commands {
+        return;
+    }
+    let Some(slack_name) = sanitize_slack_name(name) else {
+        return;
+    };
+    if seen.contains(&slack_name) || is_slack_reserved_command(&slack_name) {
+        return;
+    }
+    entries.push((
+        slack_name.clone(),
+        truncate_chars(description, 140),
+        truncate_chars(usage_hint, 100),
+    ));
+    seen.insert(slack_name);
+}
+
+fn sanitize_slack_name(raw: &str) -> Option<String> {
+    let name = raw
+        .to_ascii_lowercase()
+        .chars()
+        .filter(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || *ch == '-' || *ch == '_')
+        .collect::<String>()
+        .trim_matches(['-', '_'])
+        .chars()
+        .take(32)
+        .collect::<String>();
+    (!name.is_empty()).then_some(name)
+}
+
+fn is_slack_reserved_command(name: &str) -> bool {
+    matches!(
+        name,
+        "me" | "status"
+            | "away"
+            | "dnd"
+            | "shrug"
+            | "remind"
+            | "msg"
+            | "feed"
+            | "who"
+            | "collapse"
+            | "expand"
+            | "leave"
+            | "join"
+            | "open"
+            | "search"
+            | "topic"
+            | "mute"
+            | "pro"
+            | "shortcuts"
+    )
+}
+
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    value.chars().take(max_chars).collect()
+}
+
 fn is_gateway_available(command: &CommandDef) -> bool {
     !command.cli_only
 }

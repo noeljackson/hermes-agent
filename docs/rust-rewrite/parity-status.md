@@ -319,6 +319,10 @@ against those fixtures in `crates/hermes-parity`:
   `pairing clear-pending`, including pending-code promotion to approved
   users, revoke deletion, failed-approval accounting, and clearing only
   pending request files.
+  Slack manifest CLI generation is fixture-backed for `slack manifest
+  --slashes-only`, full manifest display metadata/scopes/socket-mode shape,
+  reserved command filtering, first-class slash command count, stable command
+  URL/escape flags, and `--write` file output without contacting Slack.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable
