@@ -766,6 +766,123 @@ def main() -> int:
             )
         }
 
+        bundles_home = home / "bundles-command-home"
+        bundles_env = env.copy()
+        bundles_env["HERMES_HOME"] = str(bundles_home)
+        bundles_home.mkdir(parents=True, exist_ok=True)
+        bundle_path = bundles_home / "skill-bundles" / "daily-flow.yaml"
+        bundles_commands = []
+        bundle_state = {}
+        for argv, marker_map, state_name in [
+            (
+                ["bundles", "list"],
+                {
+                    "No bundles installed yet": True,
+                    "hermes bundles create": True,
+                    "<HERMES_HOME>/skill-bundles": True,
+                },
+                None,
+            ),
+            (
+                [
+                    "bundles",
+                    "create",
+                    "Daily Flow",
+                    "--skill",
+                    "github/review",
+                    "--skill",
+                    "mlops/train",
+                    "--description",
+                    "Daily work",
+                    "--instruction",
+                    "Prioritize tests.",
+                ],
+                {
+                    "Created bundle:": True,
+                    "<HERMES_HOME>/skill-bundles/daily-flow.yaml": True,
+                    "Invoke with: /daily-flow": True,
+                    "loads 2 skills": True,
+                },
+                "after_create",
+            ),
+            (
+                ["bundles", "create", "Daily Flow", "--skill", "other"],
+                {
+                    "Bundle already exists at": True,
+                    "Pass --force to overwrite": True,
+                },
+                None,
+            ),
+            (
+                ["bundles", "show", "daily_flow"],
+                {
+                    "/daily-flow": True,
+                    "Daily Flow": True,
+                    "Daily work": True,
+                    "Skills (2):": True,
+                    "github/review": True,
+                    "mlops/train": True,
+                    "Instruction:": True,
+                    "Prioritize tests.": True,
+                },
+                None,
+            ),
+            (
+                ["bundles", "reload"],
+                {"No changes. 1 bundle(s) loaded.": True},
+                None,
+            ),
+            (
+                ["bundles", "delete", "missing"],
+                {"No bundle at": True, "missing.yaml": True},
+                None,
+            ),
+            (
+                ["bundles", "delete", "daily-flow"],
+                {
+                    "Deleted bundle:": True,
+                    "<HERMES_HOME>/skill-bundles/daily-flow.yaml": True,
+                },
+                "after_delete",
+            ),
+            (
+                ["bundles", "list"],
+                {
+                    "No bundles installed yet": True,
+                    "hermes bundles create": True,
+                    "<HERMES_HOME>/skill-bundles": True,
+                },
+                None,
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=bundles_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, bundles_home)
+            bundles_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, bundles_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+            if state_name == "after_create":
+                bundle_state["after_create_exists"] = bundle_path.exists()
+                bundle_state["after_create_yaml"] = yaml.safe_load(
+                    bundle_path.read_text(encoding="utf-8")
+                )
+            elif state_name == "after_delete":
+                bundle_state["after_delete_exists"] = bundle_path.exists()
+
         from hermes_state import SessionDB
 
         db = SessionDB(home / "state.db")
@@ -2429,6 +2546,11 @@ def main() -> int:
                 "name": "safe_doctor_command_execution",
                 "commands": doctor_commands,
                 "state": doctor_state,
+            },
+            {
+                "name": "safe_bundles_command_execution",
+                "commands": bundles_commands,
+                "state": bundle_state,
             },
             {
                 "name": "safe_session_command_execution",

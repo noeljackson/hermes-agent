@@ -679,6 +679,21 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         ["hermes", "import", archive, "--force"] | ["hermes", "import", archive, "-f"] => {
             result = restore_full_backup_output(hermes_home, Path::new(archive))?;
         }
+        ["hermes", "bundles"] | ["hermes", "bundles", "list"] => {
+            result = bundles_list_output(hermes_home)?;
+        }
+        ["hermes", "bundles", "show", name] => {
+            result = bundles_show_output(hermes_home, name)?;
+        }
+        ["hermes", "bundles", "reload"] => {
+            result = bundles_reload_output(hermes_home)?;
+        }
+        ["hermes", "bundles", "delete", name] => {
+            result = bundles_delete_output(hermes_home, name)?;
+        }
+        ["hermes", "bundles", "create", name, args @ ..] => {
+            result = bundles_create_output(hermes_home, name, args)?;
+        }
         ["hermes", "pairing", "list"] => {
             result = CliExecution {
                 exit_code: 0,
@@ -1631,6 +1646,412 @@ fn ack_security_advisory(hermes_home: &Path, advisory: &str) -> io::Result<()> {
         list.sort_by(|left, right| left.as_str().cmp(&right.as_str()));
     }
     write_config_value(hermes_home, &config)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SkillBundle {
+    name: String,
+    slug: String,
+    description: String,
+    skills: Vec<String>,
+    instruction: String,
+    path: PathBuf,
+}
+
+fn bundle_slugify(name: &str) -> String {
+    let mut out = String::new();
+    let mut previous_hyphen = false;
+    for ch in name.trim().chars().flat_map(char::to_lowercase) {
+        let next = if ch == ' ' || ch == '_' || ch == '-' {
+            Some('-')
+        } else if ch.is_ascii_lowercase() || ch.is_ascii_digit() {
+            Some(ch)
+        } else {
+            None
+        };
+        if let Some(ch) = next {
+            if ch == '-' {
+                if !previous_hyphen && !out.is_empty() {
+                    out.push('-');
+                }
+                previous_hyphen = true;
+            } else {
+                out.push(ch);
+                previous_hyphen = false;
+            }
+        }
+    }
+    out.trim_matches('-').to_string()
+}
+
+fn bundles_dir(hermes_home: &Path) -> PathBuf {
+    hermes_home.join("skill-bundles")
+}
+
+fn bundle_path_for(hermes_home: &Path, name: &str) -> io::Result<PathBuf> {
+    let slug = bundle_slugify(name);
+    if slug.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("Bundle name {name:?} normalizes to an empty slug"),
+        ));
+    }
+    Ok(bundles_dir(hermes_home).join(format!("{slug}.yaml")))
+}
+
+fn yaml_sequence_strings(value: Option<&serde_yaml::Value>) -> Vec<String> {
+    value
+        .and_then(serde_yaml::Value::as_sequence)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(str::trim))
+                .filter(|item| !item.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn load_bundle_file(path: &Path) -> io::Result<Option<SkillBundle>> {
+    let text = fs::read_to_string(path)?;
+    let Ok(data) = serde_yaml::from_str::<serde_yaml::Value>(&text) else {
+        return Ok(None);
+    };
+    let Some(map) = data.as_mapping() else {
+        return Ok(None);
+    };
+    let key = |name: &str| serde_yaml::Value::String(name.to_string());
+    let name = map
+        .get(key("name"))
+        .and_then(serde_yaml::Value::as_str)
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| {
+            path.file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string()
+        });
+    let skills = yaml_sequence_strings(map.get(key("skills")));
+    if skills.is_empty() {
+        return Ok(None);
+    }
+    let description = map
+        .get(key("description"))
+        .and_then(serde_yaml::Value::as_str)
+        .map(str::trim)
+        .unwrap_or("")
+        .to_string();
+    let instruction = map
+        .get(key("instruction"))
+        .and_then(serde_yaml::Value::as_str)
+        .map(str::trim)
+        .unwrap_or("")
+        .to_string();
+    let slug = bundle_slugify(&name);
+    if slug.is_empty() {
+        return Ok(None);
+    }
+    let description = if description.is_empty() {
+        format!("Load {} skills as a bundle", skills.len())
+    } else {
+        description
+    };
+    Ok(Some(SkillBundle {
+        name,
+        slug,
+        description,
+        skills,
+        instruction,
+        path: path.to_path_buf(),
+    }))
+}
+
+fn list_skill_bundles(hermes_home: &Path) -> io::Result<Vec<SkillBundle>> {
+    let dir = bundles_dir(hermes_home);
+    let mut bundles = Vec::new();
+    if !dir.exists() {
+        return Ok(bundles);
+    }
+    let mut paths = fs::read_dir(dir)?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| matches!(ext, "yaml" | "yml"))
+        })
+        .collect::<Vec<_>>();
+    paths.sort();
+    let mut seen = BTreeSet::new();
+    for path in paths {
+        if let Some(bundle) = load_bundle_file(&path)? {
+            if seen.insert(bundle.slug.clone()) {
+                bundles.push(bundle);
+            }
+        }
+    }
+    bundles.sort_by(|left, right| left.slug.cmp(&right.slug));
+    Ok(bundles)
+}
+
+fn bundles_list_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let bundles = list_skill_bundles(hermes_home)?;
+    let stdout = if bundles.is_empty() {
+        format!(
+            "No bundles installed yet. Create one with:\n  hermes bundles create <name> --skill skill1 --skill skill2\nBundles directory: {}\n",
+            bundles_dir(hermes_home).display()
+        )
+    } else {
+        let mut stdout = format!("Skill Bundles ({})\n", bundles.len());
+        for bundle in bundles {
+            stdout.push_str(&format!(
+                "/{}  {}  {}  {}\n",
+                bundle.slug,
+                bundle.name,
+                bundle.skills.len(),
+                bundle.description
+            ));
+        }
+        stdout.push_str(&format!(
+            "\nBundles directory: {}\n",
+            bundles_dir(hermes_home).display()
+        ));
+        stdout
+    };
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn find_bundle(hermes_home: &Path, name: &str) -> io::Result<Option<SkillBundle>> {
+    let slug = bundle_slugify(name);
+    Ok(list_skill_bundles(hermes_home)?
+        .into_iter()
+        .find(|bundle| bundle.slug == slug))
+}
+
+fn bundles_show_output(hermes_home: &Path, name: &str) -> io::Result<CliExecution> {
+    let Some(bundle) = find_bundle(hermes_home, name)? else {
+        return Ok(CliExecution {
+            exit_code: 1,
+            stdout: format!("Bundle {name:?} not found.\n"),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    };
+    let mut stdout = format!(
+        "/{}  {}\n  {}\n  File: {}\n  Skills ({}):\n",
+        bundle.slug,
+        bundle.name,
+        bundle.description,
+        bundle.path.display(),
+        bundle.skills.len()
+    );
+    for skill in &bundle.skills {
+        stdout.push_str(&format!("    - {skill}\n"));
+    }
+    if !bundle.instruction.is_empty() {
+        stdout.push_str(&format!("  Instruction:\n    {}\n", bundle.instruction));
+    }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn parse_bundle_create_args(args: &[&str]) -> Result<(Vec<String>, String, String, bool), String> {
+    let mut skills = Vec::new();
+    let mut description = String::new();
+    let mut instruction = String::new();
+    let mut force = false;
+    let mut index = 0;
+    while index < args.len() {
+        match args[index] {
+            "--skill" | "-s" => {
+                let Some(skill) = args.get(index + 1) else {
+                    return Err("argument --skill/-s: expected one argument".to_string());
+                };
+                skills.push((*skill).to_string());
+                index += 2;
+            }
+            "--description" | "-d" => {
+                let Some(value) = args.get(index + 1) else {
+                    return Err("argument --description/-d: expected one argument".to_string());
+                };
+                description = (*value).to_string();
+                index += 2;
+            }
+            "--instruction" | "-i" => {
+                let Some(value) = args.get(index + 1) else {
+                    return Err("argument --instruction/-i: expected one argument".to_string());
+                };
+                instruction = (*value).to_string();
+                index += 2;
+            }
+            "--force" | "-f" => {
+                force = true;
+                index += 1;
+            }
+            other => {
+                return Err(format!("unrecognized arguments: {other}"));
+            }
+        }
+    }
+    Ok((skills, description, instruction, force))
+}
+
+fn write_bundle_yaml(
+    path: &Path,
+    name: &str,
+    skills: Vec<String>,
+    description: String,
+    instruction: String,
+) -> io::Result<()> {
+    let mut mapping = serde_yaml::Mapping::new();
+    mapping.insert(
+        serde_yaml::Value::String("name".to_string()),
+        serde_yaml::Value::String(name.to_string()),
+    );
+    mapping.insert(
+        serde_yaml::Value::String("skills".to_string()),
+        serde_yaml::Value::Sequence(
+            skills
+                .into_iter()
+                .map(serde_yaml::Value::String)
+                .collect::<Vec<_>>(),
+        ),
+    );
+    if !description.is_empty() {
+        mapping.insert(
+            serde_yaml::Value::String("description".to_string()),
+            serde_yaml::Value::String(description),
+        );
+    }
+    if !instruction.is_empty() {
+        mapping.insert(
+            serde_yaml::Value::String("instruction".to_string()),
+            serde_yaml::Value::String(instruction),
+        );
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(
+        path,
+        serde_yaml::to_string(&serde_yaml::Value::Mapping(mapping))
+            .unwrap_or_else(|_| "{}\n".to_string()),
+    )
+}
+
+fn bundles_create_output(
+    hermes_home: &Path,
+    name: &str,
+    args: &[&str],
+) -> io::Result<CliExecution> {
+    let (skills, description, instruction, force) = match parse_bundle_create_args(args) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            return Ok(CliExecution {
+                exit_code: 2,
+                stdout: String::new(),
+                stdout_markers: BTreeMap::new(),
+                stderr: format!("{error}\n"),
+            });
+        }
+    };
+    let cleaned_skills = skills
+        .into_iter()
+        .map(|skill| skill.trim().to_string())
+        .filter(|skill| !skill.is_empty())
+        .collect::<Vec<_>>();
+    if cleaned_skills.is_empty() {
+        return Ok(CliExecution {
+            exit_code: 1,
+            stdout: "A bundle must reference at least one skill.\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let path = match bundle_path_for(hermes_home, name) {
+        Ok(path) => path,
+        Err(error) => {
+            return Ok(CliExecution {
+                exit_code: 1,
+                stdout: format!("{error}\n"),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            });
+        }
+    };
+    if path.exists() && !force {
+        return Ok(CliExecution {
+            exit_code: 1,
+            stdout: format!(
+                "Bundle already exists at {}\nPass --force to overwrite.\n",
+                path.display()
+            ),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    write_bundle_yaml(
+        &path,
+        name.trim(),
+        cleaned_skills,
+        description.trim().to_string(),
+        instruction.trim().to_string(),
+    )?;
+    let skill_count = find_bundle(hermes_home, name)?
+        .map(|bundle| bundle.skills.len())
+        .unwrap_or(0);
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: format!(
+            "Created bundle: {}\n  Invoke with: /{}  (loads {} skills)\n",
+            path.display(),
+            bundle_slugify(name),
+            skill_count
+        ),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn bundles_delete_output(hermes_home: &Path, name: &str) -> io::Result<CliExecution> {
+    let path = bundle_path_for(hermes_home, name)?;
+    if !path.exists() {
+        return Ok(CliExecution {
+            exit_code: 1,
+            stdout: format!("No bundle at {}\n", path.display()),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    fs::remove_file(&path)?;
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: format!("Deleted bundle: {}\n", path.display()),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn bundles_reload_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let total = list_skill_bundles(hermes_home)?.len();
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: format!("No changes. {total} bundle(s) loaded.\n"),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
 }
 
 fn memory_status_output() -> String {

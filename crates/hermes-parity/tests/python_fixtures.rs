@@ -958,6 +958,69 @@ fn cli_contract_matches_python_fixture() {
     );
     let _ = fs::remove_dir_all(doctor_home);
 
+    let bundles_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-bundles-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&bundles_home);
+    fs::create_dir_all(&bundles_home).unwrap();
+    let bundles_home_display = bundles_home.to_string_lossy().to_string();
+    let bundles_execution = case(&fixture, "safe_bundles_command_execution");
+    for expected in bundles_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &bundles_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&bundles_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&bundles_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let bundles_state = &bundles_execution["state"];
+    let bundle_path = bundles_home.join("skill-bundles").join("daily-flow.yaml");
+    assert_eq!(
+        bundle_path.exists(),
+        bundles_state["after_delete_exists"].as_bool().unwrap()
+    );
+    assert!(bundles_state["after_create_exists"].as_bool().unwrap());
+    assert_eq!(
+        bundles_state["after_create_yaml"]["name"].as_str().unwrap(),
+        "Daily Flow"
+    );
+    assert_eq!(
+        bundles_state["after_create_yaml"]["skills"],
+        json!(["github/review", "mlops/train"])
+    );
+    assert_eq!(
+        bundles_state["after_create_yaml"]["description"]
+            .as_str()
+            .unwrap(),
+        "Daily work"
+    );
+    assert_eq!(
+        bundles_state["after_create_yaml"]["instruction"]
+            .as_str()
+            .unwrap(),
+        "Prioritize tests."
+    );
+    let _ = fs::remove_dir_all(bundles_home);
+
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db
         .create_session(

@@ -1111,6 +1111,201 @@
         {
           "argv": [
             "hermes",
+            "bundles",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "<HERMES_HOME>/skill-bundles": true,
+            "No bundles installed yet": true,
+            "hermes bundles create": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "<HERMES_HOME>/skill-bundles": true,
+            "No bundles installed yet": true,
+            "hermes bundles create": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "bundles",
+            "create",
+            "Daily Flow",
+            "--skill",
+            "github/review",
+            "--skill",
+            "mlops/train",
+            "--description",
+            "Daily work",
+            "--instruction",
+            "Prioritize tests."
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "<HERMES_HOME>/skill-bundles/daily-flow.yaml": true,
+            "Created bundle:": true,
+            "Invoke with: /daily-flow": true,
+            "loads 2 skills": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "<HERMES_HOME>/skill-bundles/daily-flow.yaml": true,
+            "Created bundle:": true,
+            "Invoke with: /daily-flow": true,
+            "loads 2 skills": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "bundles",
+            "create",
+            "Daily Flow",
+            "--skill",
+            "other"
+          ],
+          "exit_code": 1,
+          "expected_markers": {
+            "Bundle already exists at": true,
+            "Pass --force to overwrite": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Bundle already exists at": true,
+            "Pass --force to overwrite": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "bundles",
+            "show",
+            "daily_flow"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "/daily-flow": true,
+            "Daily Flow": true,
+            "Daily work": true,
+            "Instruction:": true,
+            "Prioritize tests.": true,
+            "Skills (2):": true,
+            "github/review": true,
+            "mlops/train": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "/daily-flow": true,
+            "Daily Flow": true,
+            "Daily work": true,
+            "Instruction:": true,
+            "Prioritize tests.": true,
+            "Skills (2):": true,
+            "github/review": true,
+            "mlops/train": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "bundles",
+            "reload"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "No changes. 1 bundle(s) loaded.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No changes. 1 bundle(s) loaded.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "bundles",
+            "delete",
+            "missing"
+          ],
+          "exit_code": 1,
+          "expected_markers": {
+            "No bundle at": true,
+            "missing.yaml": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No bundle at": true,
+            "missing.yaml": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "bundles",
+            "delete",
+            "daily-flow"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "<HERMES_HOME>/skill-bundles/daily-flow.yaml": true,
+            "Deleted bundle:": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "<HERMES_HOME>/skill-bundles/daily-flow.yaml": true,
+            "Deleted bundle:": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "bundles",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "<HERMES_HOME>/skill-bundles": true,
+            "No bundles installed yet": true,
+            "hermes bundles create": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "<HERMES_HOME>/skill-bundles": true,
+            "No bundles installed yet": true,
+            "hermes bundles create": true
+          }
+        }
+      ],
+      "name": "safe_bundles_command_execution",
+      "state": {
+        "after_create_exists": true,
+        "after_create_yaml": {
+          "description": "Daily work",
+          "instruction": "Prioritize tests.",
+          "name": "Daily Flow",
+          "skills": [
+            "github/review",
+            "mlops/train"
+          ]
+        },
+        "after_delete_exists": false
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",
