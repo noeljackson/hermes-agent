@@ -555,6 +555,91 @@
         {
           "argv": [
             "hermes",
+            "memory",
+            "status"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\nMemory status\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  Built-in:  always active\n  Provider:  (none \u2014 built-in only)\n\n  Installed plugins:\n    \u2022 byterover  (requires API key)\n    \u2022 hindsight  (API key / local)\n    \u2022 holographic  (local)\n    \u2022 honcho  (API key / local)\n    \u2022 mem0  (API key / local)\n    \u2022 openviking  (API key / local)\n    \u2022 retaindb  (API key / local)\n    \u2022 supermemory  (requires API key)\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "memory",
+            "off"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\n  \u2713 Memory provider: built-in only\n  Saved to config.yaml\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "memory",
+            "status"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\nMemory status\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  Built-in:  always active\n  Provider:  (none \u2014 built-in only)\n\n  Installed plugins:\n    \u2022 byterover  (requires API key)\n    \u2022 hindsight  (API key / local)\n    \u2022 holographic  (local)\n    \u2022 honcho  (API key / local)\n    \u2022 mem0  (API key / local)\n    \u2022 openviking  (API key / local)\n    \u2022 retaindb  (API key / local)\n    \u2022 supermemory  (requires API key)\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "memory",
+            "reset",
+            "--target",
+            "memory",
+            "--yes"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\n  This will permanently erase the following memory files:\n    \u25c6 MEMORY.md (agent notes) \u2014 9 bytes\n  \u2713 Deleted MEMORY.md (agent notes)\n\n  Memory reset complete. New sessions will start with a blank slate.\n  Files were in: <HERMES_HOME>/memories/\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "memory",
+            "reset",
+            "--target",
+            "user",
+            "--yes"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\n  This will permanently erase the following memory files:\n    \u25c6 USER.md (user profile) \u2014 5 bytes\n  \u2713 Deleted USER.md (user profile)\n\n  Memory reset complete. New sessions will start with a blank slate.\n  Files were in: <HERMES_HOME>/memories/\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "memory",
+            "reset",
+            "--target",
+            "all",
+            "--yes"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\n  Nothing to reset \u2014 no memory files found in <HERMES_HOME>/memories/\n\n",
+          "stdout_markers": {}
+        }
+      ],
+      "name": "safe_memory_command_execution",
+      "state": {
+        "memory_exists": false,
+        "provider": "",
+        "user_exists": false
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",

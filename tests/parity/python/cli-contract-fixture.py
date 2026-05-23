@@ -241,6 +241,51 @@ def main() -> int:
                 }
             )
 
+        memory_home = home / "memory-command-home"
+        memory_env = env.copy()
+        memory_env["HERMES_HOME"] = str(memory_home)
+        (memory_home / "memories").mkdir(parents=True, exist_ok=True)
+        (memory_home / "memories" / "MEMORY.md").write_text(
+            "remember\n", encoding="utf-8"
+        )
+        (memory_home / "memories" / "USER.md").write_text("user\n", encoding="utf-8")
+        memory_commands = []
+        for argv in [
+            ["memory", "status"],
+            ["memory", "off"],
+            ["memory", "status"],
+            ["memory", "reset", "--target", "memory", "--yes"],
+            ["memory", "reset", "--target", "user", "--yes"],
+            ["memory", "reset", "--target", "all", "--yes"],
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=memory_env,
+            )
+            memory_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stdout": normalize_output(command_result.stdout, memory_home),
+                    "stdout_markers": {},
+                    "stderr": normalize_output(command_result.stderr, memory_home),
+                }
+            )
+        memory_config_path = memory_home / "config.yaml"
+        memory_config = {}
+        if memory_config_path.exists():
+            memory_config = yaml.safe_load(
+                memory_config_path.read_text(encoding="utf-8")
+            ) or {}
+        memory_state = {
+            "provider": (memory_config.get("memory") or {}).get("provider"),
+            "memory_exists": (memory_home / "memories" / "MEMORY.md").exists(),
+            "user_exists": (memory_home / "memories" / "USER.md").exists(),
+        }
+
         from hermes_state import SessionDB
 
         db = SessionDB(home / "state.db")
@@ -1875,6 +1920,11 @@ def main() -> int:
             {
                 "name": "safe_auth_command_execution",
                 "commands": auth_commands,
+            },
+            {
+                "name": "safe_memory_command_execution",
+                "commands": memory_commands,
+                "state": memory_state,
             },
             {
                 "name": "safe_session_command_execution",

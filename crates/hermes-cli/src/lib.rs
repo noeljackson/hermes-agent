@@ -334,6 +334,17 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
             exit_code = 1;
             stderr = format!("No credential matching \"{target}\". Provider: {provider}.\n");
         }
+        ["hermes", "memory", "status"] => {
+            stdout = memory_status_output();
+        }
+        ["hermes", "memory", "off"] => {
+            stdout = "\n  ✓ Memory provider: built-in only\n  Saved to config.yaml\n\n".to_string();
+        }
+        ["hermes", "memory", "reset", "--target", _, "--yes"] => {
+            stdout = format!(
+                "\n  Nothing to reset — no memory files found in {hermes_home}/memories/\n\n"
+            );
+        }
         ["hermes", command, "--help"] => {
             if let Some(help) = subcommand_help(command) {
                 stdout = help.to_string();
@@ -564,6 +575,27 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stdout_markers: BTreeMap::new(),
                 stderr: String::new(),
             };
+        }
+        ["hermes", "memory", "status"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: memory_status_output(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "memory", "off"] => {
+            set_memory_provider(hermes_home, "")?;
+            result = CliExecution {
+                exit_code: 0,
+                stdout: "\n  ✓ Memory provider: built-in only\n  Saved to config.yaml\n\n"
+                    .to_string(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "memory", "reset", "--target", target, "--yes"] => {
+            result = memory_reset_target(hermes_home, target)?;
         }
         ["hermes", "cron", "list", "--all"] | ["hermes", "cron", "list"] => {
             let jobs = hermes_cron::load_jobs(cron_jobs_path(hermes_home))?;
@@ -1429,6 +1461,87 @@ fn read_config_value(hermes_home: &Path) -> io::Result<Value> {
     } else {
         Ok(json!({}))
     }
+}
+
+fn write_config_value(hermes_home: &Path, config: &Value) -> io::Result<()> {
+    fs::create_dir_all(hermes_home)?;
+    fs::write(
+        hermes_home.join("config.yaml"),
+        serde_yaml::to_string(config).unwrap_or_else(|_| "{}\n".to_string()),
+    )
+}
+
+fn memory_status_output() -> String {
+    "\nMemory status\n────────────────────────────────────────\n  Built-in:  always active\n  Provider:  (none — built-in only)\n\n  Installed plugins:\n    • byterover  (requires API key)\n    • hindsight  (API key / local)\n    • holographic  (local)\n    • honcho  (API key / local)\n    • mem0  (API key / local)\n    • openviking  (API key / local)\n    • retaindb  (API key / local)\n    • supermemory  (requires API key)\n\n"
+        .to_string()
+}
+
+fn set_memory_provider(hermes_home: &Path, provider: &str) -> io::Result<()> {
+    let mut config = read_config_value(hermes_home)?;
+    if !config.is_object() {
+        config = json!({});
+    }
+    let root = config.as_object_mut().unwrap();
+    let memory = root
+        .entry("memory".to_string())
+        .or_insert_with(|| json!({}));
+    if !memory.is_object() {
+        *memory = json!({});
+    }
+    memory
+        .as_object_mut()
+        .unwrap()
+        .insert("provider".to_string(), Value::String(provider.to_string()));
+    write_config_value(hermes_home, &config)
+}
+
+fn memory_reset_target(hermes_home: &Path, target: &str) -> io::Result<CliExecution> {
+    let mem_dir = hermes_home.join("memories");
+    let mut files = Vec::new();
+    if matches!(target, "all" | "memory") {
+        files.push(("MEMORY.md", "agent notes"));
+    }
+    if matches!(target, "all" | "user") {
+        files.push(("USER.md", "user profile"));
+    }
+    let existing = files
+        .into_iter()
+        .filter_map(|(file, desc)| {
+            let path = mem_dir.join(file);
+            path.exists().then_some((file, desc, path))
+        })
+        .collect::<Vec<_>>();
+    if existing.is_empty() {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: format!(
+                "\n  Nothing to reset — no memory files found in {}/memories/\n\n",
+                hermes_home.display()
+            ),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+
+    let mut stdout = "\n  This will permanently erase the following memory files:\n".to_string();
+    for (file, desc, path) in &existing {
+        let size = fs::metadata(path)?.len();
+        stdout.push_str(&format!("    ◆ {file} ({desc}) — {size} bytes\n"));
+    }
+    for (file, desc, path) in &existing {
+        fs::remove_file(path)?;
+        stdout.push_str(&format!("  ✓ Deleted {file} ({desc})\n"));
+    }
+    stdout.push_str(&format!(
+        "\n  Memory reset complete. New sessions will start with a blank slate.\n  Files were in: {}/memories/\n\n",
+        hermes_home.display()
+    ));
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
 }
 
 fn read_platform_toolsets(hermes_home: &Path, platform: &str) -> io::Result<BTreeSet<String>> {

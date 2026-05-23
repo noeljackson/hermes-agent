@@ -223,6 +223,54 @@ fn cli_contract_matches_python_fixture() {
     }
     let _ = fs::remove_dir_all(auth_home);
 
+    let memory_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-memory-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&memory_home);
+    fs::create_dir_all(memory_home.join("memories")).unwrap();
+    fs::write(memory_home.join("memories").join("MEMORY.md"), "remember\n").unwrap();
+    fs::write(memory_home.join("memories").join("USER.md"), "user\n").unwrap();
+    let memory_home_display = memory_home.to_string_lossy().to_string();
+    let memory_execution = case(&fixture, "safe_memory_command_execution");
+    for expected in memory_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &memory_home).unwrap();
+        actual.stdout = actual.stdout.replace(&memory_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&memory_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stdout, expected["stdout"], "{argv:?} stdout");
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+    }
+    let memory_state = &memory_execution["state"];
+    let memory_config: Value =
+        serde_yaml::from_str(&fs::read_to_string(memory_home.join("config.yaml")).unwrap())
+            .unwrap();
+    assert_eq!(
+        memory_config
+            .get("memory")
+            .and_then(Value::as_object)
+            .and_then(|memory| memory.get("provider"))
+            .and_then(Value::as_str),
+        memory_state["provider"].as_str()
+    );
+    assert_eq!(
+        memory_home.join("memories").join("MEMORY.md").exists(),
+        memory_state["memory_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        memory_home.join("memories").join("USER.md").exists(),
+        memory_state["user_exists"].as_bool().unwrap()
+    );
+    let _ = fs::remove_dir_all(memory_home);
+
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db
         .create_session(

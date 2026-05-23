@@ -310,6 +310,10 @@ against those fixtures in `crates/hermes-parity`:
   behavior is fixture-backed for Telegram and invalid platform diagnostics.
   MCP per-tool `tools enable/disable server:tool` behavior is fixture-backed
   for exclude-list mutation, list display, and missing-server diagnostics.
+  Local memory CLI commands are fixture-backed for `memory status`,
+  `memory off`, and non-interactive `memory reset --target memory/user/all
+  --yes`, including durable `config.yaml` provider mutation and deletion of
+  only the selected built-in memory files.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable
