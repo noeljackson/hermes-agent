@@ -1057,6 +1057,109 @@ def main() -> int:
             else {}
         )
 
+        dump_home = home / "dump-command-home"
+        dump_env = env.copy()
+        dump_env["HERMES_HOME"] = str(dump_home)
+        dump_home.mkdir(parents=True, exist_ok=True)
+        (dump_home / "config.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "model": {"provider": "openrouter", "default": "nous/hermes"},
+                    "terminal": {"backend": "docker"},
+                    "display": {"skin": "mono"},
+                    "fallback_providers": [
+                        {"provider": "local", "model": "llama"},
+                    ],
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        (dump_home / ".env").write_text(
+            "OPENROUTER_API_KEY=sk-or-v1-1234567890abcdef\n"
+            "TELEGRAM_BOT_TOKEN=123456:fake-token\n",
+            encoding="utf-8",
+        )
+        (dump_home / "skills" / "demo").mkdir(parents=True, exist_ok=True)
+        (dump_home / "skills" / "demo" / "SKILL.md").write_text(
+            "---\nname: demo\n---\n", encoding="utf-8"
+        )
+        (dump_home / "cron").mkdir(parents=True, exist_ok=True)
+        (dump_home / "cron" / "jobs.json").write_text(
+            json.dumps({"jobs": [{"enabled": True}, {"enabled": False}]}),
+            encoding="utf-8",
+        )
+        dump_commands = []
+        for argv, marker_map, forbidden in [
+            (
+                ["dump"],
+                {
+                    "--- hermes dump ---": True,
+                    "version:": True,
+                    "os:": True,
+                    "python:": True,
+                    "openai_sdk:": True,
+                    "profile:          default": True,
+                    "hermes_home:      <HERMES_HOME>": True,
+                    "model:            nous/hermes": True,
+                    "provider:         openrouter": True,
+                    "terminal:         docker": True,
+                    "api_keys:": True,
+                    "openrouter           set": True,
+                    "features:": True,
+                    "toolsets:           hermes-cli": True,
+                    "mcp_servers:        0": True,
+                    "memory_provider:    built-in": True,
+                    "gateway:            stopped": True,
+                    "platforms:          telegram": True,
+                    "cron_jobs:          1 active / 2 total": True,
+                    "skills:             1": True,
+                    "config_overrides:": True,
+                    "terminal.backend: docker": True,
+                    "display.skin: mono": True,
+                    "fallback_providers:": True,
+                    "'provider': 'local'": True,
+                    "'model': 'llama'": True,
+                    "--- end dump ---": True,
+                },
+                ["sk-or-v1-1234567890abcdef", "123456:fake-token", "sk-o...cdef"],
+            ),
+            (
+                ["dump", "--show-keys"],
+                {
+                    "--- hermes dump ---": True,
+                    "openrouter           sk-o...cdef": True,
+                    "platforms:          telegram": True,
+                    "cron_jobs:          1 active / 2 total": True,
+                    "--- end dump ---": True,
+                },
+                ["sk-or-v1-1234567890abcdef", "123456:fake-token"],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=dump_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, dump_home)
+            dump_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, dump_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_map
+                    },
+                    "stdout_forbidden": {
+                        marker: marker in normalized_stdout for marker in forbidden
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+
         from hermes_state import SessionDB
 
         db = SessionDB(home / "state.db")
@@ -2735,6 +2838,10 @@ def main() -> int:
                 "name": "safe_curator_command_execution",
                 "commands": curator_commands,
                 "state": curator_state,
+            },
+            {
+                "name": "safe_dump_command_execution",
+                "commands": dump_commands,
             },
             {
                 "name": "safe_session_command_execution",

@@ -352,6 +352,10 @@ against those fixtures in `crates/hermes-parity`:
   Insights CLI empty-history output is fixture-backed for default 30-day
   reporting and `--days` plus `--source` filters without requiring live
   provider usage data.
+  Support dump CLI output is fixture-backed for stable setup markers,
+  configured model/provider/terminal, API-key set-vs-redacted display,
+  platform detection from `.env`, cron/skill counts, config override markers,
+  and absence of raw fake secrets from `dump` and `dump --show-keys`.
   Doctor security-advisory ack is fixture-backed for unknown advisory
   diagnostics and persisting `security.acked_advisories` for the current
   `shai-hulud-2026-05` advisory without running full diagnostics or network

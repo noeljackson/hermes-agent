@@ -1567,6 +1567,111 @@
         {
           "argv": [
             "hermes",
+            "dump"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "'model': 'llama'": true,
+            "'provider': 'local'": true,
+            "--- end dump ---": true,
+            "--- hermes dump ---": true,
+            "api_keys:": true,
+            "config_overrides:": true,
+            "cron_jobs:          1 active / 2 total": true,
+            "display.skin: mono": true,
+            "fallback_providers:": true,
+            "features:": true,
+            "gateway:            stopped": true,
+            "hermes_home:      <HERMES_HOME>": true,
+            "mcp_servers:        0": true,
+            "memory_provider:    built-in": true,
+            "model:            nous/hermes": true,
+            "openai_sdk:": true,
+            "openrouter           set": true,
+            "os:": true,
+            "platforms:          telegram": true,
+            "profile:          default": true,
+            "provider:         openrouter": true,
+            "python:": true,
+            "skills:             1": true,
+            "terminal.backend: docker": true,
+            "terminal:         docker": true,
+            "toolsets:           hermes-cli": true,
+            "version:": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_forbidden": {
+            "123456:fake-token": false,
+            "sk-o...cdef": false,
+            "sk-or-v1-1234567890abcdef": false
+          },
+          "stdout_markers": {
+            "'model': 'llama'": true,
+            "'provider': 'local'": true,
+            "--- end dump ---": true,
+            "--- hermes dump ---": true,
+            "api_keys:": true,
+            "config_overrides:": true,
+            "cron_jobs:          1 active / 2 total": true,
+            "display.skin: mono": true,
+            "fallback_providers:": true,
+            "features:": true,
+            "gateway:            stopped": true,
+            "hermes_home:      <HERMES_HOME>": true,
+            "mcp_servers:        0": true,
+            "memory_provider:    built-in": true,
+            "model:            nous/hermes": true,
+            "openai_sdk:": true,
+            "openrouter           set": true,
+            "os:": true,
+            "platforms:          telegram": true,
+            "profile:          default": true,
+            "provider:         openrouter": true,
+            "python:": true,
+            "skills:             1": true,
+            "terminal.backend: docker": true,
+            "terminal:         docker": true,
+            "toolsets:           hermes-cli": true,
+            "version:": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "dump",
+            "--show-keys"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "--- end dump ---": true,
+            "--- hermes dump ---": true,
+            "cron_jobs:          1 active / 2 total": true,
+            "openrouter           sk-o...cdef": true,
+            "platforms:          telegram": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_forbidden": {
+            "123456:fake-token": false,
+            "sk-or-v1-1234567890abcdef": false
+          },
+          "stdout_markers": {
+            "--- end dump ---": true,
+            "--- hermes dump ---": true,
+            "cron_jobs:          1 active / 2 total": true,
+            "openrouter           sk-o...cdef": true,
+            "platforms:          telegram": true
+          }
+        }
+      ],
+      "name": "safe_dump_command_execution"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",

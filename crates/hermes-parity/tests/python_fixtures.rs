@@ -1102,6 +1102,73 @@ fn cli_contract_matches_python_fixture() {
     assert_eq!(curator_state, curator_execution["state"]);
     let _ = fs::remove_dir_all(curator_home);
 
+    let dump_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-dump-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dump_home);
+    fs::create_dir_all(&dump_home).unwrap();
+    fs::write(
+        dump_home.join("config.yaml"),
+        serde_yaml::to_string(&json!({
+            "model": {"provider": "openrouter", "default": "nous/hermes"},
+            "terminal": {"backend": "docker"},
+            "display": {"skin": "mono"},
+            "fallback_providers": [{"provider": "local", "model": "llama"}],
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dump_home.join(".env"),
+        "OPENROUTER_API_KEY=sk-or-v1-1234567890abcdef\nTELEGRAM_BOT_TOKEN=123456:fake-token\n",
+    )
+    .unwrap();
+    fs::create_dir_all(dump_home.join("skills").join("demo")).unwrap();
+    fs::write(
+        dump_home.join("skills").join("demo").join("SKILL.md"),
+        "---\nname: demo\n---\n",
+    )
+    .unwrap();
+    fs::create_dir_all(dump_home.join("cron")).unwrap();
+    fs::write(
+        dump_home.join("cron").join("jobs.json"),
+        serde_json::to_string(&json!({"jobs": [{"enabled": true}, {"enabled": false}]})).unwrap(),
+    )
+    .unwrap();
+    let dump_home_display = dump_home.to_string_lossy().to_string();
+    let dump_execution = case(&fixture, "safe_dump_command_execution");
+    for expected in dump_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &dump_home).unwrap();
+        actual.stdout = actual.stdout.replace(&dump_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&dump_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+        for (marker, present) in expected["stdout_forbidden"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} forbidden marker {marker}"
+            );
+        }
+    }
+    let _ = fs::remove_dir_all(dump_home);
+
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db
         .create_session(

@@ -721,6 +721,12 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         ["hermes", "curator", "list-archived"] => {
             result = curator_list_archived_output(hermes_home);
         }
+        ["hermes", "dump"] => {
+            result = dump_output(hermes_home, false)?;
+        }
+        ["hermes", "dump", "--show-keys"] => {
+            result = dump_output(hermes_home, true)?;
+        }
         ["hermes", "pairing", "list"] => {
             result = CliExecution {
                 exit_code: 0,
@@ -2374,6 +2380,282 @@ fn insights_empty_output(days: i64, source: Option<&str>) -> CliExecution {
         stdout_markers: BTreeMap::new(),
         stderr: String::new(),
     }
+}
+
+fn read_env_map(hermes_home: &Path) -> io::Result<BTreeMap<String, String>> {
+    let path = hermes_home.join(".env");
+    if !path.exists() {
+        return Ok(BTreeMap::new());
+    }
+    let lines = fs::read_to_string(path)?
+        .lines()
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    Ok(hermes_config::parse_env_lines(&lines))
+}
+
+fn config_obj_field<'a>(config: &'a Value, section: &str, key: &str) -> Option<&'a str> {
+    config
+        .as_object()?
+        .get(section)?
+        .as_object()?
+        .get(key)?
+        .as_str()
+}
+
+fn dump_model_provider(config: &Value) -> (String, String) {
+    let Some(model_cfg) = config.as_object().and_then(|root| root.get("model")) else {
+        return ("(not set)".to_string(), "(auto)".to_string());
+    };
+    if let Some(model) = model_cfg.as_str() {
+        return (
+            if model.is_empty() { "(not set)" } else { model }.to_string(),
+            "(auto)".to_string(),
+        );
+    }
+    let Some(map) = model_cfg.as_object() else {
+        return ("(not set)".to_string(), "(auto)".to_string());
+    };
+    let model = map
+        .get("default")
+        .or_else(|| map.get("model"))
+        .or_else(|| map.get("name"))
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("(not set)");
+    let provider = map
+        .get("provider")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("(auto)");
+    (model.to_string(), provider.to_string())
+}
+
+fn dump_count_skills(hermes_home: &Path) -> usize {
+    let skills_dir = hermes_home.join("skills");
+    let mut count = 0;
+    let mut stack = vec![skills_dir];
+    while let Some(path) = stack.pop() {
+        let Ok(entries) = fs::read_dir(path) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let child = entry.path();
+            if child.is_dir() {
+                stack.push(child);
+            } else if child.file_name().and_then(|name| name.to_str()) == Some("SKILL.md") {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
+fn dump_cron_summary(hermes_home: &Path) -> String {
+    let path = hermes_home.join("cron").join("jobs.json");
+    let Ok(text) = fs::read_to_string(path) else {
+        return "0".to_string();
+    };
+    let Ok(data) = serde_json::from_str::<Value>(&text) else {
+        return "(error reading)".to_string();
+    };
+    let jobs = data
+        .as_object()
+        .and_then(|root| root.get("jobs"))
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let active = jobs
+        .iter()
+        .filter(|job| {
+            job.as_object()
+                .and_then(|obj| obj.get("enabled"))
+                .and_then(Value::as_bool)
+                .unwrap_or(true)
+        })
+        .count();
+    format!("{active} active / {} total", jobs.len())
+}
+
+fn dump_configured_platforms(env: &BTreeMap<String, String>) -> Vec<&'static str> {
+    [
+        ("telegram", "TELEGRAM_BOT_TOKEN"),
+        ("discord", "DISCORD_BOT_TOKEN"),
+        ("slack", "SLACK_BOT_TOKEN"),
+        ("whatsapp", "WHATSAPP_ENABLED"),
+        ("signal", "SIGNAL_HTTP_URL"),
+        ("email", "EMAIL_ADDRESS"),
+        ("sms", "TWILIO_ACCOUNT_SID"),
+        ("matrix", "MATRIX_HOMESERVER_URL"),
+        ("mattermost", "MATTERMOST_URL"),
+        ("homeassistant", "HASS_TOKEN"),
+        ("dingtalk", "DINGTALK_CLIENT_ID"),
+        ("feishu", "FEISHU_APP_ID"),
+        ("wecom", "WECOM_BOT_ID"),
+        ("wecom_callback", "WECOM_CALLBACK_CORP_ID"),
+        ("weixin", "WEIXIN_ACCOUNT_ID"),
+        ("qqbot", "QQ_APP_ID"),
+    ]
+    .into_iter()
+    .filter_map(|(name, key)| env.contains_key(key).then_some(name))
+    .collect()
+}
+
+fn dump_mcp_server_count(config: &Value) -> usize {
+    config
+        .as_object()
+        .and_then(|root| root.get("mcp"))
+        .and_then(Value::as_object)
+        .and_then(|mcp| mcp.get("servers"))
+        .and_then(Value::as_object)
+        .map(|servers| servers.len())
+        .unwrap_or(0)
+}
+
+fn dump_memory_provider(config: &Value) -> &str {
+    config_obj_field(config, "memory", "provider")
+        .filter(|provider| !provider.is_empty())
+        .unwrap_or("built-in")
+}
+
+fn dump_toolsets(config: &Value) -> String {
+    let toolsets = config
+        .as_object()
+        .and_then(|root| root.get("toolsets"))
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_else(|| vec!["hermes-cli".to_string()]);
+    if toolsets.is_empty() {
+        "(default)".to_string()
+    } else {
+        toolsets.join(", ")
+    }
+}
+
+fn dump_fallback_repr(config: &Value) -> Option<String> {
+    let entries = config.as_object()?.get("fallback_providers")?.as_array()?;
+    if entries.is_empty() {
+        return None;
+    }
+    let rendered = entries
+        .iter()
+        .filter_map(Value::as_object)
+        .map(|entry| {
+            let mut fields = Vec::new();
+            for key in ["provider", "model", "base_url", "api_mode"] {
+                if let Some(value) = entry.get(key).and_then(Value::as_str) {
+                    fields.push(format!("'{key}': '{value}'"));
+                }
+            }
+            format!("{{{}}}", fields.join(", "))
+        })
+        .collect::<Vec<_>>();
+    Some(format!("[{}]", rendered.join(", ")))
+}
+
+fn dump_output(hermes_home: &Path, show_keys: bool) -> io::Result<CliExecution> {
+    let env = read_env_map(hermes_home)?;
+    let config = read_config_value(hermes_home)?;
+    let (model, provider) = dump_model_provider(&config);
+    let terminal = config_obj_field(&config, "terminal", "backend").unwrap_or("local");
+    let platforms = dump_configured_platforms(&env);
+    let platform_text = if platforms.is_empty() {
+        "none".to_string()
+    } else {
+        platforms.join(", ")
+    };
+    let mut lines = vec![
+        "--- hermes dump ---".to_string(),
+        "version:          0.0.0 [(unknown)]".to_string(),
+        "os:               unknown".to_string(),
+        "python:           unavailable".to_string(),
+        "openai_sdk:       not installed".to_string(),
+        "profile:          default".to_string(),
+        format!("hermes_home:      {}", hermes_home.display()),
+        format!("model:            {model}"),
+        format!("provider:         {provider}"),
+        format!("terminal:         {terminal}"),
+        String::new(),
+        "api_keys:".to_string(),
+    ];
+    for (env_var, label) in [
+        ("OPENROUTER_API_KEY", "openrouter"),
+        ("OPENAI_API_KEY", "openai"),
+        ("ANTHROPIC_API_KEY", "anthropic"),
+        ("ANTHROPIC_TOKEN", "anthropic_token"),
+        ("NOUS_API_KEY", "nous"),
+        ("GOOGLE_API_KEY", "google/gemini"),
+        ("GEMINI_API_KEY", "gemini"),
+        ("GLM_API_KEY", "glm/zai"),
+        ("ZAI_API_KEY", "zai"),
+        ("KIMI_API_KEY", "kimi"),
+        ("MINIMAX_API_KEY", "minimax"),
+        ("DEEPSEEK_API_KEY", "deepseek"),
+        ("DASHSCOPE_API_KEY", "dashscope"),
+        ("HF_TOKEN", "huggingface"),
+        ("NVIDIA_API_KEY", "nvidia"),
+        ("AI_GATEWAY_API_KEY", "ai_gateway"),
+        ("OPENCODE_ZEN_API_KEY", "opencode_zen"),
+        ("OPENCODE_GO_API_KEY", "opencode_go"),
+        ("KILOCODE_API_KEY", "kilocode"),
+        ("FIRECRAWL_API_KEY", "firecrawl"),
+        ("TAVILY_API_KEY", "tavily"),
+        ("BROWSERBASE_API_KEY", "browserbase"),
+        ("FAL_KEY", "fal"),
+        ("ELEVENLABS_API_KEY", "elevenlabs"),
+        ("GITHUB_TOKEN", "github"),
+    ] {
+        let value = env.get(env_var).map(String::as_str).unwrap_or("");
+        let display = if show_keys && !value.is_empty() {
+            hermes_config::mask_secret(value, "")
+        } else if value.is_empty() {
+            "not set".to_string()
+        } else {
+            "set".to_string()
+        };
+        lines.push(format!("  {label:<20} {display}"));
+    }
+    lines.extend([
+        String::new(),
+        "features:".to_string(),
+        format!("  toolsets:           {}", dump_toolsets(&config)),
+        format!("  mcp_servers:        {}", dump_mcp_server_count(&config)),
+        format!("  memory_provider:    {}", dump_memory_provider(&config)),
+        "  gateway:            stopped (docker (foreground))".to_string(),
+        format!("  platforms:          {platform_text}"),
+        format!("  cron_jobs:          {}", dump_cron_summary(hermes_home)),
+        format!("  skills:             {}", dump_count_skills(hermes_home)),
+    ]);
+    let mut overrides = Vec::new();
+    if terminal != "local" {
+        overrides.push(format!("  terminal.backend: {terminal}"));
+    }
+    if let Some(skin) =
+        config_obj_field(&config, "display", "skin").filter(|skin| *skin != "default")
+    {
+        overrides.push(format!("  display.skin: {skin}"));
+    }
+    if let Some(fallbacks) = dump_fallback_repr(&config) {
+        overrides.push(format!("  fallback_providers: {fallbacks}"));
+    }
+    if !overrides.is_empty() {
+        lines.push(String::new());
+        lines.push("config_overrides:".to_string());
+        lines.extend(overrides);
+    }
+    lines.push("--- end dump ---".to_string());
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: format!("{}\n", lines.join("\n")),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
 }
 
 fn memory_status_output() -> String {
