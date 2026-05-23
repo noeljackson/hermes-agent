@@ -878,6 +878,23 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "checkpoints"] | ["hermes", "checkpoints", "status"] => {
+            result = checkpoints_status_output(hermes_home)?;
+        }
+        ["hermes", "checkpoints", "list"] => {
+            result = checkpoints_status_output(hermes_home)?;
+        }
+        ["hermes", "checkpoints", "list", "--limit", _limit] => {
+            result = checkpoints_status_output(hermes_home)?;
+        }
+        ["hermes", "checkpoints", "clear-legacy", "-f"]
+        | ["hermes", "checkpoints", "clear-legacy", "--force"] => {
+            result = checkpoints_clear_legacy_output(hermes_home)?;
+        }
+        ["hermes", "checkpoints", "clear", "-f"]
+        | ["hermes", "checkpoints", "clear", "--force"] => {
+            result = checkpoints_clear_output(hermes_home)?;
+        }
         ["hermes", "doctor", "--ack", advisory] => {
             if *advisory == "shai-hulud-2026-05" {
                 ack_security_advisory(hermes_home, advisory)?;
@@ -4755,6 +4772,128 @@ fn skills_list_cli_output(
             "0 hub-installed, 0 builtin, {local_count} local — {enabled_count} enabled, {disabled_count} disabled\n\n"
         ));
     }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn checkpoint_base(hermes_home: &Path) -> PathBuf {
+    hermes_home.join("checkpoints")
+}
+
+fn checkpoint_dir_size(path: &Path) -> io::Result<u64> {
+    if path.is_file() {
+        return Ok(path.metadata()?.len());
+    }
+    let mut total = 0;
+    if path.is_dir() {
+        for entry in fs::read_dir(path)?.flatten() {
+            total += checkpoint_dir_size(&entry.path()).unwrap_or(0);
+        }
+    }
+    Ok(total)
+}
+
+fn checkpoint_legacy_archives(base: &Path) -> io::Result<Vec<(String, u64)>> {
+    if !base.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut archives = Vec::new();
+    for entry in fs::read_dir(base)?.flatten() {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().to_string();
+        if path.is_dir() && name.starts_with("legacy-") {
+            archives.push((name, checkpoint_dir_size(&path).unwrap_or(0)));
+        }
+    }
+    archives.sort_by(|left, right| left.0.cmp(&right.0));
+    Ok(archives)
+}
+
+fn checkpoints_status_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let base = checkpoint_base(hermes_home);
+    let legacy = checkpoint_legacy_archives(&base)?;
+    let legacy_size = legacy.iter().map(|(_, size)| *size).sum::<u64>();
+    let store_size = checkpoint_dir_size(&base.join("store")).unwrap_or(0);
+    let total_size = checkpoint_dir_size(&base).unwrap_or(0);
+    let mut stdout = format!(
+        "Checkpoint base: {}\nTotal size:      {}\n  store/         {}\n  legacy-*       {}\nProjects:        0\n",
+        base.display(),
+        backup_format_size(total_size),
+        backup_format_size(store_size),
+        backup_format_size(legacy_size)
+    );
+    if !legacy.is_empty() {
+        stdout.push_str(&format!("\nLegacy archives ({}):\n", legacy.len()));
+        for (name, size) in legacy {
+            stdout.push_str(&format!("  {name:<40}  {:>10}\n", backup_format_size(size)));
+        }
+        stdout.push_str("\nClear with: hermes checkpoints clear-legacy\n");
+    }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn checkpoints_clear_legacy_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let base = checkpoint_base(hermes_home);
+    let legacy = checkpoint_legacy_archives(&base)?;
+    if legacy.is_empty() {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "No legacy archives to clear.\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let mut deleted = 0;
+    let mut bytes = 0;
+    for (name, size) in legacy {
+        let path = base.join(name);
+        if fs::remove_dir_all(path).is_ok() {
+            deleted += 1;
+            bytes += size;
+        }
+    }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: format!(
+            "Deleted {deleted} archive(s), reclaimed {}.\n",
+            backup_format_size(bytes)
+        ),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn checkpoints_clear_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let base = checkpoint_base(hermes_home);
+    if !base.exists() {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "Nothing to clear — checkpoint base does not exist.\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let size = checkpoint_dir_size(&base).unwrap_or(0);
+    let legacy_count = checkpoint_legacy_archives(&base)?.len();
+    let mut stdout = format!(
+        "This will delete the ENTIRE checkpoint base at {}\n  size:        {}\n  projects:    0\n  legacy dirs: {legacy_count}\n\nAll /rollback history for every working directory will be lost.\n",
+        base.display(),
+        backup_format_size(size)
+    );
+    fs::remove_dir_all(&base)?;
+    stdout.push_str(&format!(
+        "Cleared. Reclaimed {}.\n",
+        backup_format_size(size)
+    ));
     Ok(CliExecution {
         exit_code: 0,
         stdout,

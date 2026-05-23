@@ -383,6 +383,10 @@ against those fixtures in `crates/hermes-parity`:
   Full zip import is fixture-backed for `import <zip> --force`, including
   `.hermes/` prefix stripping, config, `.env`, `auth.json`, `state.db`, and
   memory restore, traversal blocking, and `0600` permissions for secret files.
+  Checkpoint-store CLI inspection/control is fixture-backed for status/list
+  rendering against a filesystem checkpoint base, legacy archive listing,
+  forced legacy cleanup, forced full clear, and resulting checkpoint directory
+  state.
 - Backup/import policy: full-backup exclusion rules are fixture-backed for
   regeneratable/runtime directories, SQLite sidecars, bytecode, PID files,
   durable config/secrets/state files, memory, cron, gateway state, and skills.

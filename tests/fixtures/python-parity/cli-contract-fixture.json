@@ -4750,6 +4750,99 @@
         }
       ],
       "name": "safe_skills_command_execution"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "checkpoints",
+            "status"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Checkpoint base: <HERMES_HOME>/checkpoints": true,
+            "Clear with: hermes checkpoints clear-legacy": true,
+            "Legacy archives (1):": true,
+            "Projects:        0": true,
+            "Total size:": true,
+            "legacy-old": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Checkpoint base: <HERMES_HOME>/checkpoints": true,
+            "Clear with: hermes checkpoints clear-legacy": true,
+            "Legacy archives (1):": true,
+            "Projects:        0": true,
+            "Total size:": true,
+            "legacy-old": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "checkpoints",
+            "list",
+            "--limit",
+            "5"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Checkpoint base: <HERMES_HOME>/checkpoints": true,
+            "Projects:        0": true,
+            "legacy-old": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Checkpoint base: <HERMES_HOME>/checkpoints": true,
+            "Projects:        0": true,
+            "legacy-old": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "checkpoints",
+            "clear-legacy",
+            "-f"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Deleted 1 archive(s), reclaimed": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Deleted 1 archive(s), reclaimed": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "checkpoints",
+            "clear",
+            "-f"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Cleared. Reclaimed": true,
+            "This will delete the ENTIRE checkpoint base": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Cleared. Reclaimed": true,
+            "This will delete the ENTIRE checkpoint base": true
+          }
+        }
+      ],
+      "name": "safe_checkpoints_command_execution",
+      "state": {
+        "base_exists": false,
+        "legacy_exists": false
+      }
     }
   ],
   "source": {

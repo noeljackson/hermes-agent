@@ -2733,6 +2733,58 @@ fn cli_contract_matches_python_fixture() {
         }
     }
     let _ = fs::remove_dir_all(skills_home);
+
+    let checkpoints_home = std::env::temp_dir().join(format!(
+        "hermes-parity-cli-checkpoints-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&checkpoints_home);
+    let legacy_dir = checkpoints_home.join("checkpoints").join("legacy-old");
+    fs::create_dir_all(&legacy_dir).unwrap();
+    fs::write(legacy_dir.join("snapshot.txt"), "legacy snapshot\n").unwrap();
+    let checkpoints_home_display = checkpoints_home.to_string_lossy().to_string();
+    let checkpoints_execution = case(&fixture, "safe_checkpoints_command_execution");
+    for expected in checkpoints_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &checkpoints_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&checkpoints_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&checkpoints_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    assert_eq!(
+        checkpoints_home.join("checkpoints").exists(),
+        checkpoints_execution["state"]["base_exists"]
+            .as_bool()
+            .unwrap()
+    );
+    assert_eq!(
+        legacy_dir.exists(),
+        checkpoints_execution["state"]["legacy_exists"]
+            .as_bool()
+            .unwrap()
+    );
+    let _ = fs::remove_dir_all(checkpoints_home);
     let _ = fs::remove_dir_all(cli_home);
 }
 

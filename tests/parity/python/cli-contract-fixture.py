@@ -3104,6 +3104,73 @@ def main() -> int:
                 }
             )
 
+        checkpoints_home = home / "checkpoints-command-home"
+        checkpoints_env = env.copy()
+        checkpoints_env["HERMES_HOME"] = str(checkpoints_home)
+        legacy_dir = checkpoints_home / "checkpoints" / "legacy-old"
+        legacy_dir.mkdir(parents=True, exist_ok=True)
+        (legacy_dir / "snapshot.txt").write_text("legacy snapshot\n", encoding="utf-8")
+        checkpoints_commands = []
+        for argv, marker_map in [
+            (
+                ["checkpoints", "status"],
+                {
+                    "Checkpoint base: <HERMES_HOME>/checkpoints": True,
+                    "Total size:": True,
+                    "Projects:        0": True,
+                    "Legacy archives (1):": True,
+                    "legacy-old": True,
+                    "Clear with: hermes checkpoints clear-legacy": True,
+                },
+            ),
+            (
+                ["checkpoints", "list", "--limit", "5"],
+                {
+                    "Checkpoint base: <HERMES_HOME>/checkpoints": True,
+                    "Projects:        0": True,
+                    "legacy-old": True,
+                },
+            ),
+            (
+                ["checkpoints", "clear-legacy", "-f"],
+                {
+                    "Deleted 1 archive(s), reclaimed": True,
+                },
+            ),
+            (
+                ["checkpoints", "clear", "-f"],
+                {
+                    "This will delete the ENTIRE checkpoint base": True,
+                    "Cleared. Reclaimed": True,
+                },
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=checkpoints_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, checkpoints_home)
+            checkpoints_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, checkpoints_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+        checkpoints_state = {
+            "base_exists": (checkpoints_home / "checkpoints").exists(),
+            "legacy_exists": legacy_dir.exists(),
+        }
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -3280,6 +3347,11 @@ def main() -> int:
             {
                 "name": "safe_skills_command_execution",
                 "commands": skills_commands,
+            },
+            {
+                "name": "safe_checkpoints_command_execution",
+                "commands": checkpoints_commands,
+                "state": checkpoints_state,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))
