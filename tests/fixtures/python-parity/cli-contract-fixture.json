@@ -4494,6 +4494,150 @@
           "skills": []
         }
       }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "plugins",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "1.2.3": true,
+            "Demo user plugin": true,
+            "Plugins": true,
+            "demo-user": true,
+            "hermes plugins enable/disable <name>": true,
+            "not enabled": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "1.2.3": true,
+            "Demo user plugin": true,
+            "Plugins": true,
+            "demo-user": true,
+            "hermes plugins enable/disable <name>": true,
+            "not enabled": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "plugins",
+            "enable",
+            "demo-user"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Plugin demo-user enabled.": true,
+            "Takes effect on next session.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Plugin demo-user enabled.": true,
+            "Takes effect on next session.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "plugins",
+            "enable",
+            "demo-user"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Plugin 'demo-user' is already enabled.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Plugin 'demo-user' is already enabled.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "plugins",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "demo-user": true,
+            "enabled": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "demo-user": true,
+            "enabled": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "plugins",
+            "disable",
+            "demo-user"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Plugin demo-user disabled.": true,
+            "Takes effect on next session.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Plugin demo-user disabled.": true,
+            "Takes effect on next session.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "plugins",
+            "disable",
+            "demo-user"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Plugin 'demo-user' is already disabled.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Plugin 'demo-user' is already disabled.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "plugins",
+            "enable",
+            "missing"
+          ],
+          "exit_code": 1,
+          "expected_markers": {
+            "Plugin 'missing' is not installed or bundled.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Plugin 'missing' is not installed or bundled.": true
+          }
+        }
+      ],
+      "name": "safe_plugins_command_execution",
+      "state": {
+        "disabled": [
+          "demo-user"
+        ],
+        "enabled": []
+      }
     }
   ],
   "source": {

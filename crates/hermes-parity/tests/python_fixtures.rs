@@ -2627,6 +2627,62 @@ fn cli_contract_matches_python_fixture() {
     }
     assert_eq!(webhook_state, webhook_execution["state"]);
     let _ = fs::remove_dir_all(webhook_home);
+
+    let plugins_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-plugins-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&plugins_home);
+    fs::create_dir_all(plugins_home.join("plugins").join("demo-user")).unwrap();
+    fs::write(
+        plugins_home
+            .join("plugins")
+            .join("demo-user")
+            .join("plugin.yaml"),
+        "description: Demo user plugin\nname: demo-user\nversion: 1.2.3\n",
+    )
+    .unwrap();
+    fs::write(
+        plugins_home
+            .join("plugins")
+            .join("demo-user")
+            .join("__init__.py"),
+        "def register(ctx):\n    return None\n",
+    )
+    .unwrap();
+    let plugins_home_display = plugins_home.to_string_lossy().to_string();
+    let plugins_execution = case(&fixture, "safe_plugins_command_execution");
+    for expected in plugins_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &plugins_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&plugins_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&plugins_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let plugins_config: Value =
+        serde_yaml::from_str(&fs::read_to_string(plugins_home.join("config.yaml")).unwrap())
+            .unwrap();
+    assert_eq!(plugins_config["plugins"], plugins_execution["state"]);
+    let _ = fs::remove_dir_all(plugins_home);
     let _ = fs::remove_dir_all(cli_home);
 }
 

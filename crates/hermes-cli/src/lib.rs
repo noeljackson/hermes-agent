@@ -844,6 +844,15 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         ["hermes", "webhook", "test", name] => {
             result = webhook_test_output(hermes_home, name)?;
         }
+        ["hermes", "plugins", "list"] | ["hermes", "plugins", "ls"] => {
+            result = plugins_list_output(hermes_home)?;
+        }
+        ["hermes", "plugins", "enable", name] => {
+            result = plugins_set_enabled_output(hermes_home, name, true)?;
+        }
+        ["hermes", "plugins", "disable", name] => {
+            result = plugins_set_enabled_output(hermes_home, name, false)?;
+        }
         ["hermes", "doctor", "--ack", advisory] => {
             if *advisory == "shai-hulud-2026-05" {
                 ack_security_advisory(hermes_home, advisory)?;
@@ -4444,6 +4453,211 @@ fn webhook_test_output(hermes_home: &Path, raw_name: &str) -> io::Result<CliExec
         stdout_markers: BTreeMap::new(),
         stderr: String::new(),
     })
+}
+
+#[derive(Clone, Debug)]
+struct PluginListEntry {
+    key: String,
+    version: String,
+    description: String,
+}
+
+fn plugin_manifest_value(plugin_dir: &Path) -> Value {
+    for name in ["plugin.yaml", "plugin.yml"] {
+        let path = plugin_dir.join(name);
+        if path.exists() {
+            if let Ok(text) = fs::read_to_string(path) {
+                return serde_yaml::from_str::<Value>(&text).unwrap_or_else(|_| json!({}));
+            }
+        }
+    }
+    json!({})
+}
+
+fn discover_user_plugin_entries(hermes_home: &Path) -> io::Result<Vec<PluginListEntry>> {
+    let plugins_dir = hermes_home.join("plugins");
+    if !plugins_dir.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut entries = Vec::new();
+    for entry in fs::read_dir(plugins_dir)?.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let manifest = plugin_manifest_value(&path);
+        let dir_name = entry.file_name().to_string_lossy().to_string();
+        let key = manifest
+            .get("name")
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+            .unwrap_or(&dir_name)
+            .to_string();
+        let version = manifest
+            .get("version")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
+        let description = manifest
+            .get("description")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
+        entries.push(PluginListEntry {
+            key,
+            version,
+            description,
+        });
+    }
+    entries.sort_by(|left, right| left.key.cmp(&right.key));
+    Ok(entries)
+}
+
+fn plugin_exists_for_cli(hermes_home: &Path, name: &str) -> io::Result<bool> {
+    if hermes_home.join("plugins").join(name).is_dir() {
+        return Ok(true);
+    }
+    Ok(discover_user_plugin_entries(hermes_home)?
+        .iter()
+        .any(|entry| entry.key == name))
+}
+
+fn config_string_set(config: &Value, section: &str, key: &str) -> BTreeSet<String> {
+    config
+        .get(section)
+        .and_then(Value::as_object)
+        .and_then(|section| section.get(key))
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect::<BTreeSet<_>>()
+        })
+        .unwrap_or_default()
+}
+
+fn write_plugin_sets(
+    hermes_home: &Path,
+    enabled: &BTreeSet<String>,
+    disabled: &BTreeSet<String>,
+) -> io::Result<()> {
+    let mut config = read_config_value(hermes_home)?;
+    if !config.is_object() {
+        config = json!({});
+    }
+    let root = config.as_object_mut().unwrap();
+    let plugins = root
+        .entry("plugins".to_string())
+        .or_insert_with(|| json!({}));
+    if !plugins.is_object() {
+        *plugins = json!({});
+    }
+    let plugins = plugins.as_object_mut().unwrap();
+    plugins.insert(
+        "enabled".to_string(),
+        Value::Array(enabled.iter().map(|value| json!(value)).collect()),
+    );
+    plugins.insert(
+        "disabled".to_string(),
+        Value::Array(disabled.iter().map(|value| json!(value)).collect()),
+    );
+    write_config_value(hermes_home, &config)
+}
+
+fn plugins_list_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let entries = discover_user_plugin_entries(hermes_home)?;
+    if entries.is_empty() {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "No plugins installed.\nInstall with: hermes plugins install owner/repo\n"
+                .to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let config = read_config_value(hermes_home)?;
+    let enabled = config_string_set(&config, "plugins", "enabled");
+    let disabled = config_string_set(&config, "plugins", "disabled");
+    let mut stdout = "\nPlugins\nName | Status | Version | Description | Source\n".to_string();
+    for entry in entries {
+        let status = if disabled.contains(&entry.key) {
+            "disabled"
+        } else if enabled.contains(&entry.key) {
+            "enabled"
+        } else {
+            "not enabled"
+        };
+        stdout.push_str(&format!(
+            "{} | {} | {} | {} | user\n",
+            entry.key, status, entry.version, entry.description
+        ));
+    }
+    stdout.push_str(
+        "\nInteractive toggle: hermes plugins\nEnable/disable: hermes plugins enable/disable <name>\nPlugins are opt-in by default — only 'enabled' plugins load.\n",
+    );
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn plugins_set_enabled_output(
+    hermes_home: &Path,
+    name: &str,
+    enable: bool,
+) -> io::Result<CliExecution> {
+    if !plugin_exists_for_cli(hermes_home, name)? {
+        return Ok(CliExecution {
+            exit_code: 1,
+            stdout: format!("Plugin '{name}' is not installed or bundled.\n"),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let config = read_config_value(hermes_home)?;
+    let mut enabled = config_string_set(&config, "plugins", "enabled");
+    let mut disabled = config_string_set(&config, "plugins", "disabled");
+    if enable {
+        if enabled.contains(name) && !disabled.contains(name) {
+            return Ok(CliExecution {
+                exit_code: 0,
+                stdout: format!("Plugin '{name}' is already enabled.\n"),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            });
+        }
+        enabled.insert(name.to_string());
+        disabled.remove(name);
+        write_plugin_sets(hermes_home, &enabled, &disabled)?;
+        Ok(CliExecution {
+            exit_code: 0,
+            stdout: format!("✓ Plugin {name} enabled. Takes effect on next session.\n"),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        })
+    } else {
+        if !enabled.contains(name) && disabled.contains(name) {
+            return Ok(CliExecution {
+                exit_code: 0,
+                stdout: format!("Plugin '{name}' is already disabled.\n"),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            });
+        }
+        enabled.remove(name);
+        disabled.insert(name.to_string());
+        write_plugin_sets(hermes_home, &enabled, &disabled)?;
+        Ok(CliExecution {
+            exit_code: 0,
+            stdout: format!("⊘ Plugin {name} disabled. Takes effect on next session.\n"),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        })
+    }
 }
 
 fn is_valid_profile_name(name: &str) -> bool {

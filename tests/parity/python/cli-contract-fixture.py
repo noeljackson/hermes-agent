@@ -2905,6 +2905,110 @@ def main() -> int:
             if isinstance(route, dict) and route.get("created_at"):
                 route["created_at"] = "<timestamp>"
 
+        plugins_home = home / "plugins-command-home"
+        plugins_env = env.copy()
+        plugins_env["HERMES_HOME"] = str(plugins_home)
+        bundled_plugins = plugins_home / "empty-bundled-plugins"
+        bundled_plugins.mkdir(parents=True, exist_ok=True)
+        plugins_env["HERMES_BUNDLED_PLUGINS"] = str(bundled_plugins)
+        user_plugin = plugins_home / "plugins" / "demo-user"
+        user_plugin.mkdir(parents=True, exist_ok=True)
+        (user_plugin / "plugin.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "name": "demo-user",
+                    "version": "1.2.3",
+                    "description": "Demo user plugin",
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        (user_plugin / "__init__.py").write_text(
+            "def register(ctx):\n    return None\n", encoding="utf-8"
+        )
+        plugins_commands = []
+        for argv, marker_map in [
+            (
+                ["plugins", "list"],
+                {
+                    "Plugins": True,
+                    "demo-user": True,
+                    "1.2.3": True,
+                    "Demo user plugin": True,
+                    "not enabled": True,
+                    "hermes plugins enable/disable <name>": True,
+                },
+            ),
+            (
+                ["plugins", "enable", "demo-user"],
+                {
+                    "Plugin demo-user enabled.": True,
+                    "Takes effect on next session.": True,
+                },
+            ),
+            (
+                ["plugins", "enable", "demo-user"],
+                {
+                    "Plugin 'demo-user' is already enabled.": True,
+                },
+            ),
+            (
+                ["plugins", "list"],
+                {
+                    "demo-user": True,
+                    "enabled": True,
+                },
+            ),
+            (
+                ["plugins", "disable", "demo-user"],
+                {
+                    "Plugin demo-user disabled.": True,
+                    "Takes effect on next session.": True,
+                },
+            ),
+            (
+                ["plugins", "disable", "demo-user"],
+                {
+                    "Plugin 'demo-user' is already disabled.": True,
+                },
+            ),
+            (
+                ["plugins", "enable", "missing"],
+                {
+                    "Plugin 'missing' is not installed or bundled.": True,
+                },
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=plugins_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, plugins_home)
+            plugins_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, plugins_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+        plugins_config = {}
+        plugins_config_path = plugins_home / "config.yaml"
+        if plugins_config_path.exists():
+            plugins_config = (
+                yaml.safe_load(plugins_config_path.read_text(encoding="utf-8"))
+                or {}
+            ).get("plugins") or {}
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -3072,6 +3176,11 @@ def main() -> int:
                 "name": "safe_webhook_command_execution",
                 "commands": webhook_commands,
                 "state": webhook_state,
+            },
+            {
+                "name": "safe_plugins_command_execution",
+                "commands": plugins_commands,
+                "state": plugins_config,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))

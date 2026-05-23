@@ -135,6 +135,10 @@ against those fixtures in `crates/hermes-parity`:
   active-provider selection, including get/list semantics, explicit-config
   precedence, availability-filtered fallback, web capability routing, legacy
   preference order, and the browser rule that Firecrawl is not auto-selected.
+  General plugin CLI management is fixture-backed for user-plugin list
+  rendering, opt-in enable/disable persistence in `config.yaml`, already
+  enabled/disabled diagnostics, and missing-plugin rejection without executing
+  plugin code.
 - Memory-provider plugin boundary: bundled memory-provider directory discovery,
   user memory-provider source-text heuristics, hidden/private/missing-init
   filtering, bundled-over-user collision precedence, `find_provider_dir`
