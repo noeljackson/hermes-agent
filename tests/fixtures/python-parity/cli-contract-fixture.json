@@ -4284,6 +4284,216 @@
         }
       ],
       "name": "safe_gateway_command_execution"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "webhook",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "No dynamic webhook subscriptions.": true,
+            "hermes webhook subscribe <name>": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No dynamic webhook subscriptions.": true,
+            "hermes webhook subscribe <name>": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "webhook",
+            "subscribe",
+            "../bad",
+            "--secret",
+            "route-secret"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Error: Invalid name '../bad'.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Error: Invalid name '../bad'.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "webhook",
+            "subscribe",
+            "notify",
+            "--deliver-only"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Error: --deliver-only requires --deliver": true,
+            "not 'log'": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Error: --deliver-only requires --deliver": true,
+            "not 'log'": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "webhook",
+            "subscribe",
+            "CI Build",
+            "--secret",
+            "route-secret",
+            "--events",
+            "push,release",
+            "--description",
+            "Build notifications",
+            "--skills",
+            "github,ci",
+            "--deliver",
+            "telegram",
+            "--deliver-chat-id",
+            "chat-123",
+            "--deliver-only",
+            "--prompt",
+            "Build {repository.full_name}: {status}"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Created webhook subscription: ci-build": true,
+            "Deliver: telegram": true,
+            "Events: push, release": true,
+            "Message: Build {repository.full_name}: {status}": true,
+            "Mode: direct delivery": true,
+            "Secret: route-secret": true,
+            "URL:    http://localhost:8877/webhooks/ci-build": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Created webhook subscription: ci-build": true,
+            "Deliver: telegram": true,
+            "Events: push, release": true,
+            "Message: Build {repository.full_name}: {status}": true,
+            "Mode: direct delivery": true,
+            "Secret: route-secret": true,
+            "URL:    http://localhost:8877/webhooks/ci-build": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "webhook",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "1 webhook subscription(s)": true,
+            "Build notifications": true,
+            "Deliver: telegram (direct": true,
+            "Events:  push, release": true,
+            "URL:     http://localhost:8877/webhooks/ci-build": true,
+            "ci-build": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "1 webhook subscription(s)": true,
+            "Build notifications": true,
+            "Deliver: telegram (direct": true,
+            "Events:  push, release": true,
+            "URL:     http://localhost:8877/webhooks/ci-build": true,
+            "ci-build": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "webhook",
+            "subscribe",
+            "ci-build",
+            "--secret",
+            "route-secret",
+            "--events",
+            "release",
+            "--description",
+            "Updated notifications",
+            "--deliver",
+            "slack"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Deliver: slack": true,
+            "Events: release": true,
+            "Updated webhook subscription: ci-build": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Deliver: slack": true,
+            "Events: release": true,
+            "Updated webhook subscription: ci-build": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "webhook",
+            "remove",
+            "missing"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "No subscription named 'missing'.": true,
+            "Static routes from config.yaml cannot be removed here.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No subscription named 'missing'.": true,
+            "Static routes from config.yaml cannot be removed here.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "webhook",
+            "test",
+            "missing"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "No subscription named 'missing'.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No subscription named 'missing'.": true
+          }
+        }
+      ],
+      "name": "safe_webhook_command_execution",
+      "state": {
+        "ci-build": {
+          "created_at": "<timestamp>",
+          "deliver": "slack",
+          "description": "Updated notifications",
+          "events": [
+            "release"
+          ],
+          "prompt": "",
+          "secret": "route-secret",
+          "skills": []
+        }
+      }
     }
   ],
   "source": {

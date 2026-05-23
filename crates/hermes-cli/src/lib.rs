@@ -831,6 +831,19 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "webhook", "list"] | ["hermes", "webhook", "ls"] => {
+            result = webhook_list_output(hermes_home)?;
+        }
+        ["hermes", "webhook", "subscribe", name, args @ ..]
+        | ["hermes", "webhook", "add", name, args @ ..] => {
+            result = webhook_subscribe_output(hermes_home, name, args)?;
+        }
+        ["hermes", "webhook", "remove", name] | ["hermes", "webhook", "rm", name] => {
+            result = webhook_remove_output(hermes_home, name)?;
+        }
+        ["hermes", "webhook", "test", name] => {
+            result = webhook_test_output(hermes_home, name)?;
+        }
         ["hermes", "doctor", "--ack", advisory] => {
             if *advisory == "shai-hulud-2026-05" {
                 ack_security_advisory(hermes_home, advisory)?;
@@ -4040,6 +4053,397 @@ fn gateway_list_output(hermes_home: &Path) -> io::Result<String> {
         stdout.push_str(&format!("  ✗ {label:<24}\n"));
     }
     Ok(stdout)
+}
+
+fn webhook_subscriptions_path(hermes_home: &Path) -> PathBuf {
+    hermes_home.join("webhook_subscriptions.json")
+}
+
+fn load_webhook_subscriptions(hermes_home: &Path) -> io::Result<BTreeMap<String, Value>> {
+    let path = webhook_subscriptions_path(hermes_home);
+    if !path.exists() {
+        return Ok(BTreeMap::new());
+    }
+    let value =
+        serde_json::from_str::<Value>(&fs::read_to_string(path)?).unwrap_or_else(|_| json!({}));
+    Ok(value
+        .as_object()
+        .map(|object| {
+            object
+                .iter()
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default())
+}
+
+fn save_webhook_subscriptions(
+    hermes_home: &Path,
+    subscriptions: &BTreeMap<String, Value>,
+) -> io::Result<()> {
+    fs::create_dir_all(hermes_home)?;
+    fs::write(
+        webhook_subscriptions_path(hermes_home),
+        serde_json::to_string_pretty(subscriptions).unwrap_or_else(|_| "{}".to_string()),
+    )
+}
+
+fn webhook_config(config: &Value) -> Option<&serde_json::Map<String, Value>> {
+    config
+        .get("platforms")?
+        .as_object()?
+        .get("webhook")?
+        .as_object()
+}
+
+fn webhook_enabled(hermes_home: &Path) -> io::Result<bool> {
+    let config = read_config_value(hermes_home)?;
+    Ok(webhook_config(&config)
+        .and_then(|webhook| webhook.get("enabled"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false))
+}
+
+fn webhook_base_url(hermes_home: &Path) -> io::Result<String> {
+    let config = read_config_value(hermes_home)?;
+    let extra = webhook_config(&config)
+        .and_then(|webhook| webhook.get("extra"))
+        .and_then(Value::as_object);
+    let host = extra
+        .and_then(|extra| extra.get("host"))
+        .and_then(Value::as_str)
+        .unwrap_or("0.0.0.0");
+    let port = extra
+        .and_then(|extra| extra.get("port"))
+        .and_then(|value| {
+            value
+                .as_u64()
+                .map(|number| number.to_string())
+                .or_else(|| value.as_str().map(str::to_string))
+        })
+        .unwrap_or_else(|| "8644".to_string());
+    let display_host = if host == "0.0.0.0" { "localhost" } else { host };
+    Ok(format!("http://{display_host}:{port}"))
+}
+
+fn webhook_setup_hint(hermes_home: &Path) -> String {
+    let home = hermes_home.display();
+    format!(
+        "\n  Webhook platform is not enabled. To set it up:\n\n  1. Run the gateway setup wizard:\n     hermes gateway setup\n\n  2. Or manually add to {home}/config.yaml:\n     platforms:\n       webhook:\n         enabled: true\n         extra:\n           host: \"0.0.0.0\"\n           port: 8644\n           secret: \"your-global-hmac-secret\"\n\n  3. Or set environment variables in {home}/.env:\n     WEBHOOK_ENABLED=true\n     WEBHOOK_PORT=8644\n     WEBHOOK_SECRET=your-global-secret\n\n  Then start the gateway: hermes gateway run\n\n"
+    )
+}
+
+fn webhook_requires_enabled(hermes_home: &Path) -> io::Result<Option<CliExecution>> {
+    if webhook_enabled(hermes_home)? {
+        Ok(None)
+    } else {
+        Ok(Some(CliExecution {
+            exit_code: 0,
+            stdout: webhook_setup_hint(hermes_home),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        }))
+    }
+}
+
+fn normalize_webhook_name(raw: &str) -> String {
+    raw.trim().to_ascii_lowercase().replace(' ', "-")
+}
+
+fn is_valid_webhook_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    matches!(chars.next(), Some(ch) if ch.is_ascii_lowercase() || ch.is_ascii_digit())
+        && chars.all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '-' || ch == '_')
+}
+
+#[derive(Default)]
+struct WebhookSubscribeArgs {
+    prompt: String,
+    events: String,
+    description: String,
+    skills: String,
+    deliver: String,
+    deliver_chat_id: String,
+    secret: String,
+    deliver_only: bool,
+}
+
+fn parse_webhook_subscribe_args(args: &[&str]) -> WebhookSubscribeArgs {
+    let mut parsed = WebhookSubscribeArgs {
+        deliver: "log".to_string(),
+        ..WebhookSubscribeArgs::default()
+    };
+    let mut i = 0;
+    while i < args.len() {
+        match args[i] {
+            "--prompt" if i + 1 < args.len() => {
+                parsed.prompt = args[i + 1].to_string();
+                i += 2;
+            }
+            "--events" if i + 1 < args.len() => {
+                parsed.events = args[i + 1].to_string();
+                i += 2;
+            }
+            "--description" if i + 1 < args.len() => {
+                parsed.description = args[i + 1].to_string();
+                i += 2;
+            }
+            "--skills" if i + 1 < args.len() => {
+                parsed.skills = args[i + 1].to_string();
+                i += 2;
+            }
+            "--deliver" if i + 1 < args.len() => {
+                parsed.deliver = args[i + 1].to_string();
+                i += 2;
+            }
+            "--deliver-chat-id" if i + 1 < args.len() => {
+                parsed.deliver_chat_id = args[i + 1].to_string();
+                i += 2;
+            }
+            "--secret" if i + 1 < args.len() => {
+                parsed.secret = args[i + 1].to_string();
+                i += 2;
+            }
+            "--deliver-only" => {
+                parsed.deliver_only = true;
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    parsed
+}
+
+fn split_csv(value: &str) -> Vec<Value> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(|item| json!(item))
+        .collect()
+}
+
+fn webhook_list_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    if let Some(disabled) = webhook_requires_enabled(hermes_home)? {
+        return Ok(disabled);
+    }
+    let subscriptions = load_webhook_subscriptions(hermes_home)?;
+    if subscriptions.is_empty() {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "  No dynamic webhook subscriptions.\n  Create one with: hermes webhook subscribe <name>\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let base_url = webhook_base_url(hermes_home)?;
+    let mut stdout = format!("\n  {} webhook subscription(s):\n\n", subscriptions.len());
+    for (name, route) in subscriptions {
+        let object = route.as_object();
+        let events = object
+            .and_then(|object| object.get("events"))
+            .and_then(Value::as_array)
+            .map(|events| {
+                events
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            })
+            .filter(|events| !events.is_empty())
+            .unwrap_or_else(|| "(all)".to_string());
+        let mut deliver = object
+            .and_then(|object| object.get("deliver"))
+            .and_then(Value::as_str)
+            .unwrap_or("log")
+            .to_string();
+        if object
+            .and_then(|object| object.get("deliver_only"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            deliver.push_str(" (direct — no agent)");
+        }
+        let description = object
+            .and_then(|object| object.get("description"))
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        stdout.push_str(&format!("  ◆ {name}\n"));
+        if !description.is_empty() {
+            stdout.push_str(&format!("    {description}\n"));
+        }
+        stdout.push_str(&format!(
+            "    URL:     {base_url}/webhooks/{name}\n    Events:  {events}\n    Deliver: {deliver}\n\n"
+        ));
+    }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn webhook_subscribe_output(
+    hermes_home: &Path,
+    raw_name: &str,
+    args: &[&str],
+) -> io::Result<CliExecution> {
+    if let Some(disabled) = webhook_requires_enabled(hermes_home)? {
+        return Ok(disabled);
+    }
+    let name = normalize_webhook_name(raw_name);
+    if !is_valid_webhook_name(&name) {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: format!(
+                "Error: Invalid name '{name}'. Use lowercase alphanumeric with hyphens/underscores.\n"
+            ),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let parsed = parse_webhook_subscribe_args(args);
+    if parsed.deliver_only && parsed.deliver == "log" {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "Error: --deliver-only requires --deliver to be a real target (telegram, discord, slack, github_comment, etc.) — not 'log'.\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let mut subscriptions = load_webhook_subscriptions(hermes_home)?;
+    let is_update = subscriptions.contains_key(&name);
+    let secret = if parsed.secret.is_empty() {
+        "generated-secret".to_string()
+    } else {
+        parsed.secret.clone()
+    };
+    let events = split_csv(&parsed.events);
+    let skills = split_csv(&parsed.skills);
+    let mut route = serde_json::Map::new();
+    route.insert(
+        "description".to_string(),
+        json!(if parsed.description.is_empty() {
+            format!("Agent-created subscription: {name}")
+        } else {
+            parsed.description.clone()
+        }),
+    );
+    route.insert("events".to_string(), Value::Array(events.clone()));
+    route.insert("secret".to_string(), json!(secret));
+    route.insert("prompt".to_string(), json!(parsed.prompt));
+    route.insert("skills".to_string(), Value::Array(skills));
+    route.insert("deliver".to_string(), json!(parsed.deliver));
+    route.insert("created_at".to_string(), json!("1970-01-01T00:00:00Z"));
+    if parsed.deliver_only {
+        route.insert("deliver_only".to_string(), json!(true));
+    }
+    if !parsed.deliver_chat_id.is_empty() {
+        route.insert(
+            "deliver_extra".to_string(),
+            json!({"chat_id": parsed.deliver_chat_id}),
+        );
+    }
+    subscriptions.insert(name.clone(), Value::Object(route));
+    save_webhook_subscriptions(hermes_home, &subscriptions)?;
+
+    let base_url = webhook_base_url(hermes_home)?;
+    let status = if is_update { "Updated" } else { "Created" };
+    let mut stdout = format!(
+        "\n  {status} webhook subscription: {name}\n  URL:    {base_url}/webhooks/{name}\n  Secret: {}\n",
+        if parsed.secret.is_empty() {
+            "generated-secret"
+        } else {
+            &parsed.secret
+        }
+    );
+    if events.is_empty() {
+        stdout.push_str("  Events: (all)\n");
+    } else {
+        let rendered = events
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>()
+            .join(", ");
+        stdout.push_str(&format!("  Events: {rendered}\n"));
+    }
+    stdout.push_str(&format!("  Deliver: {}\n", parsed.deliver));
+    if parsed.deliver_only {
+        stdout.push_str("  Mode: direct delivery (no agent, zero LLM cost)\n");
+    }
+    if !parsed.prompt.is_empty() {
+        let preview = if parsed.prompt.chars().count() > 80 {
+            format!("{}...", parsed.prompt.chars().take(80).collect::<String>())
+        } else {
+            parsed.prompt.clone()
+        };
+        let label = if parsed.deliver_only {
+            "Message"
+        } else {
+            "Prompt"
+        };
+        stdout.push_str(&format!("  {label}: {preview}\n"));
+    }
+    stdout.push_str(
+        "\n  Configure your service to POST to the URL above.\n  Use the secret for HMAC-SHA256 signature validation.\n  The gateway must be running to receive events (hermes gateway run).\n\n",
+    );
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn webhook_remove_output(hermes_home: &Path, raw_name: &str) -> io::Result<CliExecution> {
+    if let Some(disabled) = webhook_requires_enabled(hermes_home)? {
+        return Ok(disabled);
+    }
+    let name = raw_name.trim().to_ascii_lowercase();
+    let mut subscriptions = load_webhook_subscriptions(hermes_home)?;
+    if subscriptions.remove(&name).is_none() {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: format!(
+                "  No subscription named '{name}'.\n  Note: Static routes from config.yaml cannot be removed here.\n"
+            ),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    save_webhook_subscriptions(hermes_home, &subscriptions)?;
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: format!("  Removed webhook subscription: {name}\n"),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn webhook_test_output(hermes_home: &Path, raw_name: &str) -> io::Result<CliExecution> {
+    if let Some(disabled) = webhook_requires_enabled(hermes_home)? {
+        return Ok(disabled);
+    }
+    let name = raw_name.trim().to_ascii_lowercase();
+    let subscriptions = load_webhook_subscriptions(hermes_home)?;
+    if !subscriptions.contains_key(&name) {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: format!("  No subscription named '{name}'.\n"),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: format!(
+            "  Sending test POST to {}/webhooks/{name}\n  Error: network disabled in parity harness\n  Is the gateway running? (hermes gateway run)\n",
+            webhook_base_url(hermes_home)?
+        ),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
 }
 
 fn is_valid_profile_name(name: &str) -> bool {

@@ -2572,6 +2572,61 @@ fn cli_contract_matches_python_fixture() {
         }
     }
     let _ = fs::remove_dir_all(gateway_home);
+
+    let webhook_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-webhook-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&webhook_home);
+    fs::create_dir_all(&webhook_home).unwrap();
+    fs::write(
+        webhook_home.join("config.yaml"),
+        "platforms:\n  webhook:\n    enabled: true\n    extra:\n      host: 0.0.0.0\n      port: 8877\n      secret: global-secret\n",
+    )
+    .unwrap();
+    let webhook_home_display = webhook_home.to_string_lossy().to_string();
+    let webhook_execution = case(&fixture, "safe_webhook_command_execution");
+    for expected in webhook_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &webhook_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&webhook_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&webhook_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let mut webhook_state: Value = serde_json::from_str(
+        &fs::read_to_string(webhook_home.join("webhook_subscriptions.json")).unwrap(),
+    )
+    .unwrap();
+    if let Some(routes) = webhook_state.as_object_mut() {
+        for route in routes.values_mut() {
+            if let Some(route) = route.as_object_mut() {
+                if route.get("created_at").and_then(Value::as_str).is_some() {
+                    route.insert("created_at".to_string(), json!("<timestamp>"));
+                }
+            }
+        }
+    }
+    assert_eq!(webhook_state, webhook_execution["state"]);
+    let _ = fs::remove_dir_all(webhook_home);
     let _ = fs::remove_dir_all(cli_home);
 }
 

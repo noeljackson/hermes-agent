@@ -2754,6 +2754,157 @@ def main() -> int:
                 }
             )
 
+        webhook_home = home / "webhook-command-home"
+        webhook_env = env.copy()
+        webhook_env["HERMES_HOME"] = str(webhook_home)
+        webhook_home.mkdir(parents=True, exist_ok=True)
+        (webhook_home / "config.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "platforms": {
+                        "webhook": {
+                            "enabled": True,
+                            "extra": {
+                                "host": "0.0.0.0",
+                                "port": 8877,
+                                "secret": "global-secret",
+                            },
+                        }
+                    }
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        webhook_commands = []
+        for argv, marker_map in [
+            (
+                ["webhook", "list"],
+                {
+                    "No dynamic webhook subscriptions.": True,
+                    "hermes webhook subscribe <name>": True,
+                },
+            ),
+            (
+                ["webhook", "subscribe", "../bad", "--secret", "route-secret"],
+                {
+                    "Error: Invalid name '../bad'.": True,
+                },
+            ),
+            (
+                ["webhook", "subscribe", "notify", "--deliver-only"],
+                {
+                    "Error: --deliver-only requires --deliver": True,
+                    "not 'log'": True,
+                },
+            ),
+            (
+                [
+                    "webhook",
+                    "subscribe",
+                    "CI Build",
+                    "--secret",
+                    "route-secret",
+                    "--events",
+                    "push,release",
+                    "--description",
+                    "Build notifications",
+                    "--skills",
+                    "github,ci",
+                    "--deliver",
+                    "telegram",
+                    "--deliver-chat-id",
+                    "chat-123",
+                    "--deliver-only",
+                    "--prompt",
+                    "Build {repository.full_name}: {status}",
+                ],
+                {
+                    "Created webhook subscription: ci-build": True,
+                    "URL:    http://localhost:8877/webhooks/ci-build": True,
+                    "Secret: route-secret": True,
+                    "Events: push, release": True,
+                    "Deliver: telegram": True,
+                    "Mode: direct delivery": True,
+                    "Message: Build {repository.full_name}: {status}": True,
+                },
+            ),
+            (
+                ["webhook", "list"],
+                {
+                    "1 webhook subscription(s)": True,
+                    "ci-build": True,
+                    "Build notifications": True,
+                    "URL:     http://localhost:8877/webhooks/ci-build": True,
+                    "Events:  push, release": True,
+                    "Deliver: telegram (direct": True,
+                },
+            ),
+            (
+                [
+                    "webhook",
+                    "subscribe",
+                    "ci-build",
+                    "--secret",
+                    "route-secret",
+                    "--events",
+                    "release",
+                    "--description",
+                    "Updated notifications",
+                    "--deliver",
+                    "slack",
+                ],
+                {
+                    "Updated webhook subscription: ci-build": True,
+                    "Events: release": True,
+                    "Deliver: slack": True,
+                },
+            ),
+            (
+                ["webhook", "remove", "missing"],
+                {
+                    "No subscription named 'missing'.": True,
+                    "Static routes from config.yaml cannot be removed here.": True,
+                },
+            ),
+            (
+                ["webhook", "test", "missing"],
+                {
+                    "No subscription named 'missing'.": True,
+                },
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=webhook_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, webhook_home)
+            webhook_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, webhook_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+        webhook_state_path = webhook_home / "webhook_subscriptions.json"
+        webhook_state = (
+            json.loads(webhook_state_path.read_text(encoding="utf-8"))
+            if webhook_state_path.exists()
+            else {}
+        )
+        for route in webhook_state.values():
+            if isinstance(route, dict) and route.get("created_at"):
+                route["created_at"] = "<timestamp>"
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -2916,6 +3067,11 @@ def main() -> int:
             {
                 "name": "safe_gateway_command_execution",
                 "commands": gateway_commands,
+            },
+            {
+                "name": "safe_webhook_command_execution",
+                "commands": webhook_commands,
+                "state": webhook_state,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))

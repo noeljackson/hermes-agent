@@ -178,7 +178,11 @@ against those fixtures in `crates/hermes-parity`:
   startup guidance, no-running-gateway stop behavior, and multi-profile status
   inventory without contacting messaging platforms. Container service-manager
   guidance for `gateway start`, `gateway install`, and `gateway uninstall` is
-  fixture-backed from the Docker oracle. Live platform adapters themselves
+  fixture-backed from the Docker oracle. Dynamic webhook subscription CLI
+  management is fixture-backed for enabled-platform detection, empty listing,
+  invalid-name rejection, direct-delivery validation, create/update/list
+  rendering, missing remove/test diagnostics, and durable
+  `webhook_subscriptions.json` shape without posting to a gateway. Live platform adapters themselves
   remain opt-in/future work until deterministic adapter fixtures cover each
   platform boundary.
 - MCP filtering: server/tool name sanitization, include/exclude filtering
