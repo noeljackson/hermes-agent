@@ -483,6 +483,28 @@
         {
           "argv": [
             "hermes",
+            "hooks",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "No shell hooks configured in ~/.hermes/config.yaml.\nSee `hermes hooks --help` or\n    website/docs/user-guide/features/hooks.md\nfor the config schema and worked examples.\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "hooks",
+            "doctor"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "No shell hooks configured \u2014 nothing to check.\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
             "mcp",
             "list"
           ],

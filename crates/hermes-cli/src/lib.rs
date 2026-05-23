@@ -452,6 +452,12 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "gateway", "uninstall"] => {
             stdout = gateway_container_uninstall_output();
         }
+        ["hermes", "hooks", "list"] | ["hermes", "hooks", "ls"] => {
+            stdout = "No shell hooks configured in ~/.hermes/config.yaml.\nSee `hermes hooks --help` or\n    website/docs/user-guide/features/hooks.md\nfor the config schema and worked examples.\n".to_string();
+        }
+        ["hermes", "hooks", "doctor"] => {
+            stdout = "No shell hooks configured — nothing to check.\n".to_string();
+        }
         ["hermes", "cron", "create", schedule, prompt, "--name", name, "--deliver", _deliver] => {
             let display = hermes_cron::parse_schedule(schedule)
                 .ok()

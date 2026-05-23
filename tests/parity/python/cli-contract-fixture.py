@@ -190,6 +190,8 @@ def main() -> int:
             ["cron", "list"],
             ["dashboard", "--status"],
             ["dashboard", "--stop"],
+            ["hooks", "list"],
+            ["hooks", "doctor"],
             ["mcp", "list"],
             ["sessions", "list", "--limit", "5"],
             ["tools", "list"],

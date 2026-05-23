@@ -332,6 +332,9 @@ against those fixtures in `crates/hermes-parity`:
   entire generated scripts.
   Computer-use CLI status is fixture-backed for the no-`cua-driver` path
   without attempting macOS-only installation or network access.
+  Shell-hook CLI inspection is fixture-backed for empty-config `hooks list`
+  and `hooks doctor` behavior without executing user hook scripts or mutating
+  hook consent state.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable
