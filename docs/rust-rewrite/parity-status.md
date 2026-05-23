@@ -323,6 +323,9 @@ against those fixtures in `crates/hermes-parity`:
   --slashes-only`, full manifest display metadata/scopes/socket-mode shape,
   reserved command filtering, first-class slash command count, stable command
   URL/escape flags, and `--write` file output without contacting Slack.
+  Dashboard lifecycle status commands are fixture-backed for no-running-process
+  `dashboard --status` and `dashboard --stop` behavior without starting the
+  web UI or importing dashboard server dependencies.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable

@@ -419,6 +419,9 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
             stdout = "No scheduled jobs.\nCreate one with 'hermes cron create ...' or the /cron command in chat.\n"
                 .to_string();
         }
+        ["hermes", "dashboard", "--status"] | ["hermes", "dashboard", "--stop"] => {
+            stdout = "No hermes dashboard processes running.\n".to_string();
+        }
         ["hermes", "gateway", "status"] => {
             stdout = gateway_status_output();
         }

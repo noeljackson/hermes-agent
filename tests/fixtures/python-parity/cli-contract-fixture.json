@@ -399,6 +399,28 @@
         {
           "argv": [
             "hermes",
+            "dashboard",
+            "--status"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "No hermes dashboard processes running.\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "dashboard",
+            "--stop"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "No hermes dashboard processes running.\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
             "mcp",
             "list"
           ],

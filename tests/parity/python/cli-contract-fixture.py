@@ -163,6 +163,8 @@ def main() -> int:
             ["config", "edit"],
             ["config", "show"],
             ["cron", "list"],
+            ["dashboard", "--status"],
+            ["dashboard", "--stop"],
             ["mcp", "list"],
             ["sessions", "list", "--limit", "5"],
             ["tools", "list"],
