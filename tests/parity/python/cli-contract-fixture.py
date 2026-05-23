@@ -993,6 +993,68 @@ def main() -> int:
             (fallback_home / "config.yaml").read_text(encoding="utf-8")
         )
 
+        curator_home = home / "curator-command-home"
+        curator_env = env.copy()
+        curator_env["HERMES_HOME"] = str(curator_home)
+        curator_home.mkdir(parents=True, exist_ok=True)
+        curator_commands = []
+        for argv, marker_map in [
+            (
+                ["curator", "status"],
+                {
+                    "curator: ENABLED": True,
+                    "runs:           0": True,
+                    "last run:       never": True,
+                    "last summary:   (none)": True,
+                    "interval:       every 7d": True,
+                    "stale after:    30d unused": True,
+                    "archive after:  90d unused": True,
+                    "no agent-created skills": True,
+                },
+            ),
+            (["curator", "pause"], {"curator: paused": True}),
+            (
+                ["curator", "status"],
+                {
+                    "curator: PAUSED": True,
+                    "runs:           0": True,
+                    "last run:       never": True,
+                    "no agent-created skills": True,
+                },
+            ),
+            (["curator", "resume"], {"curator: resumed": True}),
+            (
+                ["curator", "list-archived"],
+                {"curator: no archived skills": True},
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=curator_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, curator_home)
+            curator_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, curator_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+        curator_state_path = curator_home / "skills" / ".curator_state"
+        curator_state = (
+            json.loads(curator_state_path.read_text(encoding="utf-8"))
+            if curator_state_path.exists()
+            else {}
+        )
+
         from hermes_state import SessionDB
 
         db = SessionDB(home / "state.db")
@@ -2666,6 +2728,11 @@ def main() -> int:
                 "name": "safe_fallback_command_execution",
                 "commands": fallback_commands,
                 "state": fallback_state,
+            },
+            {
+                "name": "safe_curator_command_execution",
+                "commands": curator_commands,
+                "state": curator_state,
             },
             {
                 "name": "safe_session_command_execution",

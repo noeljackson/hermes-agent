@@ -345,6 +345,10 @@ against those fixtures in `crates/hermes-parity`:
   `fallback clear` no-ops, configured primary rendering, fallback chain
   ordering, base URL display, and preservation of the existing
   `fallback_model` plus `fallback_providers` config data.
+  Curator CLI status/state basics are fixture-backed for default enabled
+  status, pause/resume persistence in `skills/.curator_state`, paused status
+  rendering, and empty `curator list-archived` output without running the
+  auxiliary-model curator review.
   Doctor security-advisory ack is fixture-backed for unknown advisory
   diagnostics and persisting `security.acked_advisories` for the current
   `shai-hulud-2026-05` advisory without running full diagnostics or network

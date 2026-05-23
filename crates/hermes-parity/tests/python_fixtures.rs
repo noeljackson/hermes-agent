@@ -1068,6 +1068,40 @@ fn cli_contract_matches_python_fixture() {
     assert_eq!(fallback_config, fallback_execution["state"]);
     let _ = fs::remove_dir_all(fallback_home);
 
+    let curator_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-curator-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&curator_home);
+    fs::create_dir_all(&curator_home).unwrap();
+    let curator_execution = case(&fixture, "safe_curator_command_execution");
+    for expected in curator_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let actual = hermes_cli::run_safe_command_in_home(&argv, &curator_home).unwrap();
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let curator_state: Value = serde_json::from_str(
+        &fs::read_to_string(curator_home.join("skills").join(".curator_state")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(curator_state, curator_execution["state"]);
+    let _ = fs::remove_dir_all(curator_home);
+
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db
         .create_session(

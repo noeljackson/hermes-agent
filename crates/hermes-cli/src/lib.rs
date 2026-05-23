@@ -703,6 +703,18 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         ["hermes", "fallback", "clear"] => {
             result = fallback_clear_output(hermes_home)?;
         }
+        ["hermes", "curator", "status"] => {
+            result = curator_status_output(hermes_home)?;
+        }
+        ["hermes", "curator", "pause"] => {
+            result = curator_set_paused_output(hermes_home, true)?;
+        }
+        ["hermes", "curator", "resume"] => {
+            result = curator_set_paused_output(hermes_home, false)?;
+        }
+        ["hermes", "curator", "list-archived"] => {
+            result = curator_list_archived_output(hermes_home);
+        }
         ["hermes", "pairing", "list"] => {
             result = CliExecution {
                 exit_code: 0,
@@ -2216,6 +2228,136 @@ fn fallback_clear_output(hermes_home: &Path) -> io::Result<CliExecution> {
         stdout_markers: BTreeMap::new(),
         stderr: String::new(),
     })
+}
+
+fn curator_state_path(hermes_home: &Path) -> PathBuf {
+    hermes_home.join("skills").join(".curator_state")
+}
+
+fn curator_default_state() -> Value {
+    json!({
+        "last_report_path": null,
+        "last_run_at": null,
+        "last_run_duration_seconds": null,
+        "last_run_summary": null,
+        "last_run_summary_shown_at": null,
+        "paused": false,
+        "run_count": 0,
+    })
+}
+
+fn read_curator_state(hermes_home: &Path) -> io::Result<Value> {
+    let path = curator_state_path(hermes_home);
+    let mut state = curator_default_state();
+    if path.exists() {
+        if let Ok(Value::Object(existing)) =
+            serde_json::from_str::<Value>(&fs::read_to_string(path)?)
+        {
+            let root = state.as_object_mut().unwrap();
+            for (key, value) in existing {
+                if root.contains_key(&key) || key.starts_with('_') {
+                    root.insert(key, value);
+                }
+            }
+        }
+    }
+    Ok(state)
+}
+
+fn write_curator_state(hermes_home: &Path, state: &Value) -> io::Result<()> {
+    let path = curator_state_path(hermes_home);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(
+        path,
+        serde_json::to_string_pretty(state).unwrap_or_else(|_| "{}".to_string()),
+    )
+}
+
+fn curator_config_value(config: &Value, key: &str, default: i64) -> i64 {
+    config
+        .as_object()
+        .and_then(|root| root.get("curator"))
+        .and_then(Value::as_object)
+        .and_then(|curator| curator.get(key))
+        .and_then(|value| {
+            value
+                .as_i64()
+                .or_else(|| value.as_str().and_then(|text| text.parse::<i64>().ok()))
+        })
+        .unwrap_or(default)
+}
+
+fn curator_enabled(config: &Value) -> bool {
+    config
+        .as_object()
+        .and_then(|root| root.get("curator"))
+        .and_then(Value::as_object)
+        .and_then(|curator| curator.get("enabled"))
+        .and_then(Value::as_bool)
+        .unwrap_or(true)
+}
+
+fn curator_interval_label(hours: i64) -> String {
+    if hours >= 24 && hours % 24 == 0 {
+        format!("{}d", hours / 24)
+    } else {
+        format!("{hours}h")
+    }
+}
+
+fn curator_status_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let config = read_config_value(hermes_home)?;
+    let state = read_curator_state(hermes_home)?;
+    let paused = state["paused"].as_bool().unwrap_or(false);
+    let enabled = curator_enabled(&config);
+    let status = if enabled && !paused {
+        "ENABLED"
+    } else if paused {
+        "PAUSED"
+    } else {
+        "DISABLED"
+    };
+    let runs = state["run_count"].as_i64().unwrap_or(0);
+    let last_summary = state["last_run_summary"].as_str().unwrap_or("(none)");
+    let interval = curator_interval_label(curator_config_value(&config, "interval_hours", 168));
+    let stale_after = curator_config_value(&config, "stale_after_days", 30);
+    let archive_after = curator_config_value(&config, "archive_after_days", 90);
+    let stdout = format!(
+        "curator: {status}\n  runs:           {runs}\n  last run:       never\n  last summary:   {last_summary}\n  interval:       every {interval}\n  stale after:    {stale_after}d unused\n  archive after:  {archive_after}d unused\n\nno agent-created skills\n"
+    );
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn curator_set_paused_output(hermes_home: &Path, paused: bool) -> io::Result<CliExecution> {
+    let mut state = read_curator_state(hermes_home)?;
+    state["paused"] = Value::Bool(paused);
+    write_curator_state(hermes_home, &state)?;
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: if paused {
+            "curator: paused\n".to_string()
+        } else {
+            "curator: resumed\n".to_string()
+        },
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn curator_list_archived_output(_hermes_home: &Path) -> CliExecution {
+    CliExecution {
+        exit_code: 0,
+        stdout: "curator: no archived skills\n".to_string(),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    }
 }
 
 fn memory_status_output() -> String {

@@ -1429,6 +1429,120 @@
         {
           "argv": [
             "hermes",
+            "curator",
+            "status"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "archive after:  90d unused": true,
+            "curator: ENABLED": true,
+            "interval:       every 7d": true,
+            "last run:       never": true,
+            "last summary:   (none)": true,
+            "no agent-created skills": true,
+            "runs:           0": true,
+            "stale after:    30d unused": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "archive after:  90d unused": true,
+            "curator: ENABLED": true,
+            "interval:       every 7d": true,
+            "last run:       never": true,
+            "last summary:   (none)": true,
+            "no agent-created skills": true,
+            "runs:           0": true,
+            "stale after:    30d unused": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "curator",
+            "pause"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "curator: paused": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "curator: paused": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "curator",
+            "status"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "curator: PAUSED": true,
+            "last run:       never": true,
+            "no agent-created skills": true,
+            "runs:           0": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "curator: PAUSED": true,
+            "last run:       never": true,
+            "no agent-created skills": true,
+            "runs:           0": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "curator",
+            "resume"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "curator: resumed": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "curator: resumed": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "curator",
+            "list-archived"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "curator: no archived skills": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "curator: no archived skills": true
+          }
+        }
+      ],
+      "name": "safe_curator_command_execution",
+      "state": {
+        "last_report_path": null,
+        "last_run_at": null,
+        "last_run_duration_seconds": null,
+        "last_run_summary": null,
+        "last_run_summary_shown_at": null,
+        "paused": false,
+        "run_count": 0
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",
