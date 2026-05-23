@@ -186,6 +186,7 @@ def main() -> int:
             ["completion", "bash"],
             ["completion", "zsh"],
             ["completion", "fish"],
+            ["computer-use", "status"],
             ["cron", "list"],
             ["dashboard", "--status"],
             ["dashboard", "--stop"],

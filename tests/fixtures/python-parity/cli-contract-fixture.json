@@ -439,6 +439,17 @@
         {
           "argv": [
             "hermes",
+            "computer-use",
+            "status"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "cua-driver: not installed\n  Run: hermes computer-use install\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
             "cron",
             "list"
           ],

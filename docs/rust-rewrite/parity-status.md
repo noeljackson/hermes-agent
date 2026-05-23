@@ -330,6 +330,8 @@ against those fixtures in `crates/hermes-parity`:
   fish script markers, including profile helper hooks and top-level
   `config`/`profile` command completion presence without snapshotting the
   entire generated scripts.
+  Computer-use CLI status is fixture-backed for the no-`cua-driver` path
+  without attempting macOS-only installation or network access.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable

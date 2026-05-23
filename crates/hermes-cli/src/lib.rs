@@ -399,6 +399,9 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "completion", "fish"] => {
             stdout = completion_fish_output();
         }
+        ["hermes", "computer-use", "status"] => {
+            stdout = "cua-driver: not installed\n  Run: hermes computer-use install\n".to_string();
+        }
         ["hermes", "config", "edit"] => {
             let config_path = Path::new(hermes_home).join("config.yaml");
             if !config_path.exists() {
