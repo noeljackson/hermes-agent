@@ -202,7 +202,8 @@ against those fixtures in `crates/hermes-parity`:
   listing persisted remote/stdio servers, `mcp ls`, include/exclude display
   labels, enabled/disabled status, server removal via `mcp rm` without
   dropping unrelated config, missing-server `mcp remove` and `mcp test`
-  diagnostics, and non-network `mcp add` validation errors.
+  diagnostics, non-network `mcp add` validation errors, and `mcp login`
+  diagnostics for missing, stdio/non-URL, and URL-but-not-OAuth servers.
 - MCP schema normalization: draft-07 `definitions` to `$defs` rewriting,
   local `$ref` rewriting, nullable-union collapse, object-shape repair,
   dangling `required` pruning, and empty-schema defaults.

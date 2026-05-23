@@ -2737,6 +2737,30 @@ def main() -> int:
                 },
             ),
             (
+                ["mcp", "login", "missing"],
+                {
+                    "Server 'missing' not found in config.": True,
+                    "Available servers:": True,
+                    "remote-demo": True,
+                    "local-demo": True,
+                },
+            ),
+            (
+                ["mcp", "login", "local-demo"],
+                {
+                    "Server 'local-demo' has no URL": True,
+                    "not an OAuth-capable server": True,
+                },
+            ),
+            (
+                ["mcp", "login", "remote-demo"],
+                {
+                    "Server 'remote-demo' is not configured for OAuth": True,
+                    "auth=None": True,
+                    "Use `hermes mcp remove` + `hermes mcp add`": True,
+                },
+            ),
+            (
                 ["mcp", "rm", "remote-demo"],
                 {"Removed 'remote-demo' from config": True},
             ),

@@ -4140,6 +4140,69 @@
           "argv": [
             "hermes",
             "mcp",
+            "login",
+            "missing"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Available servers:": true,
+            "Server 'missing' not found in config.": true,
+            "local-demo": true,
+            "remote-demo": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Available servers:": true,
+            "Server 'missing' not found in config.": true,
+            "local-demo": true,
+            "remote-demo": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "login",
+            "local-demo"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Server 'local-demo' has no URL": true,
+            "not an OAuth-capable server": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Server 'local-demo' has no URL": true,
+            "not an OAuth-capable server": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
+            "login",
+            "remote-demo"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Server 'remote-demo' is not configured for OAuth": true,
+            "Use `hermes mcp remove` + `hermes mcp add`": true,
+            "auth=None": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Server 'remote-demo' is not configured for OAuth": true,
+            "Use `hermes mcp remove` + `hermes mcp add`": true,
+            "auth=None": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "mcp",
             "rm",
             "remote-demo"
           ],

@@ -1044,6 +1044,11 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 }
             };
         }
+        ["hermes", "mcp", "login", name] => {
+            let config = read_config_value(hermes_home)?;
+            let servers = mcp_servers(&config);
+            result = mcp_login_output(name, &servers);
+        }
         ["hermes", "tools", "enable", name, "--platform", platform] => {
             result = if !is_valid_toolset_platform(platform) {
                 unknown_toolset_platform_output(platform)
@@ -5585,6 +5590,36 @@ fn mcp_truthy(value: &Value) -> bool {
         Value::Bool(value) => *value,
         Value::String(value) => matches!(value.to_ascii_lowercase().as_str(), "true" | "1" | "yes"),
         _ => false,
+    }
+}
+
+fn mcp_login_output(name: &str, servers: &BTreeMap<String, Value>) -> CliExecution {
+    let stdout = if let Some(config) = servers.get(name) {
+        if config.get("url").and_then(Value::as_str).is_none() {
+            format!("  ✗ Server '{name}' has no URL — not an OAuth-capable server\n")
+        } else if config.get("auth").and_then(Value::as_str) != Some("oauth") {
+            let auth = config.get("auth").and_then(Value::as_str).unwrap_or("None");
+            format!(
+                "  ✗ Server '{name}' is not configured for OAuth (auth={auth})\n  Use `hermes mcp remove` + `hermes mcp add` to reconfigure auth.\n"
+            )
+        } else {
+            format!("\n  Starting OAuth flow for '{name}'...\n")
+        }
+    } else {
+        let mut stdout = format!("  ✗ Server '{name}' not found in config.\n");
+        if !servers.is_empty() {
+            stdout.push_str(&format!(
+                "  Available servers: {}\n",
+                servers.keys().cloned().collect::<Vec<_>>().join(", ")
+            ));
+        }
+        stdout
+    };
+    CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
     }
 }
 
