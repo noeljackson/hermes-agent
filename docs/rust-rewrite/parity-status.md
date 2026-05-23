@@ -314,6 +314,11 @@ against those fixtures in `crates/hermes-parity`:
   `memory off`, and non-interactive `memory reset --target memory/user/all
   --yes`, including durable `config.yaml` provider mutation and deletion of
   only the selected built-in memory files.
+  DM pairing CLI commands are fixture-backed for legacy-path pairing state
+  discovery, `pairing list`, `pairing approve`, `pairing revoke`, and
+  `pairing clear-pending`, including pending-code promotion to approved
+  users, revoke deletion, failed-approval accounting, and clearing only
+  pending request files.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable

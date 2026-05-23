@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
@@ -345,6 +346,18 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
                 "\n  Nothing to reset — no memory files found in {hermes_home}/memories/\n\n"
             );
         }
+        ["hermes", "pairing", "list"] => {
+            stdout = "No pairing data found. No one has tried to pair yet~\n".to_string();
+        }
+        ["hermes", "pairing", "approve", platform, code] => {
+            stdout = pairing_missing_code_output(platform, code);
+        }
+        ["hermes", "pairing", "revoke", platform, user_id] => {
+            stdout = pairing_revoke_missing_output(platform, user_id);
+        }
+        ["hermes", "pairing", "clear-pending"] => {
+            stdout = "\n  No pending requests to clear.\n".to_string();
+        }
         ["hermes", command, "--help"] => {
             if let Some(help) = subcommand_help(command) {
                 stdout = help.to_string();
@@ -596,6 +609,23 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "memory", "reset", "--target", target, "--yes"] => {
             result = memory_reset_target(hermes_home, target)?;
+        }
+        ["hermes", "pairing", "list"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: pairing_list_output(hermes_home)?,
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "pairing", "approve", platform, code] => {
+            result = pairing_approve_code(hermes_home, platform, code)?;
+        }
+        ["hermes", "pairing", "revoke", platform, user_id] => {
+            result = pairing_revoke_user(hermes_home, platform, user_id)?;
+        }
+        ["hermes", "pairing", "clear-pending"] => {
+            result = pairing_clear_pending(hermes_home)?;
         }
         ["hermes", "cron", "list", "--all"] | ["hermes", "cron", "list"] => {
             let jobs = hermes_cron::load_jobs(cron_jobs_path(hermes_home))?;
@@ -1542,6 +1572,309 @@ fn memory_reset_target(hermes_home: &Path, target: &str) -> io::Result<CliExecut
         stdout_markers: BTreeMap::new(),
         stderr: String::new(),
     })
+}
+
+fn pairing_dir(hermes_home: &Path) -> PathBuf {
+    let legacy = hermes_home.join("pairing");
+    if legacy.exists() {
+        legacy
+    } else {
+        hermes_home.join("platforms").join("pairing")
+    }
+}
+
+fn pairing_json(path: &Path) -> io::Result<Value> {
+    if path.exists() {
+        Ok(serde_json::from_str::<Value>(&fs::read_to_string(path)?).unwrap_or_else(|_| json!({})))
+    } else {
+        Ok(json!({}))
+    }
+}
+
+fn write_pairing_json(path: &Path, value: &Value) -> io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(
+        path,
+        serde_json::to_string_pretty(value)
+            .map_err(io::Error::other)?
+            .as_bytes(),
+    )
+}
+
+fn pairing_platforms(dir: &Path, suffix: &str) -> io::Result<Vec<String>> {
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let tail = format!("-{suffix}.json");
+    let mut platforms = Vec::new();
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        if let Some(platform) = name.strip_suffix(&tail) {
+            if !platform.starts_with('_') {
+                platforms.push(platform.to_string());
+            }
+        }
+    }
+    Ok(platforms)
+}
+
+fn pairing_pending_path(dir: &Path, platform: &str) -> PathBuf {
+    dir.join(format!("{platform}-pending.json"))
+}
+
+fn pairing_approved_path(dir: &Path, platform: &str) -> PathBuf {
+    dir.join(format!("{platform}-approved.json"))
+}
+
+fn pairing_rate_limits_path(dir: &Path) -> PathBuf {
+    dir.join("_rate_limits.json")
+}
+
+fn current_unix_seconds() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs_f64())
+        .unwrap_or(0.0)
+}
+
+fn pairing_list_output(hermes_home: &Path) -> io::Result<String> {
+    let dir = pairing_dir(hermes_home);
+    let now = current_unix_seconds();
+    let mut pending_rows = Vec::new();
+    for platform in pairing_platforms(&dir, "pending")? {
+        let pending = pairing_json(&pairing_pending_path(&dir, &platform))?;
+        if let Some(entries) = pending.as_object() {
+            for (code, info) in entries {
+                let created_at = info
+                    .get("created_at")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(now);
+                let age_minutes = ((now - created_at).max(0.0) / 60.0).floor() as i64;
+                pending_rows.push((
+                    platform.clone(),
+                    code.to_string(),
+                    info.get("user_id")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                    info.get("user_name")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                    age_minutes,
+                ));
+            }
+        }
+    }
+
+    let mut approved_rows = Vec::new();
+    for platform in pairing_platforms(&dir, "approved")? {
+        let approved = pairing_json(&pairing_approved_path(&dir, &platform))?;
+        if let Some(entries) = approved.as_object() {
+            for (user_id, info) in entries {
+                approved_rows.push((
+                    platform.clone(),
+                    user_id.to_string(),
+                    info.get("user_name")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                ));
+            }
+        }
+    }
+
+    if pending_rows.is_empty() && approved_rows.is_empty() {
+        return Ok("No pairing data found. No one has tried to pair yet~\n".to_string());
+    }
+
+    let mut stdout = String::new();
+    if pending_rows.is_empty() {
+        stdout.push_str("\n  No pending pairing requests.\n");
+    } else {
+        stdout.push_str(&format!(
+            "\n  Pending Pairing Requests ({}):\n",
+            pending_rows.len()
+        ));
+        stdout.push_str(&format!(
+            "  {:<12} {:<10} {:<20} {:<20} {}\n",
+            "Platform", "Code", "User ID", "Name", "Age"
+        ));
+        stdout.push_str(&format!(
+            "  {:<12} {:<10} {:<20} {:<20} {}\n",
+            "--------", "----", "-------", "----", "---"
+        ));
+        for (platform, code, user_id, user_name, age_minutes) in pending_rows {
+            stdout.push_str(&format!(
+                "  {platform:<12} {code:<10} {user_id:<20} {user_name:<20} {age_minutes}m ago\n"
+            ));
+        }
+    }
+
+    if approved_rows.is_empty() {
+        stdout.push_str("\n  No approved users.\n");
+    } else {
+        stdout.push_str(&format!("\n  Approved Users ({}):\n", approved_rows.len()));
+        stdout.push_str(&format!(
+            "  {:<12} {:<20} {:<20}\n",
+            "Platform", "User ID", "Name"
+        ));
+        stdout.push_str(&format!(
+            "  {:<12} {:<20} {:<20}\n",
+            "--------", "-------", "----"
+        ));
+        for (platform, user_id, user_name) in approved_rows {
+            stdout.push_str(&format!("  {platform:<12} {user_id:<20} {user_name:<20}\n"));
+        }
+    }
+    stdout.push('\n');
+    Ok(stdout)
+}
+
+fn pairing_approve_code(
+    hermes_home: &Path,
+    raw_platform: &str,
+    raw_code: &str,
+) -> io::Result<CliExecution> {
+    let dir = pairing_dir(hermes_home);
+    let platform = raw_platform.to_ascii_lowercase();
+    let code = raw_code.to_ascii_uppercase();
+    let pending_path = pairing_pending_path(&dir, &platform);
+    let mut pending = pairing_json(&pending_path)?;
+    let entry = pending
+        .as_object_mut()
+        .and_then(|entries| entries.remove(&code));
+    let Some(entry) = entry else {
+        pairing_record_failed_attempt(&dir, &platform)?;
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: pairing_missing_code_output(&platform, &code),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    };
+    write_pairing_json(&pending_path, &pending)?;
+
+    let user_id = entry
+        .get("user_id")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let user_name = entry
+        .get("user_name")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let approved_path = pairing_approved_path(&dir, &platform);
+    let mut approved = pairing_json(&approved_path)?;
+    if !approved.is_object() {
+        approved = json!({});
+    }
+    approved.as_object_mut().unwrap().insert(
+        user_id.clone(),
+        json!({"user_name": user_name, "approved_at": current_unix_seconds()}),
+    );
+    write_pairing_json(&approved_path, &approved)?;
+
+    let display = if user_name.is_empty() {
+        user_id.clone()
+    } else {
+        format!("{user_name} ({user_id})")
+    };
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout: format!(
+            "\n  Approved! User {display} on {platform} can now use the bot~\n  They'll be recognized automatically on their next message.\n\n"
+        ),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn pairing_record_failed_attempt(dir: &Path, platform: &str) -> io::Result<()> {
+    let path = pairing_rate_limits_path(dir);
+    let mut limits = pairing_json(&path)?;
+    if !limits.is_object() {
+        limits = json!({});
+    }
+    let key = format!("_failures:{platform}");
+    let count = limits.get(&key).and_then(Value::as_i64).unwrap_or(0) + 1;
+    limits.as_object_mut().unwrap().insert(key, json!(count));
+    write_pairing_json(&path, &limits)
+}
+
+fn pairing_revoke_user(
+    hermes_home: &Path,
+    raw_platform: &str,
+    user_id: &str,
+) -> io::Result<CliExecution> {
+    let dir = pairing_dir(hermes_home);
+    let platform = raw_platform.to_ascii_lowercase();
+    let approved_path = pairing_approved_path(&dir, &platform);
+    let mut approved = pairing_json(&approved_path)?;
+    let removed = approved
+        .as_object_mut()
+        .map(|entries| entries.remove(user_id).is_some())
+        .unwrap_or(false);
+    if removed {
+        write_pairing_json(&approved_path, &approved)?;
+        Ok(CliExecution {
+            exit_code: 0,
+            stdout: format!("\n  Revoked access for user {user_id} on {platform}.\n\n"),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        })
+    } else {
+        Ok(CliExecution {
+            exit_code: 0,
+            stdout: pairing_revoke_missing_output(&platform, user_id),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        })
+    }
+}
+
+fn pairing_clear_pending(hermes_home: &Path) -> io::Result<CliExecution> {
+    let dir = pairing_dir(hermes_home);
+    let mut count = 0usize;
+    for platform in pairing_platforms(&dir, "pending")? {
+        let path = pairing_pending_path(&dir, &platform);
+        let pending = pairing_json(&path)?;
+        count += pending
+            .as_object()
+            .map(|entries| entries.len())
+            .unwrap_or(0);
+        write_pairing_json(&path, &json!({}))?;
+    }
+    let stdout = if count == 0 {
+        "\n  No pending requests to clear.\n".to_string()
+    } else {
+        format!("\n  Cleared {count} pending pairing request(s).\n\n")
+    };
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn pairing_missing_code_output(platform: &str, code: &str) -> String {
+    format!(
+        "\n  Code '{}' not found or expired for platform '{}'.\n  Run 'hermes pairing list' to see pending codes.\n\n",
+        code.to_ascii_uppercase(),
+        platform.to_ascii_lowercase()
+    )
+}
+
+fn pairing_revoke_missing_output(platform: &str, user_id: &str) -> String {
+    format!(
+        "\n  User {user_id} not found in approved list for {}.\n\n",
+        platform.to_ascii_lowercase()
+    )
 }
 
 fn read_platform_toolsets(hermes_home: &Path, platform: &str) -> io::Result<BTreeSet<String>> {

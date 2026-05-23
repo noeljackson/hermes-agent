@@ -50,6 +50,8 @@ def cron_state(home):
 
 
 def main() -> int:
+    import json
+
     out = parse_out_arg()
     with isolated_hermes_home() as home:
         from hermes_cli.main import _BUILTIN_SUBCOMMANDS
@@ -284,6 +286,110 @@ def main() -> int:
             "provider": (memory_config.get("memory") or {}).get("provider"),
             "memory_exists": (memory_home / "memories" / "MEMORY.md").exists(),
             "user_exists": (memory_home / "memories" / "USER.md").exists(),
+        }
+
+        pairing_home = home / "pairing-command-home"
+        pairing_env = env.copy()
+        pairing_env["HERMES_HOME"] = str(pairing_home)
+        (pairing_home / ".env").parent.mkdir(parents=True, exist_ok=True)
+        (pairing_home / ".env").write_text("", encoding="utf-8")
+        pairing_dir = pairing_home / "pairing"
+        pairing_dir.mkdir(parents=True, exist_ok=True)
+        now = time.time()
+        (pairing_dir / "telegram-pending.json").write_text(
+            json.dumps(
+                {
+                    "TEST1234": {
+                        "user_id": "U123",
+                        "user_name": "Ada",
+                        "created_at": now,
+                    }
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        (pairing_dir / "discord-pending.json").write_text(
+            json.dumps(
+                {
+                    "DISC1234": {
+                        "user_id": "D123",
+                        "user_name": "Dee",
+                        "created_at": now,
+                    }
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        (pairing_dir / "slack-approved.json").write_text(
+            json.dumps(
+                {"S123": {"user_name": "Sam", "approved_at": now}},
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        pairing_commands = []
+        for argv in [
+            ["pairing", "list"],
+            ["pairing", "approve", "telegram", "TEST1234"],
+            ["pairing", "revoke", "slack", "S123"],
+            ["pairing", "approve", "telegram", "MISSING"],
+            ["pairing", "revoke", "telegram", "nobody"],
+            ["pairing", "clear-pending"],
+            ["pairing", "list"],
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=pairing_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, pairing_home)
+            case = {
+                "argv": ["hermes", *argv],
+                "exit_code": command_result.returncode,
+                "stdout": normalized_stdout,
+                "stdout_markers": {},
+                "stderr": normalize_output(command_result.stderr, pairing_home),
+            }
+            if argv == ["pairing", "list"]:
+                case["stdout"] = ""
+                case["stdout_markers"] = {
+                    marker: marker in normalized_stdout
+                    for marker in [
+                        "Pending Pairing Requests",
+                        "Approved Users",
+                        "telegram",
+                        "U123",
+                        "Ada",
+                    ]
+                }
+            pairing_commands.append(case)
+        telegram_approved = json.loads(
+            (pairing_dir / "telegram-approved.json").read_text(encoding="utf-8")
+        )
+        telegram_pending = json.loads(
+            (pairing_dir / "telegram-pending.json").read_text(encoding="utf-8")
+        )
+        discord_pending = json.loads(
+            (pairing_dir / "discord-pending.json").read_text(encoding="utf-8")
+        )
+        slack_approved = json.loads(
+            (pairing_dir / "slack-approved.json").read_text(encoding="utf-8")
+        )
+        rate_limits = json.loads(
+            (pairing_dir / "_rate_limits.json").read_text(encoding="utf-8")
+        )
+        pairing_state = {
+            "telegram_approved_user_name": (
+                telegram_approved.get("U123") or {}
+            ).get("user_name"),
+            "telegram_pending_empty": telegram_pending == {},
+            "discord_pending_empty": discord_pending == {},
+            "slack_approved_empty": slack_approved == {},
+            "telegram_failure_count": rate_limits.get("_failures:telegram"),
         }
 
         from hermes_state import SessionDB
@@ -1925,6 +2031,11 @@ def main() -> int:
                 "name": "safe_memory_command_execution",
                 "commands": memory_commands,
                 "state": memory_state,
+            },
+            {
+                "name": "safe_pairing_command_execution",
+                "commands": pairing_commands,
+                "state": pairing_state,
             },
             {
                 "name": "safe_session_command_execution",

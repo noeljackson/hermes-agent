@@ -271,6 +271,113 @@ fn cli_contract_matches_python_fixture() {
     );
     let _ = fs::remove_dir_all(memory_home);
 
+    let pairing_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-pairing-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&pairing_home);
+    let pairing_dir = pairing_home.join("pairing");
+    fs::create_dir_all(&pairing_dir).unwrap();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f64();
+    fs::write(
+        pairing_dir.join("telegram-pending.json"),
+        serde_json::to_string_pretty(&json!({
+            "TEST1234": {"user_id": "U123", "user_name": "Ada", "created_at": now}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        pairing_dir.join("discord-pending.json"),
+        serde_json::to_string_pretty(&json!({
+            "DISC1234": {"user_id": "D123", "user_name": "Dee", "created_at": now}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        pairing_dir.join("slack-approved.json"),
+        serde_json::to_string_pretty(&json!({
+            "S123": {"user_name": "Sam", "approved_at": now}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let pairing_home_display = pairing_home.to_string_lossy().to_string();
+    let pairing_execution = case(&fixture, "safe_pairing_command_execution");
+    for expected in pairing_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &pairing_home).unwrap();
+        actual.stdout = actual
+            .stdout
+            .replace(&pairing_home_display, "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(&pairing_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        if !expected["stdout"].as_str().unwrap_or("").is_empty() {
+            assert_eq!(actual.stdout, expected["stdout"], "{argv:?} stdout");
+        }
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let pairing_state = &pairing_execution["state"];
+    let telegram_approved: Value = serde_json::from_str(
+        &fs::read_to_string(pairing_dir.join("telegram-approved.json")).unwrap(),
+    )
+    .unwrap();
+    let telegram_pending: Value = serde_json::from_str(
+        &fs::read_to_string(pairing_dir.join("telegram-pending.json")).unwrap(),
+    )
+    .unwrap();
+    let discord_pending: Value = serde_json::from_str(
+        &fs::read_to_string(pairing_dir.join("discord-pending.json")).unwrap(),
+    )
+    .unwrap();
+    let slack_approved: Value =
+        serde_json::from_str(&fs::read_to_string(pairing_dir.join("slack-approved.json")).unwrap())
+            .unwrap();
+    let rate_limits: Value =
+        serde_json::from_str(&fs::read_to_string(pairing_dir.join("_rate_limits.json")).unwrap())
+            .unwrap();
+    assert_eq!(
+        telegram_approved["U123"]["user_name"].as_str(),
+        pairing_state["telegram_approved_user_name"].as_str()
+    );
+    assert_eq!(
+        telegram_pending.as_object().unwrap().is_empty(),
+        pairing_state["telegram_pending_empty"].as_bool().unwrap()
+    );
+    assert_eq!(
+        discord_pending.as_object().unwrap().is_empty(),
+        pairing_state["discord_pending_empty"].as_bool().unwrap()
+    );
+    assert_eq!(
+        slack_approved.as_object().unwrap().is_empty(),
+        pairing_state["slack_approved_empty"].as_bool().unwrap()
+    );
+    assert_eq!(
+        rate_limits["_failures:telegram"].as_i64(),
+        pairing_state["telegram_failure_count"].as_i64()
+    );
+    let _ = fs::remove_dir_all(pairing_home);
+
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db
         .create_session(

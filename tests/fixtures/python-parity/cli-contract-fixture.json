@@ -640,6 +640,115 @@
         {
           "argv": [
             "hermes",
+            "pairing",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Ada": true,
+            "Approved Users": true,
+            "Pending Pairing Requests": true,
+            "U123": true,
+            "telegram": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "pairing",
+            "approve",
+            "telegram",
+            "TEST1234"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\n  Approved! User Ada (U123) on telegram can now use the bot~\n  They'll be recognized automatically on their next message.\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "pairing",
+            "revoke",
+            "slack",
+            "S123"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\n  Revoked access for user S123 on slack.\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "pairing",
+            "approve",
+            "telegram",
+            "MISSING"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\n  Code 'MISSING' not found or expired for platform 'telegram'.\n  Run 'hermes pairing list' to see pending codes.\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "pairing",
+            "revoke",
+            "telegram",
+            "nobody"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\n  User nobody not found in approved list for telegram.\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "pairing",
+            "clear-pending"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "\n  Cleared 1 pending pairing request(s).\n\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "pairing",
+            "list"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Ada": true,
+            "Approved Users": true,
+            "Pending Pairing Requests": false,
+            "U123": true,
+            "telegram": true
+          }
+        }
+      ],
+      "name": "safe_pairing_command_execution",
+      "state": {
+        "discord_pending_empty": true,
+        "slack_approved_empty": true,
+        "telegram_approved_user_name": "Ada",
+        "telegram_failure_count": 1,
+        "telegram_pending_empty": true
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",
