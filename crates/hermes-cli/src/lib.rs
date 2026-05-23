@@ -895,6 +895,30 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         | ["hermes", "checkpoints", "clear", "--force"] => {
             result = checkpoints_clear_output(hermes_home)?;
         }
+        ["hermes", "proxy"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: proxy_help_output(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "proxy", "providers"] | ["hermes", "proxy", "list"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: proxy_providers_output(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "proxy", "status"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: proxy_status_output(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
         ["hermes", "doctor", "--ack", advisory] => {
             if *advisory == "shai-hulud-2026-05" {
                 ack_security_advisory(hermes_home, advisory)?;
@@ -4900,6 +4924,18 @@ fn checkpoints_clear_output(hermes_home: &Path) -> io::Result<CliExecution> {
         stdout_markers: BTreeMap::new(),
         stderr: String::new(),
     })
+}
+
+fn proxy_help_output() -> String {
+    "hermes proxy — local OpenAI-compatible proxy that attaches your\nOAuth-authenticated provider credentials to outbound requests.\n\nSubcommands:\n  hermes proxy start [--provider nous|xai] [--host 127.0.0.1] [--port 8645]\n      Run the proxy in the foreground.\n  hermes proxy status\n      Show which upstream adapters are ready.\n  hermes proxy providers\n      List available upstream providers.\n".to_string()
+}
+
+fn proxy_providers_output() -> String {
+    "Available proxy upstream providers:\n  nous  — Nous Portal\n  xai  — xAI Grok\n".to_string()
+}
+
+fn proxy_status_output() -> String {
+    "Hermes proxy upstream adapters\n\n  [nous    ] Nous Portal — not logged in\n  [xai     ] xAI Grok — not logged in\n\nStart the proxy with: hermes proxy start [--provider <name>]\n".to_string()
 }
 
 fn is_valid_profile_name(name: &str) -> bool {

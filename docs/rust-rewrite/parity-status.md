@@ -114,7 +114,10 @@ against those fixtures in `crates/hermes-parity`:
   stored `call_id|response_item_id` splitting, `fc_` derivation, chat-message
   to Responses input conversion, xAI encrypted-reasoning stripping, preflight
   input/API-kwargs normalization, validation error strings, and normalized
-  response extraction for reasoning/message/tool-call continuity.
+  response extraction for reasoning/message/tool-call continuity. Local proxy
+  CLI inventory/status is fixture-backed for upstream provider listing and
+  no-credential readiness diagnostics without starting the proxy server or
+  touching live OAuth credentials.
 - Provider profiles: built-in provider inventory, aliases, API modes, auth
   types, environment key discovery metadata, base URLs, fallback counts,
   max-token defaults, fixed-temperature sentinels, and default header keys.

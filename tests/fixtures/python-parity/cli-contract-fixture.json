@@ -4843,6 +4843,86 @@
         "base_exists": false,
         "legacy_exists": false
       }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "proxy"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "hermes proxy": true,
+            "hermes proxy providers": true,
+            "hermes proxy start": true,
+            "hermes proxy status": true,
+            "local OpenAI-compatible proxy": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "hermes proxy": true,
+            "hermes proxy providers": true,
+            "hermes proxy start": true,
+            "hermes proxy status": true,
+            "local OpenAI-compatible proxy": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "proxy",
+            "providers"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Available proxy upstream providers:": true,
+            "Nous Portal": true,
+            "nous": true,
+            "xAI Grok": true,
+            "xai": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Available proxy upstream providers:": true,
+            "Nous Portal": true,
+            "nous": true,
+            "xAI Grok": true,
+            "xai": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "proxy",
+            "status"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Hermes proxy upstream adapters": true,
+            "Nous Portal": true,
+            "[nous": true,
+            "[xai": true,
+            "hermes proxy start": true,
+            "not logged in": true,
+            "xAI Grok": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Hermes proxy upstream adapters": true,
+            "Nous Portal": true,
+            "[nous": true,
+            "[xai": true,
+            "hermes proxy start": true,
+            "not logged in": true,
+            "xAI Grok": true
+          }
+        }
+      ],
+      "name": "safe_proxy_command_execution"
     }
   ],
   "source": {

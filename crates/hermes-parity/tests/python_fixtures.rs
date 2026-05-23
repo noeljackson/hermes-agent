@@ -2785,6 +2785,38 @@ fn cli_contract_matches_python_fixture() {
             .unwrap()
     );
     let _ = fs::remove_dir_all(checkpoints_home);
+
+    let proxy_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-proxy-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&proxy_home);
+    fs::create_dir_all(&proxy_home).unwrap();
+    let proxy_home_display = proxy_home.to_string_lossy().to_string();
+    let proxy_execution = case(&fixture, "safe_proxy_command_execution");
+    for expected in proxy_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &proxy_home).unwrap();
+        actual.stdout = actual.stdout.replace(&proxy_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&proxy_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let _ = fs::remove_dir_all(proxy_home);
     let _ = fs::remove_dir_all(cli_home);
 }
 

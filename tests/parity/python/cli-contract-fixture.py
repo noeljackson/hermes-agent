@@ -3171,6 +3171,69 @@ def main() -> int:
             "legacy_exists": legacy_dir.exists(),
         }
 
+        proxy_home = home / "proxy-command-home"
+        proxy_env = env.copy()
+        proxy_env["HERMES_HOME"] = str(proxy_home)
+        proxy_home.mkdir(parents=True, exist_ok=True)
+        proxy_commands = []
+        for argv, marker_map in [
+            (
+                ["proxy"],
+                {
+                    "hermes proxy": True,
+                    "local OpenAI-compatible proxy": True,
+                    "hermes proxy start": True,
+                    "hermes proxy status": True,
+                    "hermes proxy providers": True,
+                },
+            ),
+            (
+                ["proxy", "providers"],
+                {
+                    "Available proxy upstream providers:": True,
+                    "nous": True,
+                    "xAI Grok": True,
+                    "xai": True,
+                    "Nous Portal": True,
+                },
+            ),
+            (
+                ["proxy", "status"],
+                {
+                    "Hermes proxy upstream adapters": True,
+                    "[nous": True,
+                    "Nous Portal": True,
+                    "not logged in": True,
+                    "[xai": True,
+                    "xAI Grok": True,
+                    "hermes proxy start": True,
+                },
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=proxy_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, proxy_home)
+            normalized_stderr = normalize_output(command_result.stderr, proxy_home)
+            combined = normalized_stdout + normalized_stderr
+            proxy_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": "",
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in combined
+                        for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -3352,6 +3415,10 @@ def main() -> int:
                 "name": "safe_checkpoints_command_execution",
                 "commands": checkpoints_commands,
                 "state": checkpoints_state,
+            },
+            {
+                "name": "safe_proxy_command_execution",
+                "commands": proxy_commands,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))
