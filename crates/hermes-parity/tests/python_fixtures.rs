@@ -2817,6 +2817,69 @@ fn cli_contract_matches_python_fixture() {
         }
     }
     let _ = fs::remove_dir_all(proxy_home);
+
+    let debug_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-debug-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&debug_home);
+    fs::create_dir_all(debug_home.join("logs")).unwrap();
+    fs::write(
+        debug_home.join("config.yaml"),
+        "model:\n  default: nous/hermes\n  provider: openrouter\nterminal:\n  backend: local\n",
+    )
+    .unwrap();
+    fs::write(
+        debug_home.join(".env"),
+        "OPENROUTER_API_KEY=sk-test-debug-secret\n",
+    )
+    .unwrap();
+    fs::write(
+        debug_home.join("logs").join("agent.log"),
+        "INFO first line\nINFO secret sk-test-debug-secret\nINFO final line\n",
+    )
+    .unwrap();
+    fs::write(
+        debug_home.join("logs").join("errors.log"),
+        "WARNING recoverable issue\nERROR final issue\n",
+    )
+    .unwrap();
+    fs::write(
+        debug_home.join("logs").join("gateway.log"),
+        "INFO gateway started\nINFO gateway final\n",
+    )
+    .unwrap();
+    let debug_home_display = debug_home.to_string_lossy().to_string();
+    let debug_execution = case(&fixture, "safe_debug_command_execution");
+    for expected in debug_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &debug_home).unwrap();
+        actual.stdout = actual.stdout.replace(&debug_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&debug_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+        for forbidden in expected["stdout_forbidden"].as_array().unwrap() {
+            assert!(
+                !actual.stdout.contains(forbidden.as_str().unwrap()),
+                "{argv:?} forbidden marker {forbidden}"
+            );
+        }
+    }
+    let _ = fs::remove_dir_all(debug_home);
     let _ = fs::remove_dir_all(cli_home);
 }
 

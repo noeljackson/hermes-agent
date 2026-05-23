@@ -4923,6 +4923,110 @@
         }
       ],
       "name": "safe_proxy_command_execution"
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "debug"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "--local": true,
+            "--no-redact": true,
+            "Usage: hermes debug <command>": true,
+            "delete": true,
+            "share": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_forbidden": [],
+          "stdout_markers": {
+            "--local": true,
+            "--no-redact": true,
+            "Usage: hermes debug <command>": true,
+            "delete": true,
+            "share": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "debug",
+            "share",
+            "--local",
+            "--lines",
+            "2"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "--- agent.log (last 2 lines) ---": true,
+            "--- errors.log (last 2 lines) ---": true,
+            "--- gateway.log (last 2 lines) ---": true,
+            "--- hermes dump ---": true,
+            "Collecting debug report...": true,
+            "FULL agent.log": true,
+            "FULL gateway.log": true,
+            "[hermes debug share: log content redacted": true,
+            "provider:         openrouter": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_forbidden": [],
+          "stdout_markers": {
+            "--- agent.log (last 2 lines) ---": true,
+            "--- errors.log (last 2 lines) ---": true,
+            "--- gateway.log (last 2 lines) ---": true,
+            "--- hermes dump ---": true,
+            "Collecting debug report...": true,
+            "FULL agent.log": true,
+            "FULL gateway.log": true,
+            "[hermes debug share: log content redacted": true,
+            "provider:         openrouter": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "debug",
+            "delete"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Deletes paste.rs pastes uploaded by": true,
+            "Usage: hermes debug delete <url>": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_forbidden": [],
+          "stdout_markers": {
+            "Deletes paste.rs pastes uploaded by": true,
+            "Usage: hermes debug delete <url>": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "debug",
+            "delete",
+            "https://dpaste.com/abc123"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Cannot delete: only paste.rs URLs are supported.": true,
+            "https://dpaste.com/abc123": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_forbidden": [],
+          "stdout_markers": {
+            "Cannot delete: only paste.rs URLs are supported.": true,
+            "https://dpaste.com/abc123": true
+          }
+        }
+      ],
+      "name": "safe_debug_command_execution"
     }
   ],
   "source": {

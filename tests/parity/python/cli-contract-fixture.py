@@ -3234,6 +3234,107 @@ def main() -> int:
                 }
             )
 
+        debug_home = home / "debug-command-home"
+        debug_env = env.copy()
+        debug_env["HERMES_HOME"] = str(debug_home)
+        debug_home.mkdir(parents=True, exist_ok=True)
+        (debug_home / "config.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "model": {"provider": "openrouter", "default": "nous/hermes"},
+                    "terminal": {"backend": "local"},
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        (debug_home / ".env").write_text(
+            "OPENROUTER_API_KEY=sk-test-debug-secret\n", encoding="utf-8"
+        )
+        debug_logs = debug_home / "logs"
+        debug_logs.mkdir(parents=True, exist_ok=True)
+        (debug_logs / "agent.log").write_text(
+            "INFO first line\nINFO secret sk-test-debug-secret\nINFO final line\n",
+            encoding="utf-8",
+        )
+        (debug_logs / "errors.log").write_text(
+            "WARNING recoverable issue\nERROR final issue\n",
+            encoding="utf-8",
+        )
+        (debug_logs / "gateway.log").write_text(
+            "INFO gateway started\nINFO gateway final\n",
+            encoding="utf-8",
+        )
+        debug_commands = []
+        for argv, marker_map, forbidden in [
+            (
+                ["debug"],
+                {
+                    "Usage: hermes debug <command>": True,
+                    "share": True,
+                    "delete": True,
+                    "--local": True,
+                    "--no-redact": True,
+                },
+                [],
+            ),
+            (
+                ["debug", "share", "--local", "--lines", "2"],
+                {
+                    "Collecting debug report...": True,
+                    "[hermes debug share: log content redacted": True,
+                    "--- hermes dump ---": True,
+                    "provider:         openrouter": True,
+                    "--- agent.log (last 2 lines) ---": True,
+                    "--- errors.log (last 2 lines) ---": True,
+                    "--- gateway.log (last 2 lines) ---": True,
+                    "FULL agent.log": True,
+                    "FULL gateway.log": True,
+                },
+                ["sk-test-debug-secret"],
+            ),
+            (
+                ["debug", "delete"],
+                {
+                    "Usage: hermes debug delete <url>": True,
+                    "Deletes paste.rs pastes uploaded by": True,
+                },
+                [],
+            ),
+            (
+                ["debug", "delete", "https://dpaste.com/abc123"],
+                {
+                    "Cannot delete: only paste.rs URLs are supported.": True,
+                    "https://dpaste.com/abc123": True,
+                },
+                [],
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=debug_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, debug_home)
+            debug_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, debug_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in marker_map
+                    },
+                    "stdout_forbidden": [
+                        value for value in forbidden if value in normalized_stdout
+                    ],
+                    "expected_markers": marker_map,
+                }
+            )
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -3419,6 +3520,10 @@ def main() -> int:
             {
                 "name": "safe_proxy_command_execution",
                 "commands": proxy_commands,
+            },
+            {
+                "name": "safe_debug_command_execution",
+                "commands": debug_commands,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))

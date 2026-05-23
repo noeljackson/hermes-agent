@@ -371,6 +371,10 @@ against those fixtures in `crates/hermes-parity`:
   configured model/provider/terminal, API-key set-vs-redacted display,
   platform detection from `.env`, cron/skill counts, config override markers,
   and absence of raw fake secrets from `dump` and `dump --show-keys`.
+  Debug support CLI behavior is fixture-backed for default help text,
+  offline `debug share --local` report generation from dump plus log tails,
+  full-log sections, upload-time redaction markers, absence of raw fake
+  secrets, missing-URL delete usage, and non-paste.rs delete validation.
   Doctor security-advisory ack is fixture-backed for unknown advisory
   diagnostics and persisting `security.acked_advisories` for the current
   `shai-hulud-2026-05` advisory without running full diagnostics or network

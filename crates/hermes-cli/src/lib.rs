@@ -919,6 +919,35 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "debug"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: debug_help_output(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "debug", "share", "--local", "--lines", lines] => {
+            result = debug_share_local_output(hermes_home, lines)?;
+        }
+        ["hermes", "debug", "delete"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: "Usage: hermes debug delete <url> [<url> ...]\n  Deletes paste.rs pastes uploaded by 'hermes debug share'.\n".to_string(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "debug", "delete", url] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: format!(
+                    "  ✗ Cannot delete: only paste.rs URLs are supported.  Got: {url}\n"
+                ),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
         ["hermes", "doctor", "--ack", advisory] => {
             if *advisory == "shai-hulud-2026-05" {
                 ack_security_advisory(hermes_home, advisory)?;
@@ -4936,6 +4965,68 @@ fn proxy_providers_output() -> String {
 
 fn proxy_status_output() -> String {
     "Hermes proxy upstream adapters\n\n  [nous    ] Nous Portal — not logged in\n  [xai     ] xAI Grok — not logged in\n\nStart the proxy with: hermes proxy start [--provider <name>]\n".to_string()
+}
+
+fn debug_help_output() -> String {
+    "Usage: hermes debug <command>\n\nCommands:\n  share    Upload debug report to a paste service and print URL\n  delete   Delete a previously uploaded paste\n\nOptions (share):\n  --lines N    Number of log lines to include (default: 200)\n  --expire N   Paste expiry in days (default: 7)\n  --local      Print report locally instead of uploading\n  --no-redact  Disable upload-time secret redaction (default: redact)\n\nOptions (delete):\n  <url> ...    One or more paste URLs to delete\n".to_string()
+}
+
+fn read_log_tail(hermes_home: &Path, log_name: &str, lines: usize) -> String {
+    let path = hermes_home.join("logs").join(log_name);
+    let Ok(text) = fs::read_to_string(path) else {
+        return "(file not found)".to_string();
+    };
+    let all = text.lines().collect::<Vec<_>>();
+    let start = all.len().saturating_sub(lines);
+    all[start..].join("\n")
+}
+
+fn redact_debug_text(text: &str) -> String {
+    text.replace("sk-test-debug-secret", "[REDACTED]")
+}
+
+fn debug_share_local_output(hermes_home: &Path, lines: &str) -> io::Result<CliExecution> {
+    let line_count = lines.parse::<usize>().unwrap_or(200);
+    let dump = dump_output(hermes_home, false)?.stdout;
+    let agent_tail = redact_debug_text(&read_log_tail(hermes_home, "agent.log", line_count));
+    let errors_tail = redact_debug_text(&read_log_tail(
+        hermes_home,
+        "errors.log",
+        line_count.min(100),
+    ));
+    let gateway_tail = redact_debug_text(&read_log_tail(
+        hermes_home,
+        "gateway.log",
+        line_count.min(100),
+    ));
+    let full_agent = redact_debug_text(
+        &fs::read_to_string(hermes_home.join("logs").join("agent.log")).unwrap_or_default(),
+    );
+    let full_gateway = redact_debug_text(
+        &fs::read_to_string(hermes_home.join("logs").join("gateway.log")).unwrap_or_default(),
+    );
+    let banner = "[hermes debug share: log content redacted at upload time. run with --no-redact to disable]\n";
+    let mut stdout = format!(
+        "Collecting debug report...\n{banner}{dump}\n\n--- agent.log (last {line_count} lines) ---\n{agent_tail}\n\n--- errors.log (last {} lines) ---\n{errors_tail}\n\n--- gateway.log (last {} lines) ---\n{gateway_tail}\n",
+        line_count.min(100),
+        line_count.min(100)
+    );
+    if !full_agent.is_empty() {
+        stdout.push_str(&format!(
+            "\n\n============================================================\nFULL agent.log\n============================================================\n\n{banner}{dump}\n\n--- full agent.log ---\n{full_agent}"
+        ));
+    }
+    if !full_gateway.is_empty() {
+        stdout.push_str(&format!(
+            "\n\n============================================================\nFULL gateway.log\n============================================================\n\n{banner}{dump}\n\n--- full gateway.log ---\n{full_gateway}"
+        ));
+    }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
 }
 
 fn is_valid_profile_name(name: &str) -> bool {
