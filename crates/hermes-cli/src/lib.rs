@@ -476,6 +476,17 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "hooks", "doctor"] => {
             stdout = "No shell hooks configured — nothing to check.\n".to_string();
         }
+        ["hermes", "doctor", "--ack", advisory] => {
+            if *advisory == "shai-hulud-2026-05" {
+                stdout = format!(
+                    "  ✓ Acknowledged advisory {advisory}. It will no longer trigger startup banners.\n"
+                );
+            } else {
+                exit_code = 2;
+                stdout =
+                    format!("Unknown advisory ID: '{advisory}'. Known IDs: shai-hulud-2026-05\n");
+            }
+        }
         ["hermes", "cron", "create", schedule, prompt, "--name", name, "--deliver", _deliver] => {
             let display = hermes_cron::parse_schedule(schedule)
                 .ok()
@@ -771,6 +782,12 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stdout_markers: BTreeMap::new(),
                 stderr: String::new(),
             };
+        }
+        ["hermes", "doctor", "--ack", advisory] => {
+            if *advisory == "shai-hulud-2026-05" {
+                ack_security_advisory(hermes_home, advisory)?;
+            }
+            result = run_safe_command(argv, &home_display);
         }
         ["hermes", "mcp", "list"] | ["hermes", "mcp", "ls"] => {
             let config = read_config_value(hermes_home)?;
@@ -1587,6 +1604,33 @@ fn write_config_value(hermes_home: &Path, config: &Value) -> io::Result<()> {
         hermes_home.join("config.yaml"),
         serde_yaml::to_string(config).unwrap_or_else(|_| "{}\n".to_string()),
     )
+}
+
+fn ack_security_advisory(hermes_home: &Path, advisory: &str) -> io::Result<()> {
+    let mut config = read_config_value(hermes_home)?;
+    if !config.is_object() {
+        config = json!({});
+    }
+    let root = config.as_object_mut().unwrap();
+    let security = root
+        .entry("security".to_string())
+        .or_insert_with(|| json!({}));
+    if !security.is_object() {
+        *security = json!({});
+    }
+    let security = security.as_object_mut().unwrap();
+    let advisories = security
+        .entry("acked_advisories".to_string())
+        .or_insert_with(|| json!([]));
+    if !advisories.is_array() {
+        *advisories = json!([]);
+    }
+    let list = advisories.as_array_mut().unwrap();
+    if !list.iter().any(|value| value.as_str() == Some(advisory)) {
+        list.push(Value::String(advisory.to_string()));
+        list.sort_by(|left, right| left.as_str().cmp(&right.as_str()));
+    }
+    write_config_value(hermes_home, &config)
 }
 
 fn memory_status_output() -> String {

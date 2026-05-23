@@ -1069,6 +1069,48 @@
         {
           "argv": [
             "hermes",
+            "doctor",
+            "--ack",
+            "missing-advisory"
+          ],
+          "exit_code": 2,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Acknowledged advisory shai-hulud-2026-05": false,
+            "Known IDs: shai-hulud-2026-05": true,
+            "Unknown advisory ID: 'missing-advisory'": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "doctor",
+            "--ack",
+            "shai-hulud-2026-05"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Acknowledged advisory shai-hulud-2026-05": true,
+            "Known IDs: shai-hulud-2026-05": false,
+            "Unknown advisory ID: 'missing-advisory'": false
+          }
+        }
+      ],
+      "name": "safe_doctor_command_execution",
+      "state": {
+        "acked_advisories": [
+          "shai-hulud-2026-05"
+        ]
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",

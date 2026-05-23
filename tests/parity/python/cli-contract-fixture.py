@@ -725,6 +725,47 @@ def main() -> int:
             "state_db_mode": oct(stat.S_IMODE((import_home / "state.db").stat().st_mode)),
         }
 
+        doctor_home = home / "doctor-command-home"
+        doctor_env = env.copy()
+        doctor_env["HERMES_HOME"] = str(doctor_home)
+        doctor_commands = []
+        for argv in [
+            ["doctor", "--ack", "missing-advisory"],
+            ["doctor", "--ack", "shai-hulud-2026-05"],
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=doctor_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, doctor_home)
+            doctor_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in [
+                            "Unknown advisory ID: 'missing-advisory'",
+                            "Known IDs: shai-hulud-2026-05",
+                            "Acknowledged advisory shai-hulud-2026-05",
+                        ]
+                    },
+                    "stderr": normalize_output(command_result.stderr, doctor_home),
+                }
+            )
+        doctor_config = yaml.safe_load(
+            (doctor_home / "config.yaml").read_text(encoding="utf-8")
+        )
+        doctor_state = {
+            "acked_advisories": (
+                (doctor_config.get("security") or {}).get("acked_advisories") or []
+            )
+        }
+
         from hermes_state import SessionDB
 
         db = SessionDB(home / "state.db")
@@ -2383,6 +2424,11 @@ def main() -> int:
                 "name": "safe_backup_import_command_execution",
                 "commands": import_commands,
                 "state": import_state,
+            },
+            {
+                "name": "safe_doctor_command_execution",
+                "commands": doctor_commands,
+                "state": doctor_state,
             },
             {
                 "name": "safe_session_command_execution",

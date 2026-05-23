@@ -335,6 +335,10 @@ against those fixtures in `crates/hermes-parity`:
   Shell-hook CLI inspection is fixture-backed for empty-config `hooks list`
   and `hooks doctor` behavior without executing user hook scripts or mutating
   hook consent state.
+  Doctor security-advisory ack is fixture-backed for unknown advisory
+  diagnostics and persisting `security.acked_advisories` for the current
+  `shai-hulud-2026-05` advisory without running full diagnostics or network
+  probes.
   Quick state backup is fixture-backed for `backup --quick --label`,
   including the Python critical-state file set, `state-snapshots/` manifest
   shape, SQLite `state.db` copy presence, config, `.env`, auth, cron,
