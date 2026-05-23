@@ -326,6 +326,10 @@ against those fixtures in `crates/hermes-parity`:
   Dashboard lifecycle status commands are fixture-backed for no-running-process
   `dashboard --status` and `dashboard --stop` behavior without starting the
   web UI or importing dashboard server dependencies.
+  Shell completion generation is fixture-backed with stable bash, zsh, and
+  fish script markers, including profile helper hooks and top-level
+  `config`/`profile` command completion presence without snapshotting the
+  entire generated scripts.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable

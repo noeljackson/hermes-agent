@@ -388,6 +388,57 @@
         {
           "argv": [
             "hermes",
+            "completion",
+            "bash"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "# Hermes Agent bash completion": true,
+            "_hermes_completion()": true,
+            "complete -F _hermes_completion hermes": true,
+            "config": true,
+            "profile": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "completion",
+            "zsh"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "#compdef hermes": true,
+            "_arguments -C": true,
+            "compdef _hermes hermes": true,
+            "config": true,
+            "profile": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "completion",
+            "fish"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "# Hermes Agent fish completion": true,
+            "complete -c hermes -f": true,
+            "config": true,
+            "function __hermes_profiles": true,
+            "profile": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
             "cron",
             "list"
           ],

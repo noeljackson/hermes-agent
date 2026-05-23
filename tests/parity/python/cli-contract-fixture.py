@@ -134,6 +134,27 @@ def main() -> int:
                 "Messaging Platforms",
             ],
             "sessions_list_empty": ["No sessions found."],
+            "completion_bash": [
+                "# Hermes Agent bash completion",
+                "_hermes_completion()",
+                "complete -F _hermes_completion hermes",
+                "config",
+                "profile",
+            ],
+            "completion_zsh": [
+                "#compdef hermes",
+                "_arguments -C",
+                "compdef _hermes hermes",
+                "config",
+                "profile",
+            ],
+            "completion_fish": [
+                "# Hermes Agent fish completion",
+                "function __hermes_profiles",
+                "complete -c hermes -f",
+                "config",
+                "profile",
+            ],
             "status": [
                 "Hermes Agent Status",
                 "Environment",
@@ -162,6 +183,9 @@ def main() -> int:
             ["config", "set", "model.provider"],
             ["config", "edit"],
             ["config", "show"],
+            ["completion", "bash"],
+            ["completion", "zsh"],
+            ["completion", "fish"],
             ["cron", "list"],
             ["dashboard", "--status"],
             ["dashboard", "--stop"],
@@ -192,6 +216,12 @@ def main() -> int:
                 marker_key = "config_show"
             elif argv == ["sessions", "list", "--limit", "5"]:
                 marker_key = "sessions_list_empty"
+            elif argv == ["completion", "bash"]:
+                marker_key = "completion_bash"
+            elif argv == ["completion", "zsh"]:
+                marker_key = "completion_zsh"
+            elif argv == ["completion", "fish"]:
+                marker_key = "completion_fish"
             stdout_markers = None
             if marker_key:
                 stdout_markers = {

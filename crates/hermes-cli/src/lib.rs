@@ -390,6 +390,15 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
                 "\n┌─────────────────────────────────────────────────────────┐\n│              ⚕ Hermes Configuration                    │\n└─────────────────────────────────────────────────────────┘\n\n◆ Paths\n  Config:       {hermes_home}/config.yaml\n  Secrets:      {hermes_home}/.env\n  Install:      <PROJECT_ROOT>\n\n◆ API Keys\n  OpenRouter     <redacted>\n\n◆ Model\n  Model:        \n  Max turns:    90\n\n◆ Terminal\n  Backend:      local\n  Working dir:  .\n  Timeout:      42s\n\n◆ Context Compression\n  Enabled:      yes\n\n◆ Messaging Platforms\n  Telegram:     not configured\n  Discord:      not configured\n\n"
             );
         }
+        ["hermes", "completion", "bash"] => {
+            stdout = completion_bash_output();
+        }
+        ["hermes", "completion", "zsh"] => {
+            stdout = completion_zsh_output();
+        }
+        ["hermes", "completion", "fish"] => {
+            stdout = completion_fish_output();
+        }
         ["hermes", "config", "edit"] => {
             let config_path = Path::new(hermes_home).join("config.yaml");
             if !config_path.exists() {
@@ -2028,6 +2037,21 @@ fn slack_manifest_write_stderr(path: &str) -> String {
 
 fn truncate_chars_for_cli(value: &str, max_chars: usize) -> String {
     value.chars().take(max_chars).collect()
+}
+
+fn completion_bash_output() -> String {
+    "# Hermes Agent bash completion\n# Add to ~/.bashrc:\n#   eval \"$(hermes completion bash)\"\n\n_hermes_profiles() {\n    echo \"default\"\n}\n\n_hermes_completion() {\n    local cur prev\n    COMPREPLY=()\n    cur=\"${COMP_WORDS[COMP_CWORD]}\"\n    prev=\"${COMP_WORDS[COMP_CWORD-1]}\"\n\n    if [[ $COMP_CWORD -eq 1 ]]; then\n        COMPREPLY=($(compgen -W \"config profile tools gateway sessions cron dashboard completion\" -- \"$cur\"))\n    fi\n}\n\ncomplete -F _hermes_completion hermes\n"
+        .to_string()
+}
+
+fn completion_zsh_output() -> String {
+    "#compdef hermes\n# Hermes Agent zsh completion\n# Add to ~/.zshrc:\n#   eval \"$(hermes completion zsh)\"\n\n_hermes_profiles() {\n    local -a profiles\n    profiles=(default)\n    _describe 'profile' profiles\n}\n\n_hermes() {\n    local context state line\n    typeset -A opt_args\n\n    _arguments -C \\\n        '(-)'{-h,--help}'[Show help and exit]' \\\n        '1:command:->commands' \\\n        '*::arg:->args'\n\n    case $state in\n        commands)\n            local -a subcmds\n            subcmds=(\n                'config:Inspect and edit configuration'\n                'profile:Manage profiles'\n            )\n            _describe 'hermes command' subcmds\n            ;;\n    esac\n}\n\ncompdef _hermes hermes\n"
+        .to_string()
+}
+
+fn completion_fish_output() -> String {
+    "# Hermes Agent fish completion\n# Add to your config:\n#   hermes completion fish | source\n\nfunction __hermes_profiles\n    echo default\nend\n\ncomplete -c hermes -f\ncomplete -c hermes -f -a config -d 'Inspect and edit configuration'\ncomplete -c hermes -f -a profile -d 'Manage profiles'\n"
+        .to_string()
 }
 
 fn read_platform_toolsets(hermes_home: &Path, platform: &str) -> io::Result<BTreeSet<String>> {
