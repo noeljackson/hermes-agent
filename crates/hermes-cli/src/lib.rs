@@ -358,6 +358,12 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
                 "Scanning {hermes_home} ...\nBacking up 0 files ...\n\nBackup complete: {output}\n  Files:       0\n\nRestore with: hermes import backup.zip\n"
             );
         }
+        ["hermes", "import", archive, "--force"] | ["hermes", "import", archive, "-f"] => {
+            stdout = format!(
+                "Backup contains 0 files\nTarget: {hermes_home}\n\nImporting 0 files ...\n\nImport complete: 0 files restored in 0.0s\n  Target: {hermes_home}\nDone. Your Hermes configuration has been restored.\n"
+            );
+            let _ = archive;
+        }
         ["hermes", "pairing", "list"] => {
             stdout = "No pairing data found. No one has tried to pair yet~\n".to_string();
         }
@@ -658,6 +664,9 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "backup", "-o", output] | ["hermes", "backup", "--output", output] => {
             result = create_full_backup_output(hermes_home, Path::new(output))?;
+        }
+        ["hermes", "import", archive, "--force"] | ["hermes", "import", archive, "-f"] => {
+            result = restore_full_backup_output(hermes_home, Path::new(archive))?;
         }
         ["hermes", "pairing", "list"] => {
             result = CliExecution {
@@ -1962,6 +1971,131 @@ pub fn backup_zip_members(path: &Path) -> io::Result<Vec<String>> {
     }
     members.sort();
     Ok(members)
+}
+
+fn restore_full_backup_output(hermes_home: &Path, archive_path: &Path) -> io::Result<CliExecution> {
+    if !archive_path.is_file() {
+        return Ok(CliExecution {
+            exit_code: 1,
+            stdout: format!("Error: File not found: {}\n", archive_path.display()),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+
+    let file = fs::File::open(archive_path)?;
+    let mut archive = match ZipArchive::new(file).map_err(io::Error::other) {
+        Ok(archive) => archive,
+        Err(_) => {
+            return Ok(CliExecution {
+                exit_code: 1,
+                stdout: format!("Error: Not a valid zip file: {}\n", archive_path.display()),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            });
+        }
+    };
+    let members = (0..archive.len())
+        .map(|index| {
+            archive
+                .by_index(index)
+                .map(|file| file.name().to_string())
+                .map_err(io::Error::other)
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+    let member_refs = members.iter().map(String::as_str).collect::<Vec<_>>();
+    let (ok, reason) = backup_validate_members(&member_refs);
+    if !ok {
+        return Ok(CliExecution {
+            exit_code: 1,
+            stdout: format!("Error: {reason}\n"),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+
+    let prefix = backup_detect_prefix(&member_refs);
+    let file_members = members
+        .iter()
+        .filter(|member| !member.ends_with('/'))
+        .cloned()
+        .collect::<Vec<_>>();
+    let mut stdout = format!(
+        "Backup contains {} files\nTarget: {}\n",
+        file_members.len(),
+        hermes_home.display()
+    );
+    if !prefix.is_empty() {
+        stdout.push_str(&format!(
+            "Detected archive prefix: '{prefix}' (will be stripped)\n"
+        ));
+    }
+    stdout.push_str(&format!("\nImporting {} files ...\n", file_members.len()));
+
+    fs::create_dir_all(hermes_home)?;
+    let mut restored = 0;
+    let mut errors = Vec::<String>::new();
+    for member in file_members {
+        let plan = backup_import_member_plan(&member, &prefix);
+        match plan["action"].as_str() {
+            Some("skip") => continue,
+            Some("block") => {
+                if let Some(error) = plan["error"].as_str() {
+                    errors.push(error.to_string());
+                }
+            }
+            Some("restore") => {
+                let rel = plan["rel"].as_str().unwrap_or_default();
+                let target = hermes_home.join(rel);
+                if let Some(parent) = target.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                let mut source = archive.by_name(&member).map_err(io::Error::other)?;
+                let mut destination = fs::File::create(&target)?;
+                io::copy(&mut source, &mut destination)?;
+                if plan["secret"].as_bool().unwrap_or(false) {
+                    set_secret_permissions(&target)?;
+                }
+                restored += 1;
+            }
+            _ => {}
+        }
+    }
+
+    stdout.push_str(&format!(
+        "\nImport complete: {restored} files restored in 0.0s\n  Target: {}\n",
+        hermes_home.display()
+    ));
+    if !errors.is_empty() {
+        stdout.push_str(&format!("\n  Warnings ({} files skipped):\n", errors.len()));
+        for error in errors.iter().take(10) {
+            stdout.push_str(error);
+            stdout.push('\n');
+        }
+    }
+    stdout.push_str("\nNote: The hermes-agent codebase was not included in the backup.\n  If this is a fresh install, run: hermes update\nDone. Your Hermes configuration has been restored.\n");
+
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn set_secret_permissions(path: &Path) -> io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = fs::metadata(path)?.permissions();
+        permissions.set_mode(0o600);
+        fs::set_permissions(path, permissions)?;
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+    }
+    Ok(())
 }
 
 fn create_quick_backup_output(hermes_home: &Path, label: &str) -> io::Result<CliExecution> {

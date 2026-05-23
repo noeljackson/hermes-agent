@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import json
 import sqlite3
+import stat
 import subprocess
 import sys
 import tarfile
@@ -666,6 +667,63 @@ def main() -> int:
                 }
             backup_commands.append(case)
         backup_state = quick_snapshot_state(backup_home)
+
+        import_home = home / "backup-import-home"
+        import_env = env.copy()
+        import_env["HERMES_HOME"] = str(import_home)
+        import_zip = home / "backup-import-source.zip"
+        with zipfile.ZipFile(import_zip, "w") as zf:
+            zf.writestr(".hermes/config.yaml", "model: imported\n")
+            zf.writestr(".hermes/.env", "OPENROUTER_API_KEY=sk-imported\n")
+            zf.writestr(".hermes/auth.json", '{"token": "fake"}')
+            zf.writestr(".hermes/state.db", "not-a-real-db")
+            zf.writestr(".hermes/memories/MEMORY.md", "Imported memory.\n")
+            zf.writestr(".hermes/../escape.txt", "blocked\n")
+        import_commands = []
+        for argv in [["import", str(import_zip), "--force"]]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=import_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, import_home)
+            import_commands.append(
+                {
+                    "argv": [
+                        part.replace(str(import_zip), "<IMPORT_ZIP>")
+                        for part in ["hermes", *argv]
+                    ],
+                    "exit_code": command_result.returncode,
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in [
+                            "Backup contains 6 files",
+                            "Target: <HERMES_HOME>",
+                            "Detected archive prefix: '.hermes/'",
+                            "Import complete:",
+                            "path traversal blocked",
+                            "Done. Your Hermes configuration has been restored.",
+                        ]
+                    },
+                    "stderr": normalize_output(command_result.stderr, import_home),
+                }
+            )
+        import_state = {
+            "config": (import_home / "config.yaml").read_text(encoding="utf-8"),
+            "env": (import_home / ".env").read_text(encoding="utf-8"),
+            "auth": (import_home / "auth.json").read_text(encoding="utf-8"),
+            "state_db": (import_home / "state.db").read_text(encoding="utf-8"),
+            "memory": (import_home / "memories" / "MEMORY.md").read_text(
+                encoding="utf-8"
+            ),
+            "escaped_exists": (import_home.parent / "escape.txt").exists(),
+            "env_mode": oct(stat.S_IMODE((import_home / ".env").stat().st_mode)),
+            "auth_mode": oct(stat.S_IMODE((import_home / "auth.json").stat().st_mode)),
+            "state_db_mode": oct(stat.S_IMODE((import_home / "state.db").stat().st_mode)),
+        }
 
         from hermes_state import SessionDB
 
@@ -2320,6 +2378,11 @@ def main() -> int:
                 "name": "safe_backup_command_execution",
                 "commands": backup_commands,
                 "state": backup_state,
+            },
+            {
+                "name": "safe_backup_import_command_execution",
+                "commands": import_commands,
+                "state": import_state,
             },
             {
                 "name": "safe_session_command_execution",

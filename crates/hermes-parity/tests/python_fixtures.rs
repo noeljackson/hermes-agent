@@ -2,8 +2,10 @@ use hermes_parity::{case, cases, fixture_dir, load_fixture, object_keys};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+use zip::{write::SimpleFileOptions, ZipWriter};
 
 const FIXTURES: &[&str] = &[
     "agent-loop-fixture.json",
@@ -59,6 +61,36 @@ fn collect_relative_files(root: &Path, dir: &Path, out: &mut Vec<String>) {
                     .replace('\\', "/"),
             );
         }
+    }
+}
+
+fn write_test_zip(path: &Path, entries: &[(&str, &str)]) {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).unwrap();
+    }
+    let file = fs::File::create(path).unwrap();
+    let mut writer = ZipWriter::new(file);
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    for (name, content) in entries {
+        writer.start_file(*name, options).unwrap();
+        writer.write_all(content.as_bytes()).unwrap();
+    }
+    writer.finish().unwrap();
+}
+
+fn file_mode_octal(path: &Path) -> String {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        format!(
+            "0o{:o}",
+            fs::metadata(path).unwrap().permissions().mode() & 0o777
+        )
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        String::new()
     }
 }
 
@@ -794,6 +826,98 @@ fn cli_contract_matches_python_fixture() {
     );
     assert_eq!(manifest["files"], expected_state["manifest_files"]);
     let _ = fs::remove_dir_all(backup_home);
+
+    let import_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-import-{}", std::process::id()));
+    let import_zip = std::env::temp_dir().join(format!(
+        "hermes-parity-cli-import-source-{}.zip",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&import_home);
+    let _ = fs::remove_file(&import_zip);
+    write_test_zip(
+        &import_zip,
+        &[
+            (".hermes/config.yaml", "model: imported\n"),
+            (".hermes/.env", "OPENROUTER_API_KEY=sk-imported\n"),
+            (".hermes/auth.json", "{\"token\": \"fake\"}"),
+            (".hermes/state.db", "not-a-real-db"),
+            (".hermes/memories/MEMORY.md", "Imported memory.\n"),
+            (".hermes/../escape.txt", "blocked\n"),
+        ],
+    );
+    let import_home_display = import_home.to_string_lossy().to_string();
+    let import_zip_display = import_zip.to_string_lossy().to_string();
+    let import_execution = case(&fixture, "safe_backup_import_command_execution");
+    for expected in import_execution["commands"].as_array().unwrap() {
+        let argv_owned = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .unwrap()
+                    .replace("<IMPORT_ZIP>", &import_zip_display)
+            })
+            .collect::<Vec<_>>();
+        let argv = argv_owned.iter().map(String::as_str).collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &import_home).unwrap();
+        actual.stdout = actual.stdout.replace(&import_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&import_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let import_state = &import_execution["state"];
+    assert_eq!(
+        fs::read_to_string(import_home.join("config.yaml")).unwrap(),
+        import_state["config"].as_str().unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(import_home.join(".env")).unwrap(),
+        import_state["env"].as_str().unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(import_home.join("auth.json")).unwrap(),
+        import_state["auth"].as_str().unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(import_home.join("state.db")).unwrap(),
+        import_state["state_db"].as_str().unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(import_home.join("memories").join("MEMORY.md")).unwrap(),
+        import_state["memory"].as_str().unwrap()
+    );
+    assert_eq!(
+        import_home.parent().unwrap().join("escape.txt").exists(),
+        import_state["escaped_exists"].as_bool().unwrap()
+    );
+    assert_eq!(
+        file_mode_octal(&import_home.join(".env")),
+        import_state["env_mode"].as_str().unwrap()
+    );
+    assert_eq!(
+        file_mode_octal(&import_home.join("auth.json")),
+        import_state["auth_mode"].as_str().unwrap()
+    );
+    assert_eq!(
+        file_mode_octal(&import_home.join("state.db")),
+        import_state["state_db_mode"].as_str().unwrap()
+    );
+    let _ = fs::remove_dir_all(import_home);
+    let _ = fs::remove_file(import_zip);
 
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db

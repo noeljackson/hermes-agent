@@ -1034,6 +1034,41 @@
         {
           "argv": [
             "hermes",
+            "import",
+            "<IMPORT_ZIP>",
+            "--force"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Backup contains 6 files": true,
+            "Detected archive prefix: '.hermes/'": true,
+            "Done. Your Hermes configuration has been restored.": true,
+            "Import complete:": true,
+            "Target: <HERMES_HOME>": true,
+            "path traversal blocked": true
+          }
+        }
+      ],
+      "name": "safe_backup_import_command_execution",
+      "state": {
+        "auth": "{\"token\": \"fake\"}",
+        "auth_mode": "0o600",
+        "config": "model: imported\n",
+        "env": "OPENROUTER_API_KEY=sk-imported\n",
+        "env_mode": "0o600",
+        "escaped_exists": false,
+        "memory": "Imported memory.\n",
+        "state_db": "not-a-real-db",
+        "state_db_mode": "0o600"
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",
