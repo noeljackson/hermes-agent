@@ -8,6 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const FIXTURES: &[&str] = &[
     "agent-loop-fixture.json",
     "auth-discovery-fixture.json",
+    "backup-fixture.json",
     "cli-contract-fixture.json",
     "config-defaults-fixture.json",
     "cron-schedule-fixture.json",
@@ -88,6 +89,68 @@ fn all_python_parity_fixtures_have_source_and_cases() {
         assert!(
             !cases(&fixture).is_empty(),
             "{file} must contain at least one case"
+        );
+    }
+}
+
+#[test]
+fn backup_policy_matches_python_fixture() {
+    let fixture = load_fixture("backup-fixture.json");
+    let policy = case(&fixture, "full_backup_exclusion_policy");
+    for expected in policy["paths"].as_array().unwrap() {
+        let path = expected["path"].as_str().unwrap();
+        assert_eq!(
+            hermes_cli::backup_should_exclude(path),
+            expected["excluded"].as_bool().unwrap(),
+            "backup exclusion for {path}"
+        );
+    }
+    assert_eq!(
+        Value::Array(
+            hermes_cli::backup_secret_file_names()
+                .into_iter()
+                .map(|name| Value::String(name.to_string()))
+                .collect()
+        ),
+        policy["secret_file_names"]
+    );
+
+    let prefix = case(&fixture, "import_prefix_detection");
+    for expected in prefix["archives"].as_array().unwrap() {
+        let members = expected["members"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            hermes_cli::backup_detect_prefix(&members),
+            expected["prefix"].as_str().unwrap(),
+            "backup prefix for {}",
+            expected["name"].as_str().unwrap()
+        );
+    }
+
+    let validation = case(&fixture, "import_validation");
+    for expected in validation["archives"].as_array().unwrap() {
+        let members = expected["members"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let (ok, reason) = hermes_cli::backup_validate_members(&members);
+        assert_eq!(
+            ok,
+            expected["ok"].as_bool().unwrap(),
+            "backup validation ok for {}",
+            expected["name"].as_str().unwrap()
+        );
+        assert_eq!(
+            reason,
+            expected["reason"].as_str().unwrap(),
+            "backup validation reason for {}",
+            expected["name"].as_str().unwrap()
         );
     }
 }

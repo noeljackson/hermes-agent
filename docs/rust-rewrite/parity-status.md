@@ -339,6 +339,11 @@ against those fixtures in `crates/hermes-parity`:
   including the Python critical-state file set, `state-snapshots/` manifest
   shape, SQLite `state.db` copy presence, config, `.env`, auth, cron,
   gateway state, process state, and legacy plus platform pairing stores.
+- Backup/import policy: full-backup exclusion rules are fixture-backed for
+  regeneratable/runtime directories, SQLite sidecars, bytecode, PID files,
+  durable config/secrets/state files, memory, cron, gateway state, and skills.
+  Import validation and `.hermes/`/`hermes/` prefix detection are also backed
+  by Python zip fixtures before full zip restore behavior is ported.
   Deterministic cron subcommands are executable and
   fixture-backed for create, list, pause, resume, remove, no-gateway status,
   and missing-job pause/resume/remove/run diagnostics against durable

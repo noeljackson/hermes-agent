@@ -1658,6 +1658,90 @@ const QUICK_STATE_FILES: &[&str] = &[
     "feishu_comment_pairing.json",
 ];
 
+const BACKUP_EXCLUDED_DIRS: &[&str] = &[
+    "hermes-agent",
+    "__pycache__",
+    ".git",
+    "node_modules",
+    "backups",
+    "checkpoints",
+];
+
+const BACKUP_EXCLUDED_SUFFIXES: &[&str] = &[".pyc", ".pyo", ".db-wal", ".db-shm", ".db-journal"];
+
+const BACKUP_EXCLUDED_NAMES: &[&str] = &["gateway.pid", "cron.pid"];
+
+const BACKUP_SECRET_FILE_NAMES: &[&str] = &[".env", "auth.json", "state.db"];
+
+pub fn backup_should_exclude(rel_path: &str) -> bool {
+    let parts = rel_path
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+    if parts.iter().any(|part| BACKUP_EXCLUDED_DIRS.contains(part)) {
+        return true;
+    }
+
+    let Some(name) = parts.last() else {
+        return false;
+    };
+    BACKUP_EXCLUDED_NAMES.contains(name)
+        || BACKUP_EXCLUDED_SUFFIXES
+            .iter()
+            .any(|suffix| name.ends_with(suffix))
+}
+
+pub fn backup_secret_file_names() -> Vec<&'static str> {
+    let mut names = BACKUP_SECRET_FILE_NAMES.to_vec();
+    names.sort_unstable();
+    names
+}
+
+pub fn backup_detect_prefix(members: &[&str]) -> String {
+    let mut first_parts = BTreeSet::new();
+    for member in members
+        .iter()
+        .copied()
+        .filter(|member| !member.ends_with('/'))
+    {
+        let parts = member
+            .split('/')
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>();
+        if parts.len() > 1 {
+            first_parts.insert(parts[0]);
+        }
+    }
+    if first_parts.len() == 1 {
+        let prefix = first_parts.iter().next().copied().unwrap_or_default();
+        if matches!(prefix, ".hermes" | "hermes") {
+            return format!("{prefix}/");
+        }
+    }
+    String::new()
+}
+
+pub fn backup_validate_members(members: &[&str]) -> (bool, String) {
+    if members.is_empty() {
+        return (false, "zip archive is empty".to_string());
+    }
+    let markers = ["config.yaml", ".env", "state.db"];
+    let found_marker = members.iter().any(|member| {
+        member
+            .split('/')
+            .rfind(|part| !part.is_empty())
+            .is_some_and(|name| markers.contains(&name))
+    });
+    if !found_marker {
+        return (
+            false,
+            "zip does not appear to be a Hermes backup (no config.yaml, .env, or state databases found)"
+                .to_string(),
+        );
+    }
+    (true, String::new())
+}
+
 fn create_quick_backup_output(hermes_home: &Path, label: &str) -> io::Result<CliExecution> {
     let snap_id = quick_snapshot_id(label);
     let snapshot_dir = hermes_home.join("state-snapshots").join(&snap_id);

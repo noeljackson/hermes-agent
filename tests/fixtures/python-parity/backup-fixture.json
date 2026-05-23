@@ -1,0 +1,213 @@
+{
+  "cases": [
+    {
+      "name": "full_backup_exclusion_policy",
+      "paths": [
+        {
+          "excluded": false,
+          "path": "config.yaml"
+        },
+        {
+          "excluded": false,
+          "path": ".env"
+        },
+        {
+          "excluded": false,
+          "path": "auth.json"
+        },
+        {
+          "excluded": false,
+          "path": "state.db"
+        },
+        {
+          "excluded": false,
+          "path": "profiles/demo/config.yaml"
+        },
+        {
+          "excluded": false,
+          "path": "profiles/demo/.env"
+        },
+        {
+          "excluded": false,
+          "path": "memories/MEMORY.md"
+        },
+        {
+          "excluded": false,
+          "path": "cron/jobs.json"
+        },
+        {
+          "excluded": false,
+          "path": "gateway_state.json"
+        },
+        {
+          "excluded": true,
+          "path": "gateway.pid"
+        },
+        {
+          "excluded": true,
+          "path": "cron.pid"
+        },
+        {
+          "excluded": true,
+          "path": "state.db-wal"
+        },
+        {
+          "excluded": true,
+          "path": "state.db-shm"
+        },
+        {
+          "excluded": true,
+          "path": "state.db-journal"
+        },
+        {
+          "excluded": true,
+          "path": "cache.pyc"
+        },
+        {
+          "excluded": true,
+          "path": "cache.pyo"
+        },
+        {
+          "excluded": true,
+          "path": "hermes-agent/run_agent.py"
+        },
+        {
+          "excluded": true,
+          "path": "profiles/demo/hermes-agent/run_agent.py"
+        },
+        {
+          "excluded": true,
+          "path": "backups/old.zip"
+        },
+        {
+          "excluded": true,
+          "path": "checkpoints/session/checkpoint.json"
+        },
+        {
+          "excluded": true,
+          "path": "node_modules/pkg/index.js"
+        },
+        {
+          "excluded": false,
+          "path": "skills/demo/SKILL.md"
+        },
+        {
+          "excluded": true,
+          "path": ".git/config"
+        },
+        {
+          "excluded": true,
+          "path": "__pycache__/module.pyc"
+        }
+      ],
+      "secret_file_names": [
+        ".env",
+        "auth.json",
+        "state.db"
+      ]
+    },
+    {
+      "archives": [
+        {
+          "members": [
+            "config.yaml",
+            ".env",
+            "state.db"
+          ],
+          "name": "root",
+          "prefix": ""
+        },
+        {
+          "members": [
+            ".hermes/config.yaml",
+            ".hermes/.env"
+          ],
+          "name": "dot_hermes",
+          "prefix": ".hermes/"
+        },
+        {
+          "members": [
+            "hermes/config.yaml",
+            "hermes/state.db"
+          ],
+          "name": "hermes",
+          "prefix": "hermes/"
+        },
+        {
+          "members": [
+            "profiles/demo/config.yaml",
+            "profiles/demo/.env"
+          ],
+          "name": "profile_only",
+          "prefix": ""
+        },
+        {
+          "members": [
+            ".hermes/config.yaml",
+            "other/.env"
+          ],
+          "name": "mixed",
+          "prefix": ""
+        },
+        {
+          "members": [
+            ".hermes/",
+            ".hermes/config.yaml"
+          ],
+          "name": "dirs_ignored",
+          "prefix": ".hermes/"
+        }
+      ],
+      "name": "import_prefix_detection"
+    },
+    {
+      "archives": [
+        {
+          "members": [],
+          "name": "empty",
+          "ok": false,
+          "reason": "zip archive is empty"
+        },
+        {
+          "members": [
+            "notes.txt",
+            "profiles/demo/SOUL.md"
+          ],
+          "name": "no_markers",
+          "ok": false,
+          "reason": "zip does not appear to be a Hermes backup (no config.yaml, .env, or state databases found)"
+        },
+        {
+          "members": [
+            "config.yaml"
+          ],
+          "name": "config_root",
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "members": [
+            ".hermes/.env"
+          ],
+          "name": "env_wrapped",
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "members": [
+            "profiles/demo/state.db"
+          ],
+          "name": "state_nested",
+          "ok": true,
+          "reason": ""
+        }
+      ],
+      "name": "import_validation"
+    }
+  ],
+  "source": {
+    "ref": "main",
+    "repository": "https://github.com/NousResearch/hermes-agent.git",
+    "script": "/parity/backup-fixture.py"
+  }
+}
