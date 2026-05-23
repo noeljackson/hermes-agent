@@ -339,6 +339,10 @@ against those fixtures in `crates/hermes-parity`:
   including the Python critical-state file set, `state-snapshots/` manifest
   shape, SQLite `state.db` copy presence, config, `.env`, auth, cron,
   gateway state, process state, and legacy plus platform pairing stores.
+  Full zip backup creation is fixture-backed for `backup -o`, including
+  durable config, secrets, auth, sessions DB, memory, skills, logs, gateway
+  state, cron jobs, and pairing stores while excluding repo, prior backups,
+  checkpoints, bytecode, PID files, and SQLite sidecars.
 - Backup/import policy: full-backup exclusion rules are fixture-backed for
   regeneratable/runtime directories, SQLite sidecars, bytecode, PID files,
   durable config/secrets/state files, memory, cron, gateway state, and skills.

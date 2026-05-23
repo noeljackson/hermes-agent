@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import zipfile
 import yaml
 
 from parity_common import (
@@ -595,8 +596,34 @@ def main() -> int:
         sqlite_conn.execute("INSERT INTO parity(value) VALUES ('session')")
         sqlite_conn.commit()
         sqlite_conn.close()
+        (backup_home / "memories").mkdir(parents=True, exist_ok=True)
+        (backup_home / "memories" / "MEMORY.md").write_text(
+            "Remember backup.\n", encoding="utf-8"
+        )
+        (backup_home / "skills" / "demo").mkdir(parents=True, exist_ok=True)
+        (backup_home / "skills" / "demo" / "SKILL.md").write_text(
+            "---\nname: demo\n---\n", encoding="utf-8"
+        )
+        (backup_home / "hermes-agent").mkdir(parents=True, exist_ok=True)
+        (backup_home / "hermes-agent" / "run_agent.py").write_text(
+            "excluded\n", encoding="utf-8"
+        )
+        (backup_home / "backups").mkdir(parents=True, exist_ok=True)
+        (backup_home / "backups" / "old.zip").write_text("excluded\n", encoding="utf-8")
+        (backup_home / "checkpoints" / "s1").mkdir(parents=True, exist_ok=True)
+        (backup_home / "checkpoints" / "s1" / "checkpoint.json").write_text(
+            "excluded\n", encoding="utf-8"
+        )
+        (backup_home / "__pycache__").mkdir(parents=True, exist_ok=True)
+        (backup_home / "__pycache__" / "module.pyc").write_bytes(b"excluded")
+        (backup_home / "gateway.pid").write_text("123\n", encoding="utf-8")
+        (backup_home / "state.db-wal").write_text("excluded\n", encoding="utf-8")
         backup_commands = []
-        for argv in [["backup", "--quick", "--label", "parity"]]:
+        full_backup_path = backup_home / "full-backup.zip"
+        for argv in [
+            ["backup", "-o", str(full_backup_path)],
+            ["backup", "--quick", "--label", "parity"],
+        ]:
             command_result = subprocess.run(
                 [sys.executable, "-m", "hermes_cli.main", *argv],
                 text=True,
@@ -605,22 +632,39 @@ def main() -> int:
                 env=backup_env,
             )
             normalized_stdout = normalize_output(command_result.stdout, backup_home)
-            backup_commands.append(
-                {
-                    "argv": ["hermes", *argv],
-                    "exit_code": command_result.returncode,
-                    "stdout": "",
-                    "stdout_markers": {
-                        marker: marker in normalized_stdout
-                        for marker in [
-                            "State snapshot created:",
-                            "<HERMES_HOME>/state-snapshots/",
-                            "Restore with: /snapshot restore",
-                        ]
-                    },
-                    "stderr": normalize_output(command_result.stderr, backup_home),
+            case = {
+                "argv": [
+                    part.replace(str(backup_home), "<HERMES_HOME>")
+                    for part in ["hermes", *argv]
+                ],
+                "exit_code": command_result.returncode,
+                "stdout": "",
+                "stdout_markers": {},
+                "stderr": normalize_output(command_result.stderr, backup_home),
+            }
+            if argv[0:2] == ["backup", "-o"]:
+                case["stdout_markers"] = {
+                    marker: marker in normalized_stdout
+                    for marker in [
+                        "Scanning <HERMES_HOME> ...",
+                        "Backing up",
+                        "Backup complete: <HERMES_HOME>/full-backup.zip",
+                        "Restore with: hermes import full-backup.zip",
+                        "Excluded directories:",
+                    ]
                 }
-            )
+                with zipfile.ZipFile(full_backup_path, "r") as zf:
+                    case["zip_members"] = sorted(zf.namelist())
+            else:
+                case["stdout_markers"] = {
+                    marker: marker in normalized_stdout
+                    for marker in [
+                        "State snapshot created:",
+                        "<HERMES_HOME>/state-snapshots/",
+                        "Restore with: /snapshot restore",
+                    ]
+                }
+            backup_commands.append(case)
         backup_state = quick_snapshot_state(backup_home)
 
         from hermes_state import SessionDB

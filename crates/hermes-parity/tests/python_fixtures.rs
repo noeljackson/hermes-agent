@@ -628,6 +628,10 @@ fn cli_contract_matches_python_fixture() {
         "OPENROUTER_API_KEY=sk-fake-parity\n",
     )
     .unwrap();
+    fs::write(backup_home.join("SOUL.md"), "").unwrap();
+    fs::create_dir_all(backup_home.join("logs")).unwrap();
+    fs::write(backup_home.join("logs").join("agent.log"), "").unwrap();
+    fs::write(backup_home.join("logs").join("errors.log"), "").unwrap();
     fs::write(
         backup_home.join("auth.json"),
         "{\"providers\": {\"openrouter\": {\"api_key\": \"sk-fake\"}}}",
@@ -681,16 +685,59 @@ fn cli_contract_matches_python_fixture() {
         .execute("INSERT INTO parity(value) VALUES ('session')", [])
         .unwrap();
     drop(sqlite);
+    fs::create_dir_all(backup_home.join("memories")).unwrap();
+    fs::write(
+        backup_home.join("memories").join("MEMORY.md"),
+        "Remember backup.\n",
+    )
+    .unwrap();
+    fs::create_dir_all(backup_home.join("skills").join("demo")).unwrap();
+    fs::write(
+        backup_home.join("skills").join("demo").join("SKILL.md"),
+        "---\nname: demo\n---\n",
+    )
+    .unwrap();
+    fs::create_dir_all(backup_home.join("hermes-agent")).unwrap();
+    fs::write(
+        backup_home.join("hermes-agent").join("run_agent.py"),
+        "excluded\n",
+    )
+    .unwrap();
+    fs::create_dir_all(backup_home.join("backups")).unwrap();
+    fs::write(backup_home.join("backups").join("old.zip"), "excluded\n").unwrap();
+    fs::create_dir_all(backup_home.join("checkpoints").join("s1")).unwrap();
+    fs::write(
+        backup_home
+            .join("checkpoints")
+            .join("s1")
+            .join("checkpoint.json"),
+        "excluded\n",
+    )
+    .unwrap();
+    fs::create_dir_all(backup_home.join("__pycache__")).unwrap();
+    fs::write(
+        backup_home.join("__pycache__").join("module.pyc"),
+        b"excluded",
+    )
+    .unwrap();
+    fs::write(backup_home.join("gateway.pid"), "123\n").unwrap();
+    fs::write(backup_home.join("state.db-wal"), "excluded\n").unwrap();
 
     let backup_home_display = backup_home.to_string_lossy().to_string();
     let backup_execution = case(&fixture, "safe_backup_command_execution");
     for expected in backup_execution["commands"].as_array().unwrap() {
-        let argv = expected["argv"]
+        let argv_owned = expected["argv"]
             .as_array()
             .unwrap()
             .iter()
-            .map(|value| value.as_str().unwrap())
+            .map(|value| {
+                value
+                    .as_str()
+                    .unwrap()
+                    .replace("<HERMES_HOME>", &backup_home_display)
+            })
             .collect::<Vec<_>>();
+        let argv = argv_owned.iter().map(String::as_str).collect::<Vec<_>>();
         let mut actual = hermes_cli::run_safe_command_in_home(&argv, &backup_home).unwrap();
         actual.stdout = actual.stdout.replace(&backup_home_display, "<HERMES_HOME>");
         actual.stderr = actual.stderr.replace(&backup_home_display, "<HERMES_HOME>");
@@ -705,6 +752,15 @@ fn cli_contract_matches_python_fixture() {
                 actual.stdout.contains(marker),
                 present.as_bool().unwrap(),
                 "{argv:?} marker {marker}"
+            );
+        }
+        if let Some(expected_members) = expected.get("zip_members") {
+            let members =
+                hermes_cli::backup_zip_members(&backup_home.join("full-backup.zip")).unwrap();
+            assert_eq!(
+                Value::Array(members.into_iter().map(Value::String).collect()),
+                *expected_members,
+                "{argv:?} zip members"
             );
         }
     }

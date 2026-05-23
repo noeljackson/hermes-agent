@@ -9,6 +9,7 @@ use flate2::write::GzEncoder;
 use flate2::Compression;
 use serde_json::{json, Value};
 use tar::{Archive, Builder, EntryType};
+use zip::{write::SimpleFileOptions, CompressionMethod, ZipArchive, ZipWriter};
 
 pub const TOP_LEVEL_HELP: &str = "\
 Hermes Agent
@@ -352,6 +353,11 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
                 "State snapshot created: {snap_id}\n  1 snapshot(s) stored in {hermes_home}/state-snapshots/\n  Restore with: /snapshot restore {snap_id}\n"
             );
         }
+        ["hermes", "backup", "-o", output] | ["hermes", "backup", "--output", output] => {
+            stdout = format!(
+                "Scanning {hermes_home} ...\nBacking up 0 files ...\n\nBackup complete: {output}\n  Files:       0\n\nRestore with: hermes import backup.zip\n"
+            );
+        }
         ["hermes", "pairing", "list"] => {
             stdout = "No pairing data found. No one has tried to pair yet~\n".to_string();
         }
@@ -649,6 +655,9 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         }
         ["hermes", "backup", "--quick", "--label", label] => {
             result = create_quick_backup_output(hermes_home, label)?;
+        }
+        ["hermes", "backup", "-o", output] | ["hermes", "backup", "--output", output] => {
+            result = create_full_backup_output(hermes_home, Path::new(output))?;
         }
         ["hermes", "pairing", "list"] => {
             result = CliExecution {
@@ -1803,6 +1812,156 @@ fn normalize_backup_import_rel(rel: &str) -> Option<String> {
         }
     }
     Some(parts.join("/"))
+}
+
+fn create_full_backup_output(hermes_home: &Path, output: &Path) -> io::Result<CliExecution> {
+    let out_path = normalize_backup_output_path(output);
+    if let Some(parent) = out_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let mut files = Vec::<(PathBuf, String)>::new();
+    let mut skipped_dirs = BTreeSet::<String>::new();
+    collect_full_backup_files(
+        hermes_home,
+        hermes_home,
+        &out_path,
+        &mut files,
+        &mut skipped_dirs,
+    )?;
+
+    if files.is_empty() {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "No files to back up.\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+
+    files.sort_by(|left, right| left.1.cmp(&right.1));
+    let mut total_bytes = 0_u64;
+    let file = fs::File::create(&out_path)?;
+    let mut zip = ZipWriter::new(file);
+    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+    for (abs_path, rel_path) in &files {
+        zip.start_file(rel_path, options)
+            .map_err(io::Error::other)?;
+        let mut source = fs::File::open(abs_path)?;
+        total_bytes += io::copy(&mut source, &mut zip)?;
+    }
+    zip.finish().map_err(io::Error::other)?;
+
+    let zip_size = fs::metadata(&out_path)?.len();
+    let mut stdout = format!(
+        "Scanning {} ...\nBacking up {} files ...\n\nBackup complete: {}\n  Files:       {}\n  Original:    {}\n  Compressed:  {}\n  Time:        0.0s\n",
+        hermes_home.display(),
+        files.len(),
+        out_path.display(),
+        files.len(),
+        backup_format_size(total_bytes),
+        backup_format_size(zip_size),
+    );
+    if !skipped_dirs.is_empty() {
+        stdout.push_str("\n  Excluded directories:\n");
+        for dir in skipped_dirs {
+            stdout.push_str(&format!("    {dir}/\n"));
+        }
+    }
+    let restore_name = out_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("backup.zip");
+    stdout.push_str(&format!("\nRestore with: hermes import {restore_name}\n"));
+
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn normalize_backup_output_path(output: &Path) -> PathBuf {
+    if output
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"))
+    {
+        output.to_path_buf()
+    } else {
+        PathBuf::from(format!("{}.zip", output.display()))
+    }
+}
+
+fn collect_full_backup_files(
+    root: &Path,
+    dir: &Path,
+    out_path: &Path,
+    files: &mut Vec<(PathBuf, String)>,
+    skipped_dirs: &mut BTreeSet<String>,
+) -> io::Result<()> {
+    let mut entries = fs::read_dir(dir)?
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
+    entries.sort_by_key(|entry| entry.path());
+
+    for entry in entries {
+        let path = entry.path();
+        let rel_path = path.strip_prefix(root).map_err(io::Error::other)?;
+        let rel = rel_path.to_string_lossy().replace('\\', "/");
+        if path.is_dir() {
+            if rel_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| BACKUP_EXCLUDED_DIRS.contains(&name))
+            {
+                skipped_dirs.insert(rel);
+                continue;
+            }
+            collect_full_backup_files(root, &path, out_path, files, skipped_dirs)?;
+            continue;
+        }
+        if !path.is_file() || backup_should_exclude(&rel) {
+            continue;
+        }
+        let is_output = path
+            .canonicalize()
+            .ok()
+            .zip(out_path.canonicalize().ok())
+            .is_some_and(|(path, out)| path == out);
+        if is_output {
+            continue;
+        }
+        files.push((path, rel));
+    }
+    Ok(())
+}
+
+fn backup_format_size(nbytes: u64) -> String {
+    let mut value = nbytes as f64;
+    for unit in ["B", "KB", "MB", "GB"] {
+        if value < 1024.0 {
+            if unit == "B" {
+                return format!("{} B", value as u64);
+            }
+            return format!("{value:.1} {unit}");
+        }
+        value /= 1024.0;
+    }
+    format!("{value:.1} TB")
+}
+
+pub fn backup_zip_members(path: &Path) -> io::Result<Vec<String>> {
+    let file = fs::File::open(path)?;
+    let mut archive = ZipArchive::new(file).map_err(io::Error::other)?;
+    let mut members = Vec::new();
+    for index in 0..archive.len() {
+        let file = archive.by_index(index).map_err(io::Error::other)?;
+        members.push(file.name().to_string());
+    }
+    members.sort();
+    Ok(members)
 }
 
 fn create_quick_backup_output(hermes_home: &Path, label: &str) -> io::Result<CliExecution> {

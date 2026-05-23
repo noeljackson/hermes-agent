@@ -943,6 +943,42 @@
           "argv": [
             "hermes",
             "backup",
+            "-o",
+            "<HERMES_HOME>/full-backup.zip"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Backing up": true,
+            "Backup complete: <HERMES_HOME>/full-backup.zip": true,
+            "Excluded directories:": true,
+            "Restore with: hermes import full-backup.zip": true,
+            "Scanning <HERMES_HOME> ...": true
+          },
+          "zip_members": [
+            ".env",
+            "SOUL.md",
+            "auth.json",
+            "channel_directory.json",
+            "config.yaml",
+            "cron/jobs.json",
+            "feishu_comment_pairing.json",
+            "gateway_state.json",
+            "logs/agent.log",
+            "logs/errors.log",
+            "memories/MEMORY.md",
+            "pairing/telegram-approved.json",
+            "platforms/pairing/discord-pending.json",
+            "processes.json",
+            "skills/demo/SKILL.md",
+            "state.db"
+          ]
+        },
+        {
+          "argv": [
+            "hermes",
+            "backup",
             "--quick",
             "--label",
             "parity"
