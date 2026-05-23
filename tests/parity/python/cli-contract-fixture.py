@@ -883,6 +883,116 @@ def main() -> int:
             elif state_name == "after_delete":
                 bundle_state["after_delete_exists"] = bundle_path.exists()
 
+        fallback_home = home / "fallback-command-home"
+        fallback_env = env.copy()
+        fallback_env["HERMES_HOME"] = str(fallback_home)
+        fallback_home.mkdir(parents=True, exist_ok=True)
+        fallback_commands = []
+        for argv, marker_map in [
+            (
+                ["fallback", "list"],
+                {
+                    "No fallback providers configured.": True,
+                    "Add one with:  hermes fallback add": True,
+                },
+            ),
+            (
+                ["fallback"],
+                {
+                    "No fallback providers configured.": True,
+                    "Add one with:  hermes fallback add": True,
+                },
+            ),
+            (
+                ["fallback", "remove"],
+                {"No fallback providers configured": True, "nothing to remove": True},
+            ),
+            (
+                ["fallback", "clear"],
+                {"No fallback providers configured": True, "nothing to clear": True},
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=fallback_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, fallback_home)
+            fallback_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, fallback_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+        (fallback_home / "config.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "model": {
+                        "provider": "openrouter",
+                        "default": "nous/hermes",
+                    },
+                    "fallback_model": {
+                        "provider": "legacy",
+                        "model": "legacy/model",
+                    },
+                    "fallback_providers": [
+                        {"provider": "openai", "model": "gpt-4o-mini"},
+                        {
+                            "provider": "local",
+                            "model": "llama",
+                            "base_url": "http://127.0.0.1:11434/v1",
+                        },
+                    ],
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        for argv, marker_map in [
+            (
+                ["fallback", "list"],
+                {
+                    "Primary:": True,
+                    "nous/hermes  (via openrouter)": True,
+                    "Fallback chain (2 entries):": True,
+                    "1. gpt-4o-mini  (via openai)": True,
+                    "2. llama  (via local)  [http://127.0.0.1:11434/v1]": True,
+                    "Tried in order": True,
+                },
+            )
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=fallback_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, fallback_home)
+            fallback_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, fallback_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+        fallback_state = yaml.safe_load(
+            (fallback_home / "config.yaml").read_text(encoding="utf-8")
+        )
+
         from hermes_state import SessionDB
 
         db = SessionDB(home / "state.db")
@@ -2551,6 +2661,11 @@ def main() -> int:
                 "name": "safe_bundles_command_execution",
                 "commands": bundles_commands,
                 "state": bundle_state,
+            },
+            {
+                "name": "safe_fallback_command_execution",
+                "commands": fallback_commands,
+                "state": fallback_state,
             },
             {
                 "name": "safe_session_command_execution",

@@ -1306,6 +1306,129 @@
         {
           "argv": [
             "hermes",
+            "fallback",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Add one with:  hermes fallback add": true,
+            "No fallback providers configured.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Add one with:  hermes fallback add": true,
+            "No fallback providers configured.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "fallback"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Add one with:  hermes fallback add": true,
+            "No fallback providers configured.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Add one with:  hermes fallback add": true,
+            "No fallback providers configured.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "fallback",
+            "remove"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "No fallback providers configured": true,
+            "nothing to remove": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No fallback providers configured": true,
+            "nothing to remove": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "fallback",
+            "clear"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "No fallback providers configured": true,
+            "nothing to clear": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No fallback providers configured": true,
+            "nothing to clear": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "fallback",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "1. gpt-4o-mini  (via openai)": true,
+            "2. llama  (via local)  [http://127.0.0.1:11434/v1]": true,
+            "Fallback chain (2 entries):": true,
+            "Primary:": true,
+            "Tried in order": true,
+            "nous/hermes  (via openrouter)": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "1. gpt-4o-mini  (via openai)": true,
+            "2. llama  (via local)  [http://127.0.0.1:11434/v1]": true,
+            "Fallback chain (2 entries):": true,
+            "Primary:": true,
+            "Tried in order": true,
+            "nous/hermes  (via openrouter)": true
+          }
+        }
+      ],
+      "name": "safe_fallback_command_execution",
+      "state": {
+        "fallback_model": {
+          "model": "legacy/model",
+          "provider": "legacy"
+        },
+        "fallback_providers": [
+          {
+            "model": "gpt-4o-mini",
+            "provider": "openai"
+          },
+          {
+            "base_url": "http://127.0.0.1:11434/v1",
+            "model": "llama",
+            "provider": "local"
+          }
+        ],
+        "model": {
+          "default": "nous/hermes",
+          "provider": "openrouter"
+        }
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "sessions",
             "list",
             "--limit",

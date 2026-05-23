@@ -694,6 +694,15 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         ["hermes", "bundles", "create", name, args @ ..] => {
             result = bundles_create_output(hermes_home, name, args)?;
         }
+        ["hermes", "fallback"] | ["hermes", "fallback", "list"] | ["hermes", "fallback", "ls"] => {
+            result = fallback_list_output(hermes_home)?;
+        }
+        ["hermes", "fallback", "remove"] | ["hermes", "fallback", "rm"] => {
+            result = fallback_remove_output(hermes_home)?;
+        }
+        ["hermes", "fallback", "clear"] => {
+            result = fallback_clear_output(hermes_home)?;
+        }
         ["hermes", "pairing", "list"] => {
             result = CliExecution {
                 exit_code: 0,
@@ -2049,6 +2058,161 @@ fn bundles_reload_output(hermes_home: &Path) -> io::Result<CliExecution> {
     Ok(CliExecution {
         exit_code: 0,
         stdout: format!("No changes. {total} bundle(s) loaded.\n"),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn fallback_entry_is_valid(entry: &Value) -> bool {
+    entry.as_object().is_some_and(|map| {
+        map.get("provider")
+            .and_then(Value::as_str)
+            .is_some_and(|v| !v.is_empty())
+            && map
+                .get("model")
+                .and_then(Value::as_str)
+                .is_some_and(|v| !v.is_empty())
+    })
+}
+
+fn fallback_chain(config: &Value) -> Vec<Value> {
+    let Some(root) = config.as_object() else {
+        return Vec::new();
+    };
+    if let Some(entries) = root.get("fallback_providers").and_then(Value::as_array) {
+        let chain = entries
+            .iter()
+            .filter(|entry| fallback_entry_is_valid(entry))
+            .cloned()
+            .collect::<Vec<_>>();
+        if !chain.is_empty() {
+            return chain;
+        }
+    }
+    let Some(legacy) = root.get("fallback_model") else {
+        return Vec::new();
+    };
+    if fallback_entry_is_valid(legacy) {
+        return vec![legacy.clone()];
+    }
+    legacy
+        .as_array()
+        .map(|entries| {
+            entries
+                .iter()
+                .filter(|entry| fallback_entry_is_valid(entry))
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn fallback_entry_str<'a>(entry: &'a Value, key: &str) -> &'a str {
+    entry
+        .as_object()
+        .and_then(|map| map.get(key))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+}
+
+fn format_fallback_entry(entry: &Value) -> String {
+    let provider = fallback_entry_str(entry, "provider");
+    let model = fallback_entry_str(entry, "model");
+    let base = fallback_entry_str(entry, "base_url");
+    let suffix = if base.is_empty() {
+        String::new()
+    } else {
+        format!("  [{base}]")
+    };
+    format!("{model}  (via {provider}){suffix}")
+}
+
+fn describe_primary_model(config: &Value) -> Option<String> {
+    let model_cfg = config.as_object()?.get("model")?;
+    if let Some(model) = model_cfg
+        .as_str()
+        .map(str::trim)
+        .filter(|model| !model.is_empty())
+    {
+        return Some(model.to_string());
+    }
+    let map = model_cfg.as_object()?;
+    let provider = map
+        .get("provider")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|provider| !provider.is_empty())
+        .unwrap_or("?");
+    let model = map
+        .get("default")
+        .or_else(|| map.get("model"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|model| !model.is_empty())
+        .unwrap_or("?");
+    Some(format!("{model}  (via {provider})"))
+}
+
+fn fallback_list_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let config = read_config_value(hermes_home)?;
+    let chain = fallback_chain(&config);
+    let stdout = if chain.is_empty() {
+        "\n  No fallback providers configured.\n\n  Add one with:  hermes fallback add\n\n"
+            .to_string()
+    } else {
+        let mut stdout = String::new();
+        if let Some(primary) = describe_primary_model(&config) {
+            stdout.push_str(&format!("\n  Primary:   {primary}\n\n"));
+        } else {
+            stdout.push('\n');
+        }
+        let noun = if chain.len() == 1 { "entry" } else { "entries" };
+        stdout.push_str(&format!("  Fallback chain ({} {noun}):\n", chain.len()));
+        for (index, entry) in chain.iter().enumerate() {
+            stdout.push_str(&format!(
+                "    {}. {}\n",
+                index + 1,
+                format_fallback_entry(entry)
+            ));
+        }
+        stdout.push_str(
+            "\n  Tried in order when the primary fails (rate-limit, 5xx, connection errors).\n  Docs: https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers\n\n",
+        );
+        stdout
+    };
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn fallback_remove_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let chain = fallback_chain(&read_config_value(hermes_home)?);
+    let stdout = if chain.is_empty() {
+        "\n  No fallback providers configured — nothing to remove.\n\n".to_string()
+    } else {
+        "\n  Cancelled — no change.\n".to_string()
+    };
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn fallback_clear_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let chain = fallback_chain(&read_config_value(hermes_home)?);
+    let stdout = if chain.is_empty() {
+        "\n  No fallback providers configured — nothing to clear.\n\n".to_string()
+    } else {
+        "\n  Cancelled.\n".to_string()
+    };
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
         stdout_markers: BTreeMap::new(),
         stderr: String::new(),
     })

@@ -340,6 +340,11 @@ against those fixtures in `crates/hermes-parity`:
   underscore-to-hyphen lookup through `bundles show`, `bundles reload`,
   missing-bundle delete diagnostics, successful delete, and the durable
   `skill-bundles/<slug>.yaml` shape.
+  Fallback-provider CLI inspection is fixture-backed for empty-chain
+  `fallback`/`fallback list`, empty-chain `fallback remove` and
+  `fallback clear` no-ops, configured primary rendering, fallback chain
+  ordering, base URL display, and preservation of the existing
+  `fallback_model` plus `fallback_providers` config data.
   Doctor security-advisory ack is fixture-backed for unknown advisory
   diagnostics and persisting `security.acked_advisories` for the current
   `shai-hulud-2026-05` advisory without running full diagnostics or network

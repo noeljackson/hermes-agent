@@ -1021,6 +1021,53 @@ fn cli_contract_matches_python_fixture() {
     );
     let _ = fs::remove_dir_all(bundles_home);
 
+    let fallback_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-fallback-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&fallback_home);
+    fs::create_dir_all(&fallback_home).unwrap();
+    let fallback_execution = case(&fixture, "safe_fallback_command_execution");
+    for expected in fallback_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &fallback_home).unwrap();
+        let fallback_home_display = fallback_home.to_string_lossy();
+        actual.stdout = actual
+            .stdout
+            .replace(fallback_home_display.as_ref(), "<HERMES_HOME>");
+        actual.stderr = actual
+            .stderr
+            .replace(fallback_home_display.as_ref(), "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+        if argv == ["hermes", "fallback", "clear"] {
+            fs::write(
+                fallback_home.join("config.yaml"),
+                serde_yaml::to_string(&fallback_execution["state"]).unwrap(),
+            )
+            .unwrap();
+        }
+    }
+    let fallback_config: Value =
+        serde_yaml::from_str(&fs::read_to_string(fallback_home.join("config.yaml")).unwrap())
+            .unwrap();
+    assert_eq!(fallback_config, fallback_execution["state"]);
+    let _ = fs::remove_dir_all(fallback_home);
+
     let session_db = hermes_session::SqliteSessionStore::open(cli_home.join("state.db")).unwrap();
     session_db
         .create_session(
