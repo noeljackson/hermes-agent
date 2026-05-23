@@ -3009,6 +3009,101 @@ def main() -> int:
                 or {}
             ).get("plugins") or {}
 
+        skills_home = home / "skills-command-home"
+        skills_env = env.copy()
+        skills_env["HERMES_HOME"] = str(skills_home)
+        for skill_name, description in [
+            ("active-skill", "Active parity skill."),
+            ("demo-skill", "Disabled parity skill."),
+        ]:
+            skill_dir = skills_home / "skills" / "parity" / skill_name
+            skill_dir.mkdir(parents=True, exist_ok=True)
+            (skill_dir / "SKILL.md").write_text(
+                "\n".join(
+                    [
+                        "---",
+                        f"name: {skill_name}",
+                        f"description: {description}",
+                        "---",
+                        "",
+                        f"# {skill_name}",
+                        "",
+                        "Fixture body.",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+        (skills_home / "config.yaml").write_text(
+            yaml.safe_dump({"skills": {"disabled": ["demo-skill"]}}, sort_keys=True),
+            encoding="utf-8",
+        )
+        skills_commands = []
+        for argv, marker_map in [
+            (
+                ["skills", "list"],
+                {
+                    "Installed Skills": True,
+                    "active-skill": True,
+                    "demo-skill": True,
+                    "parity": True,
+                    "local": True,
+                    "enabled": True,
+                    "disabled": True,
+                    "0 hub-installed, 0 builtin, 2 local": True,
+                },
+            ),
+            (
+                ["skills", "list", "--enabled-only"],
+                {
+                    "Installed Skills (enabled only)": True,
+                    "active-skill": True,
+                    "demo-skill": False,
+                    "1 enabled shown": True,
+                },
+            ),
+            (
+                ["skills", "list", "--source", "local"],
+                {
+                    "active-skill": True,
+                    "demo-skill": True,
+                    "2 local": True,
+                },
+            ),
+            (
+                ["skills", "check"],
+                {
+                    "No hub-installed skills to check.": True,
+                },
+            ),
+            (
+                ["skills", "audit"],
+                {
+                    "No hub-installed skills to audit.": True,
+                },
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                env=skills_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, skills_home)
+            skills_commands.append(
+                {
+                    "argv": ["hermes", *argv],
+                    "exit_code": command_result.returncode,
+                    "stderr": normalize_output(command_result.stderr, skills_home),
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                }
+            )
+
         config_state = {}
         config_path = home / "config.yaml"
         if config_path.exists():
@@ -3181,6 +3276,10 @@ def main() -> int:
                 "name": "safe_plugins_command_execution",
                 "commands": plugins_commands,
                 "state": plugins_config,
+            },
+            {
+                "name": "safe_skills_command_execution",
+                "commands": skills_commands,
             },
         ]
     write_fixture(out, fixture(SCRIPT, cases))

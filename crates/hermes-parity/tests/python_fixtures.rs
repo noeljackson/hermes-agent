@@ -2683,6 +2683,56 @@ fn cli_contract_matches_python_fixture() {
             .unwrap();
     assert_eq!(plugins_config["plugins"], plugins_execution["state"]);
     let _ = fs::remove_dir_all(plugins_home);
+
+    let skills_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-skills-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&skills_home);
+    for (skill_name, description) in [
+        ("active-skill", "Active parity skill."),
+        ("demo-skill", "Disabled parity skill."),
+    ] {
+        let skill_dir = skills_home.join("skills").join("parity").join(skill_name);
+        fs::create_dir_all(&skill_dir).unwrap();
+        fs::write(
+            skill_dir.join("SKILL.md"),
+            format!(
+                "---\nname: {skill_name}\ndescription: {description}\n---\n\n# {skill_name}\n\nFixture body.\n"
+            ),
+        )
+        .unwrap();
+    }
+    fs::write(
+        skills_home.join("config.yaml"),
+        "skills:\n  disabled:\n    - demo-skill\n",
+    )
+    .unwrap();
+    let skills_home_display = skills_home.to_string_lossy().to_string();
+    let skills_execution = case(&fixture, "safe_skills_command_execution");
+    for expected in skills_execution["commands"].as_array().unwrap() {
+        let argv = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &skills_home).unwrap();
+        actual.stdout = actual.stdout.replace(&skills_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&skills_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let _ = fs::remove_dir_all(skills_home);
     let _ = fs::remove_dir_all(cli_home);
 }
 

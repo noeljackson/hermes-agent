@@ -4638,6 +4638,118 @@
         ],
         "enabled": []
       }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
+            "skills",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "0 hub-installed, 0 builtin, 2 local": true,
+            "Installed Skills": true,
+            "active-skill": true,
+            "demo-skill": true,
+            "disabled": true,
+            "enabled": true,
+            "local": true,
+            "parity": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "0 hub-installed, 0 builtin, 2 local": true,
+            "Installed Skills": true,
+            "active-skill": true,
+            "demo-skill": true,
+            "disabled": true,
+            "enabled": true,
+            "local": true,
+            "parity": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "skills",
+            "list",
+            "--enabled-only"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "1 enabled shown": true,
+            "Installed Skills (enabled only)": true,
+            "active-skill": true,
+            "demo-skill": false
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "1 enabled shown": true,
+            "Installed Skills (enabled only)": true,
+            "active-skill": true,
+            "demo-skill": false
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "skills",
+            "list",
+            "--source",
+            "local"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "2 local": true,
+            "active-skill": true,
+            "demo-skill": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "2 local": true,
+            "active-skill": true,
+            "demo-skill": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "skills",
+            "check"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "No hub-installed skills to check.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No hub-installed skills to check.": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "skills",
+            "audit"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "No hub-installed skills to audit.": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "No hub-installed skills to audit.": true
+          }
+        }
+      ],
+      "name": "safe_skills_command_execution"
     }
   ],
   "source": {

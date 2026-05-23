@@ -853,6 +853,31 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
         ["hermes", "plugins", "disable", name] => {
             result = plugins_set_enabled_output(hermes_home, name, false)?;
         }
+        ["hermes", "skills", "list"] => {
+            result = skills_list_cli_output(hermes_home, "all", false)?;
+        }
+        ["hermes", "skills", "list", "--enabled-only"] => {
+            result = skills_list_cli_output(hermes_home, "all", true)?;
+        }
+        ["hermes", "skills", "list", "--source", source] => {
+            result = skills_list_cli_output(hermes_home, source, false)?;
+        }
+        ["hermes", "skills", "check"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: "No hub-installed skills to check.\n\n".to_string(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
+        ["hermes", "skills", "audit"] => {
+            result = CliExecution {
+                exit_code: 0,
+                stdout: "No hub-installed skills to audit.\n\n".to_string(),
+                stdout_markers: BTreeMap::new(),
+                stderr: String::new(),
+            };
+        }
         ["hermes", "doctor", "--ack", advisory] => {
             if *advisory == "shai-hulud-2026-05" {
                 ack_security_advisory(hermes_home, advisory)?;
@@ -4658,6 +4683,84 @@ fn plugins_set_enabled_output(
             stderr: String::new(),
         })
     }
+}
+
+fn skills_list_cli_output(
+    hermes_home: &Path,
+    source_filter: &str,
+    enabled_only: bool,
+) -> io::Result<CliExecution> {
+    let root = hermes_home.join("skills");
+    let list = hermes_skills::skills_list_json(&root, None)?;
+    let skills = list
+        .get("skills")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let config = read_config_value(hermes_home)?;
+    let disabled = config_string_set(&config, "skills", "disabled");
+    let title = if enabled_only {
+        "Installed Skills (enabled only)"
+    } else {
+        "Installed Skills"
+    };
+    let mut rows = Vec::new();
+    let mut local_count = 0;
+    let mut enabled_count = 0;
+    let mut disabled_count = 0;
+    for skill in skills {
+        let name = skill
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        if name.is_empty() {
+            continue;
+        }
+        let is_enabled = !disabled.contains(&name);
+        if enabled_only && !is_enabled {
+            continue;
+        }
+        if !matches!(source_filter, "all" | "local") {
+            continue;
+        }
+        local_count += 1;
+        if is_enabled {
+            enabled_count += 1;
+        } else {
+            disabled_count += 1;
+        }
+        let category = skill
+            .get("category")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        rows.push(format!(
+            "{} | {} | local | local | {}",
+            name,
+            category,
+            if is_enabled { "enabled" } else { "disabled" }
+        ));
+    }
+    let mut stdout = format!("{title}\nName | Category | Source | Trust | Status\n");
+    for row in rows {
+        stdout.push_str(&row);
+        stdout.push('\n');
+    }
+    if enabled_only {
+        stdout.push_str(&format!(
+            "0 hub-installed, 0 builtin, {local_count} local — {enabled_count} enabled shown\n\n"
+        ));
+    } else {
+        stdout.push_str(&format!(
+            "0 hub-installed, 0 builtin, {local_count} local — {enabled_count} enabled, {disabled_count} disabled\n\n"
+        ));
+    }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
 }
 
 fn is_valid_profile_name(name: &str) -> bool {

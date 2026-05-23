@@ -199,6 +199,7 @@ dependencies = [
  "hermes-config",
  "hermes-cron",
  "hermes-session",
+ "hermes-skills",
  "hermes-slash",
  "serde_json",
  "serde_yaml",

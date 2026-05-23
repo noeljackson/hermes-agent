@@ -264,6 +264,10 @@ against those fixtures in `crates/hermes-parity`:
   added, removed, unchanged, total, and command counts. Skill invocation message
   construction is fixture-backed for raw `SKILL.md` injection, skill-directory
   hints, supporting-file hints, user instruction attachment, and runtime notes.
+  Installed-skill CLI listing is fixture-backed for local skill discovery,
+  category display, enabled/disabled status from `config.yaml`,
+  `--enabled-only`, `--source local`, and no-hub `skills check`/`skills audit`
+  diagnostics without contacting remote registries.
 - Slash commands: full central registry metadata, aliases, CLI/gateway flags,
   config-gated gateway command exposure, gateway-known command projection,
   active-session bypass decisions, gateway help line generation, Telegram menu

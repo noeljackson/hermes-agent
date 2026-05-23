@@ -13,6 +13,7 @@ path = "src/main.rs"
 hermes-config = { path = "../hermes-config" }
 hermes-cron = { path = "../hermes-cron" }
 hermes-session = { path = "../hermes-session" }
+hermes-skills = { path = "../hermes-skills" }
 hermes-slash = { path = "../hermes-slash" }
 flate2 = "1.1.5"
 serde_json.workspace = true
