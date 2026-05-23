@@ -476,6 +476,12 @@ pub fn run_safe_command(argv: &[&str], hermes_home: &str) -> CliExecution {
         ["hermes", "hooks", "doctor"] => {
             stdout = "No shell hooks configured — nothing to check.\n".to_string();
         }
+        ["hermes", "insights"] => {
+            return insights_empty_output(30, None);
+        }
+        ["hermes", "insights", "--days", days, "--source", source] => {
+            return insights_empty_output(days.parse().unwrap_or(30), Some(*source));
+        }
         ["hermes", "doctor", "--ack", advisory] => {
             if *advisory == "shai-hulud-2026-05" {
                 stdout = format!(
@@ -2355,6 +2361,16 @@ fn curator_list_archived_output(_hermes_home: &Path) -> CliExecution {
     CliExecution {
         exit_code: 0,
         stdout: "curator: no archived skills\n".to_string(),
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    }
+}
+
+fn insights_empty_output(days: i64, source: Option<&str>) -> CliExecution {
+    let source_suffix = source.map_or_else(String::new, |value| format!(" (source: {value})"));
+    CliExecution {
+        exit_code: 0,
+        stdout: format!("  No sessions found in the last {days} days{source_suffix}.\n"),
         stdout_markers: BTreeMap::new(),
         stderr: String::new(),
     }

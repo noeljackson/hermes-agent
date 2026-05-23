@@ -505,6 +505,30 @@
         {
           "argv": [
             "hermes",
+            "insights"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "  No sessions found in the last 30 days.\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
+            "insights",
+            "--days",
+            "7",
+            "--source",
+            "cli"
+          ],
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "  No sessions found in the last 7 days (source: cli).\n",
+          "stdout_markers": {}
+        },
+        {
+          "argv": [
+            "hermes",
             "mcp",
             "list"
           ],

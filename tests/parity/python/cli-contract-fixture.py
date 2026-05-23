@@ -218,6 +218,8 @@ def main() -> int:
             ["dashboard", "--stop"],
             ["hooks", "list"],
             ["hooks", "doctor"],
+            ["insights"],
+            ["insights", "--days", "7", "--source", "cli"],
             ["mcp", "list"],
             ["sessions", "list", "--limit", "5"],
             ["tools", "list"],

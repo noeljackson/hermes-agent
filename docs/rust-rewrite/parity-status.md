@@ -349,6 +349,9 @@ against those fixtures in `crates/hermes-parity`:
   status, pause/resume persistence in `skills/.curator_state`, paused status
   rendering, and empty `curator list-archived` output without running the
   auxiliary-model curator review.
+  Insights CLI empty-history output is fixture-backed for default 30-day
+  reporting and `--days` plus `--source` filters without requiring live
+  provider usage data.
   Doctor security-advisory ack is fixture-backed for unknown advisory
   diagnostics and persisting `security.acked_advisories` for the current
   `shai-hulud-2026-05` advisory without running full diagnostics or network
