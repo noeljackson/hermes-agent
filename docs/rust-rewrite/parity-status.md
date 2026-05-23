@@ -349,7 +349,9 @@ against those fixtures in `crates/hermes-parity`:
   without attempting macOS-only installation or network access.
   Shell-hook CLI inspection is fixture-backed for empty-config `hooks list`
   and `hooks doctor` behavior without executing user hook scripts or mutating
-  hook consent state.
+  hook consent state, plus configured hook listing, allowlist status display,
+  doctor diagnostics for executable/allowlisted and non-executable/unapproved
+  hooks, and `hooks revoke` allowlist mutation.
   Skill bundle CLI management is fixture-backed for empty `bundles list`,
   `bundles create` with repeated `--skill`, duplicate-create rejection,
   underscore-to-hyphen lookup through `bundles show`, `bundles reload`,

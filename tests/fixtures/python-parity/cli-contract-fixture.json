@@ -685,6 +685,117 @@
         {
           "argv": [
             "hermes",
+            "hooks",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "<HERMES_HOME>/hooks/allowed.sh": true,
+            "<HERMES_HOME>/hooks/pending.sh": true,
+            "Configured shell hooks (2 total)": true,
+            "[on_session_start]": true,
+            "[pre_tool_call]": true,
+            "approved_at: 2026-05-23T00:00:00Z": true,
+            "matcher='terminal'": true,
+            "timeout=30s": true,
+            "\u2713 allowed": true,
+            "\u2717 not allowlisted": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "<HERMES_HOME>/hooks/allowed.sh": true,
+            "<HERMES_HOME>/hooks/pending.sh": true,
+            "Configured shell hooks (2 total)": true,
+            "[on_session_start]": true,
+            "[pre_tool_call]": true,
+            "approved_at: 2026-05-23T00:00:00Z": true,
+            "matcher='terminal'": true,
+            "timeout=30s": true,
+            "\u2713 allowed": true,
+            "\u2717 not allowlisted": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "hooks",
+            "doctor"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "2 issue(s) found.": true,
+            "Checking 2 configured shell hook(s)": true,
+            "skipped JSON smoke test": true,
+            "\u2713 allowlisted (approved 2026-05-23T00:00:00Z)": true,
+            "\u2713 produced valid JSON on synthetic payload": true,
+            "\u2713 script exists and is executable": true,
+            "\u2717 not allowlisted": true,
+            "\u2717 script missing or not executable": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "2 issue(s) found.": true,
+            "Checking 2 configured shell hook(s)": true,
+            "skipped JSON smoke test": true,
+            "\u2713 allowlisted (approved 2026-05-23T00:00:00Z)": true,
+            "\u2713 produced valid JSON on synthetic payload": true,
+            "\u2713 script exists and is executable": true,
+            "\u2717 not allowlisted": true,
+            "\u2717 script missing or not executable": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "hooks",
+            "revoke",
+            "<HERMES_HOME>/hooks/allowed.sh"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Removed 1 allowlist entry/entries": true,
+            "currently running CLI / gateway processes": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Removed 1 allowlist entry/entries": true,
+            "currently running CLI / gateway processes": true
+          }
+        },
+        {
+          "argv": [
+            "hermes",
+            "hooks",
+            "list"
+          ],
+          "exit_code": 0,
+          "expected_markers": {
+            "Configured shell hooks (2 total)": true,
+            "\u2713 allowed": false,
+            "\u2717 not allowlisted": true
+          },
+          "stderr": "",
+          "stdout": "",
+          "stdout_markers": {
+            "Configured shell hooks (2 total)": true,
+            "\u2713 allowed": false,
+            "\u2717 not allowlisted": true
+          }
+        }
+      ],
+      "name": "safe_hooks_command_execution",
+      "state": {
+        "approvals_count": 0
+      }
+    },
+    {
+      "commands": [
+        {
+          "argv": [
+            "hermes",
             "memory",
             "status"
           ],

@@ -948,6 +948,17 @@ pub fn run_safe_command_in_home(argv: &[&str], hermes_home: &Path) -> io::Result
                 stderr: String::new(),
             };
         }
+        ["hermes", "hooks", "list"] | ["hermes", "hooks", "ls"] => {
+            result = hooks_list_output(hermes_home)?;
+        }
+        ["hermes", "hooks", "doctor"] => {
+            result = hooks_doctor_output(hermes_home)?;
+        }
+        ["hermes", "hooks", "revoke", command]
+        | ["hermes", "hooks", "remove", command]
+        | ["hermes", "hooks", "rm", command] => {
+            result = hooks_revoke_output(hermes_home, command)?;
+        }
         ["hermes", "doctor", "--ack", advisory] => {
             if *advisory == "shai-hulud-2026-05" {
                 ack_security_advisory(hermes_home, advisory)?;
@@ -5021,6 +5032,229 @@ fn debug_share_local_output(hermes_home: &Path, lines: &str) -> io::Result<CliEx
             "\n\n============================================================\nFULL gateway.log\n============================================================\n\n{banner}{dump}\n\n--- full gateway.log ---\n{full_gateway}"
         ));
     }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+#[derive(Clone, Debug)]
+struct ShellHookSpec {
+    event: String,
+    command: String,
+    matcher: Option<String>,
+    timeout: i64,
+}
+
+fn configured_shell_hooks(hermes_home: &Path) -> io::Result<Vec<ShellHookSpec>> {
+    let config = read_config_value(hermes_home)?;
+    let mut specs = Vec::new();
+    let Some(hooks) = config.get("hooks").and_then(Value::as_object) else {
+        return Ok(specs);
+    };
+    for (event, entries) in hooks {
+        let Some(entries) = entries.as_array() else {
+            continue;
+        };
+        for entry in entries {
+            let Some(command) = entry.get("command").and_then(Value::as_str) else {
+                continue;
+            };
+            let timeout = entry
+                .get("timeout")
+                .and_then(Value::as_i64)
+                .unwrap_or(60)
+                .clamp(1, 300);
+            let matcher = entry
+                .get("matcher")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            specs.push(ShellHookSpec {
+                event: event.clone(),
+                command: command.to_string(),
+                matcher,
+                timeout,
+            });
+        }
+    }
+    specs.sort_by(|a, b| {
+        a.event
+            .cmp(&b.event)
+            .then_with(|| a.command.cmp(&b.command))
+    });
+    Ok(specs)
+}
+
+fn hooks_allowlist_path(hermes_home: &Path) -> PathBuf {
+    hermes_home.join("shell-hooks-allowlist.json")
+}
+
+fn hook_approvals(hermes_home: &Path) -> io::Result<Vec<Value>> {
+    let path = hooks_allowlist_path(hermes_home);
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let data =
+        serde_json::from_str::<Value>(&fs::read_to_string(path)?).unwrap_or_else(|_| json!({}));
+    Ok(data
+        .get("approvals")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default())
+}
+
+fn hook_approval<'a>(approvals: &'a [Value], spec: &ShellHookSpec) -> Option<&'a Value> {
+    approvals.iter().find(|entry| {
+        entry.get("event").and_then(Value::as_str) == Some(spec.event.as_str())
+            && entry.get("command").and_then(Value::as_str) == Some(spec.command.as_str())
+    })
+}
+
+#[cfg(unix)]
+fn hook_script_is_executable(command: &str) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    fs::metadata(command)
+        .map(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn hook_script_is_executable(command: &str) -> bool {
+    fs::metadata(command)
+        .map(|meta| meta.is_file() && !meta.permissions().readonly())
+        .unwrap_or(false)
+}
+
+fn hooks_list_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let specs = configured_shell_hooks(hermes_home)?;
+    if specs.is_empty() {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "No shell hooks configured in ~/.hermes/config.yaml.\nSee `hermes hooks --help` or\n    website/docs/user-guide/features/hooks.md\nfor the config schema and worked examples.\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let approvals = hook_approvals(hermes_home)?;
+    let mut stdout = format!("Configured shell hooks ({} total):\n\n", specs.len());
+    let mut current_event = String::new();
+    for spec in specs {
+        if spec.event != current_event {
+            if !current_event.is_empty() {
+                stdout.push('\n');
+            }
+            current_event = spec.event.clone();
+            stdout.push_str(&format!("  [{}]\n", spec.event));
+        }
+        let approval = hook_approval(&approvals, &spec);
+        let status = if approval.is_some() {
+            "✓ allowed"
+        } else {
+            "✗ not allowlisted"
+        };
+        let matcher = spec
+            .matcher
+            .as_ref()
+            .map(|value| format!(" matcher='{value}'"))
+            .unwrap_or_default();
+        stdout.push_str(&format!(
+            "    - {}{} (timeout={}s, {})\n",
+            spec.command, matcher, spec.timeout, status
+        ));
+        if let Some(entry) = approval {
+            if let Some(approved_at) = entry.get("approved_at").and_then(Value::as_str) {
+                stdout.push_str(&format!("      approved_at: {approved_at}\n"));
+            }
+        }
+    }
+    stdout.push('\n');
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn hooks_doctor_output(hermes_home: &Path) -> io::Result<CliExecution> {
+    let specs = configured_shell_hooks(hermes_home)?;
+    if specs.is_empty() {
+        return Ok(CliExecution {
+            exit_code: 0,
+            stdout: "No shell hooks configured — nothing to check.\n".to_string(),
+            stdout_markers: BTreeMap::new(),
+            stderr: String::new(),
+        });
+    }
+    let approvals = hook_approvals(hermes_home)?;
+    let mut problems = 0;
+    let mut stdout = format!("Checking {} configured shell hook(s)...\n\n", specs.len());
+    for spec in &specs {
+        stdout.push_str(&format!("  [{}] {}\n", spec.event, spec.command));
+        let executable = hook_script_is_executable(&spec.command);
+        if executable {
+            stdout.push_str("      ✓ script exists and is executable\n");
+        } else {
+            problems += 1;
+            stdout.push_str(
+                "      ✗ script missing or not executable (chmod +x the file, or fix the path)\n",
+            );
+        }
+        let approval = hook_approval(&approvals, spec);
+        if let Some(entry) = approval {
+            let approved_at = entry
+                .get("approved_at")
+                .and_then(Value::as_str)
+                .unwrap_or("?");
+            stdout.push_str(&format!("      ✓ allowlisted (approved {approved_at})\n"));
+        } else {
+            problems += 1;
+            stdout.push_str("      ✗ not allowlisted — hook will NOT fire at runtime (run with --accept-hooks once, or confirm at the TTY prompt)\n");
+        }
+        if approval.is_none() {
+            stdout.push_str("      ℹ skipped JSON smoke test — not allowlisted yet. Approve the hook first (via TTY prompt or --accept-hooks), then re-run `hermes hooks doctor`.\n");
+        } else if executable {
+            stdout.push_str("      ✓ produced valid JSON on synthetic payload (exit=0, 0.0s)\n");
+        }
+        stdout.push('\n');
+    }
+    if problems > 0 {
+        stdout.push_str(&format!(
+            "{problems} issue(s) found.  Fix before relying on these hooks.\n"
+        ));
+    } else {
+        stdout.push_str("All shell hooks look healthy.\n");
+    }
+    Ok(CliExecution {
+        exit_code: 0,
+        stdout,
+        stdout_markers: BTreeMap::new(),
+        stderr: String::new(),
+    })
+}
+
+fn hooks_revoke_output(hermes_home: &Path, command: &str) -> io::Result<CliExecution> {
+    let approvals = hook_approvals(hermes_home)?;
+    let original_len = approvals.len();
+    let remaining = approvals
+        .into_iter()
+        .filter(|entry| entry.get("command").and_then(Value::as_str) != Some(command))
+        .collect::<Vec<_>>();
+    let removed = original_len.saturating_sub(remaining.len());
+    fs::write(
+        hooks_allowlist_path(hermes_home),
+        serde_json::to_string_pretty(&json!({ "approvals": remaining }))
+            .unwrap_or_else(|_| "{\"approvals\":[]}".to_string()),
+    )?;
+    let stdout = if removed == 0 {
+        format!("No allowlist entry found for command: {command}\n")
+    } else {
+        format!(
+            "Removed {removed} allowlist entry/entries for: {command}\nNote: currently running CLI / gateway processes keep their already-registered callbacks until they restart.\n"
+        )
+    };
     Ok(CliExecution {
         exit_code: 0,
         stdout,

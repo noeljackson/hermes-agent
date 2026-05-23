@@ -306,6 +306,130 @@ def main() -> int:
                 }
             )
 
+        hooks_home = home / "hooks-command-home"
+        hooks_env = env.copy()
+        hooks_env["HERMES_HOME"] = str(hooks_home)
+        hooks_dir = hooks_home / "hooks"
+        hooks_dir.mkdir(parents=True, exist_ok=True)
+        allowed_hook = hooks_dir / "allowed.sh"
+        pending_hook = hooks_dir / "pending.sh"
+        allowed_hook.write_text("#!/usr/bin/env bash\nprintf '{}\\n'\n", encoding="utf-8")
+        pending_hook.write_text("#!/usr/bin/env bash\nprintf '{}\\n'\n", encoding="utf-8")
+        allowed_hook.chmod(0o755)
+        (hooks_home / "config.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "hooks": {
+                        "on_session_start": [{"command": str(allowed_hook)}],
+                        "pre_tool_call": [
+                            {
+                                "matcher": "terminal",
+                                "command": str(pending_hook),
+                                "timeout": 30,
+                            }
+                        ],
+                    }
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        (hooks_home / "shell-hooks-allowlist.json").write_text(
+            json.dumps(
+                {
+                    "approvals": [
+                        {
+                            "event": "on_session_start",
+                            "command": str(allowed_hook),
+                            "approved_at": "2026-05-23T00:00:00Z",
+                            "script_mtime_at_approval": "9999-01-01T00:00:00Z",
+                        }
+                    ]
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        hooks_commands = []
+        for argv, marker_map in [
+            (
+                ["hooks", "list"],
+                {
+                    "Configured shell hooks (2 total)": True,
+                    "[on_session_start]": True,
+                    "[pre_tool_call]": True,
+                    "<HERMES_HOME>/hooks/allowed.sh": True,
+                    "<HERMES_HOME>/hooks/pending.sh": True,
+                    "matcher='terminal'": True,
+                    "timeout=30s": True,
+                    "✓ allowed": True,
+                    "✗ not allowlisted": True,
+                    "approved_at: 2026-05-23T00:00:00Z": True,
+                },
+            ),
+            (
+                ["hooks", "doctor"],
+                {
+                    "Checking 2 configured shell hook(s)": True,
+                    "✓ script exists and is executable": True,
+                    "✓ allowlisted (approved 2026-05-23T00:00:00Z)": True,
+                    "✓ produced valid JSON on synthetic payload": True,
+                    "✗ script missing or not executable": True,
+                    "✗ not allowlisted": True,
+                    "skipped JSON smoke test": True,
+                    "2 issue(s) found.": True,
+                },
+            ),
+            (
+                ["hooks", "revoke", str(allowed_hook)],
+                {
+                    "Removed 1 allowlist entry/entries": True,
+                    "currently running CLI / gateway processes": True,
+                },
+            ),
+            (
+                ["hooks", "list"],
+                {
+                    "Configured shell hooks (2 total)": True,
+                    "✓ allowed": False,
+                    "✗ not allowlisted": True,
+                },
+            ),
+        ]:
+            command_result = subprocess.run(
+                [sys.executable, "-m", "hermes_cli.main", *argv],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=hooks_env,
+            )
+            normalized_stdout = normalize_output(command_result.stdout, hooks_home)
+            hooks_commands.append(
+                {
+                    "argv": [
+                        "hermes",
+                        *[
+                            str(part).replace(str(hooks_home), "<HERMES_HOME>")
+                            for part in argv
+                        ],
+                    ],
+                    "exit_code": command_result.returncode,
+                    "stdout": "",
+                    "stdout_markers": {
+                        marker: marker in normalized_stdout
+                        for marker in marker_map
+                    },
+                    "expected_markers": marker_map,
+                    "stderr": normalize_output(command_result.stderr, hooks_home),
+                }
+            )
+        hooks_allowlist = json.loads(
+            (hooks_home / "shell-hooks-allowlist.json").read_text(encoding="utf-8")
+        )
+        hooks_state = {
+            "approvals_count": len(hooks_allowlist.get("approvals") or []),
+        }
+
         memory_home = home / "memory-command-home"
         memory_env = env.copy()
         memory_env["HERMES_HOME"] = str(memory_home)
@@ -3375,6 +3499,11 @@ def main() -> int:
             {
                 "name": "safe_auth_command_execution",
                 "commands": auth_commands,
+            },
+            {
+                "name": "safe_hooks_command_execution",
+                "commands": hooks_commands,
+                "state": hooks_state,
             },
             {
                 "name": "safe_memory_command_execution",

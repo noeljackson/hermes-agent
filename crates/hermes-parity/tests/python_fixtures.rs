@@ -349,6 +349,93 @@ fn cli_contract_matches_python_fixture() {
     }
     let _ = fs::remove_dir_all(auth_home);
 
+    let hooks_home =
+        std::env::temp_dir().join(format!("hermes-parity-cli-hooks-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&hooks_home);
+    fs::create_dir_all(hooks_home.join("hooks")).unwrap();
+    let allowed_hook = hooks_home.join("hooks").join("allowed.sh");
+    let pending_hook = hooks_home.join("hooks").join("pending.sh");
+    fs::write(&allowed_hook, "#!/usr/bin/env bash\nprintf '{}\\n'\n").unwrap();
+    fs::write(&pending_hook, "#!/usr/bin/env bash\nprintf '{}\\n'\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&allowed_hook).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&allowed_hook, perms).unwrap();
+    }
+    fs::write(
+        hooks_home.join("config.yaml"),
+        serde_yaml::to_string(&json!({
+            "hooks": {
+                "on_session_start": [{"command": allowed_hook.to_string_lossy()}],
+                "pre_tool_call": [{
+                    "matcher": "terminal",
+                    "command": pending_hook.to_string_lossy(),
+                    "timeout": 30,
+                }],
+            },
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        hooks_home.join("shell-hooks-allowlist.json"),
+        serde_json::to_string_pretty(&json!({
+            "approvals": [{
+                "event": "on_session_start",
+                "command": allowed_hook.to_string_lossy(),
+                "approved_at": "2026-05-23T00:00:00Z",
+                "script_mtime_at_approval": "9999-01-01T00:00:00Z",
+            }],
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let hooks_home_display = hooks_home.to_string_lossy().to_string();
+    let hooks_execution = case(&fixture, "safe_hooks_command_execution");
+    for expected in hooks_execution["commands"].as_array().unwrap() {
+        let argv_storage = expected["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .unwrap()
+                    .replace("<HERMES_HOME>", &hooks_home_display)
+            })
+            .collect::<Vec<_>>();
+        let argv = argv_storage.iter().map(String::as_str).collect::<Vec<_>>();
+        let mut actual = hermes_cli::run_safe_command_in_home(&argv, &hooks_home).unwrap();
+        actual.stdout = actual.stdout.replace(&hooks_home_display, "<HERMES_HOME>");
+        actual.stderr = actual.stderr.replace(&hooks_home_display, "<HERMES_HOME>");
+        assert_eq!(
+            actual.exit_code,
+            expected["exit_code"].as_i64().unwrap() as i32,
+            "{argv:?} exit"
+        );
+        assert_eq!(actual.stderr, expected["stderr"], "{argv:?} stderr");
+        for (marker, present) in expected["stdout_markers"].as_object().unwrap() {
+            assert_eq!(
+                actual.stdout.contains(marker),
+                present.as_bool().unwrap(),
+                "{argv:?} marker {marker}"
+            );
+        }
+    }
+    let hooks_allowlist: Value = serde_json::from_str(
+        &fs::read_to_string(hooks_home.join("shell-hooks-allowlist.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        hooks_allowlist["approvals"].as_array().unwrap().len(),
+        hooks_execution["state"]["approvals_count"]
+            .as_u64()
+            .unwrap() as usize
+    );
+    let _ = fs::remove_dir_all(hooks_home);
+
     let memory_home =
         std::env::temp_dir().join(format!("hermes-parity-cli-memory-{}", std::process::id()));
     let _ = fs::remove_dir_all(&memory_home);
